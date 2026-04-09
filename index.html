@@ -377,6 +377,32 @@
   .scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
   .scrollbar-thin::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
   .friday-calc-note { font-size: 10px; color: var(--accent2); margin-left: 4px; }
+  /* Import modal feedback */
+  .import-feedback {
+    font-size: 11px;
+    padding: 8px 10px;
+    border-radius: 5px;
+    margin-top: 6px;
+    display: none;
+  }
+  .import-feedback.ok  { display:block; background:#0f1a0f; color:var(--green); border:1px solid #4ade8040; }
+  .import-feedback.err { display:block; background:#1a0f0f; color:var(--danger); border:1px solid var(--danger)40; }
+  .file-drop-area {
+    border: 2px dashed var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+    color: var(--muted);
+    font-size: 12px;
+  }
+  .file-drop-area:hover, .file-drop-area.drag-over {
+    border-color: var(--accent);
+    background: #1a1f0a;
+    color: var(--accent);
+  }
+  input[type="file"]#import-file-input { display: none; }
   /* Teletrabajo toggle buttons */
   .tele-btn {
     padding: 3px 8px;
@@ -504,15 +530,49 @@
     </div>
 
     <div>
+      <div class="section-title">Backup completo</div>
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        <button class="btn btn-primary" style="width:100%" onclick="exportJSON()">↓ Exportar JSON</button>
+        <button class="btn btn-secondary" style="width:100%" onclick="showImportModal('json')">↑ Importar JSON</button>
+      </div>
+    </div>
+
+    <div>
+      <div class="section-title">Exportar / Importar mes</div>
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        <button class="btn btn-secondary" style="width:100%" onclick="exportCSV()">↓ Exportar CSV del mes</button>
+        <button class="btn btn-secondary" style="width:100%" onclick="showImportModal('csv')">↑ Importar CSV del mes</button>
+      </div>
+    </div>
+
+    <div>
       <div class="section-title">Acciones</div>
       <div style="display:flex;flex-direction:column;gap:8px;">
-        <button class="btn btn-secondary" style="width:100%" onclick="exportCSV()">↓ Exportar CSV</button>
         <button class="btn btn-secondary" style="width:100%;color:var(--danger);border-color:var(--danger)40" onclick="confirmDeleteMonth()">✕ Eliminar mes</button>
       </div>
     </div>
   </div>
 
   <div class="content scrollbar-thin" id="content"></div>
+</div>
+
+<!-- Import Modal -->
+<div class="modal-overlay" id="import-modal">
+  <div class="modal" style="width:420px">
+    <div class="modal-title" id="import-modal-title">Importar</div>
+    <p style="font-size:12px;color:var(--muted);line-height:1.6" id="import-modal-desc"></p>
+    <div class="file-drop-area" id="file-drop-area" onclick="document.getElementById('import-file-input').click()"
+         ondragover="event.preventDefault();this.classList.add('drag-over')"
+         ondragleave="this.classList.remove('drag-over')"
+         ondrop="handleFileDrop(event)">
+      Arrastra el fichero aquí o haz clic para seleccionarlo
+    </div>
+    <input type="file" id="import-file-input" onchange="handleFileSelect(event)">
+    <div class="import-feedback" id="import-feedback"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('import-modal')">Cerrar</button>
+    </div>
+  </div>
 </div>
 
 <!-- Add Month Modal -->
@@ -1215,32 +1275,270 @@ function exportCSV() {
   const m = months[currentMonthIdx];
   if (!m) return;
   const cfg = getConfig();
-  let csv = 'Fecha,Día,Entrada,Des.Ini,Des.Fin,Com.Ini,Com.Fin,Salida,Suma,Diario,Teletrabajo,Notas\n';
+  let csv = 'Fecha,ISO,Día,Tipo,Entrada,Des.Ini,Des.Fin,Com.Ini,Com.Fin,Salida,Suma,Diario,TeleDia,TeleTarde,Notas\n';
   let abs = getPrevMonthEndABS();
   for (const day of m.days) {
-    const dow = day.date.getDay();
-    const suma = day.festivo ? null : calcSuma(day, cfg);
-    const diario = suma !== null ? suma - cfg.horaDay : null;
+    const dow  = day.date.getDay();
+    const suma = day.tipo !== 'habil' ? null : calcSuma(day, cfg);
+    const hd   = getHoraDay(day.date);
+    const diario = suma !== null ? suma - hd : null;
     if (suma !== null) {
-      if (dow === 5) abs = Math.min(abs + diario, 5*60);
+      if (dow === 5) abs = Math.min(abs + diario, getBolsaCap(day.date));
       else abs += diario;
     }
     csv += [
       day.date.toLocaleDateString('es-ES'),
+      day.date.toISOString().slice(0,10),
       DAY_NAMES[dow],
+      day.tipo,
       day.entrada, day.desayunoIni, day.desayunoFin,
       day.comidaIni, day.comidaFin, day.salida,
       suma !== null ? minsToTime(suma) : '',
       diario !== null ? minsToTime(diario) : '',
-      day.teletrabajo ? 'Sí' : 'No',
+      day.teleDia   ? 'Sí' : 'No',
+      day.teleTarde ? 'Sí' : 'No',
       day.notas
-    ].map(v => `"${v}"`).join(',') + '\n';
+    ].map(v => `"${String(v ?? '').replace(/"/g,'""')}"`).join(',') + '\n';
   }
-  const blob = new Blob([csv], {type:'text/csv;charset=utf-8'});
+  downloadBlob(csv, `fichajes_${MONTH_NAMES[m.month]}_${m.year}.csv`, 'text/csv;charset=utf-8');
+}
+
+// ── JSON backup ──────────────────────────────────────────────────────────────
+
+function exportJSON() {
+  const snapshot = {
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    config: readConfigFromDOM(),
+    months: months.map(m => ({
+      ...m,
+      days: m.days.map(d => ({...d, date: d.date.toISOString()}))
+    }))
+  };
+  const ts = new Date().toISOString().slice(0,10);
+  downloadBlob(JSON.stringify(snapshot, null, 2),
+    `fichajes_backup_${ts}.json`, 'application/json');
+}
+
+function readConfigFromDOM() {
+  const g = id => document.getElementById(id)?.value ?? '';
+  return {
+    horaDayInv:  g('cfg-hora-day-inv'),
+    horaDayVer:  g('cfg-hora-day-ver'),
+    jiInicio:    g('cfg-ji-inicio'),
+    jiFin:       g('cfg-ji-fin'),
+    hourIn:      g('cfg-hour-in'),
+    desayuno:    g('cfg-desayuno'),
+    comida:      g('cfg-comida'),
+    salMin:      g('cfg-sal-min'),
+    bolsaInicio: g('cfg-bolsa-inicio'),
+    teleT1:      g('cfg-tele-t1'),
+    teleT2:      g('cfg-tele-t2'),
+    teleT3:      g('cfg-tele-t3'),
+    teleT4:      g('cfg-tele-t4'),
+  };
+}
+
+function applyConfigToDOM(cfg) {
+  if (!cfg) return;
+  const s = (id, val) => { const el = document.getElementById(id); if (el && val != null) el.value = val; };
+  s('cfg-hora-day-inv', cfg.horaDayInv);
+  s('cfg-hora-day-ver', cfg.horaDayVer);
+  s('cfg-ji-inicio',    cfg.jiInicio);
+  s('cfg-ji-fin',       cfg.jiFin);
+  s('cfg-hour-in',      cfg.hourIn);
+  s('cfg-desayuno',     cfg.desayuno);
+  s('cfg-comida',       cfg.comida);
+  s('cfg-sal-min',      cfg.salMin);
+  s('cfg-bolsa-inicio', cfg.bolsaInicio);
+  s('cfg-tele-t1',      cfg.teleT1);
+  s('cfg-tele-t2',      cfg.teleT2);
+  s('cfg-tele-t3',      cfg.teleT3);
+  s('cfg-tele-t4',      cfg.teleT4);
+}
+
+// ── Import modal ─────────────────────────────────────────────────────────────
+
+let _importMode = 'json';
+
+function showImportModal(mode) {
+  _importMode = mode;
+  document.getElementById('import-file-input').value = '';
+  setImportFeedback('', '');
+  if (mode === 'json') {
+    document.getElementById('import-modal-title').textContent = 'Importar backup JSON';
+    document.getElementById('import-modal-desc').textContent =
+      'Restaura todos los meses y la configuración desde un fichero de backup. ' +
+      'Los datos actuales serán reemplazados por los del fichero.';
+    document.getElementById('import-file-input').accept = '.json,application/json';
+  } else {
+    document.getElementById('import-modal-title').textContent = 'Importar mes desde CSV';
+    document.getElementById('import-modal-desc').textContent =
+      'Importa los registros de un fichero CSV exportado previamente. ' +
+      'Si el mes ya existe, sus datos serán reemplazados.';
+    document.getElementById('import-file-input').accept = '.csv,text/csv';
+  }
+  document.getElementById('import-modal').classList.add('show');
+}
+
+function setImportFeedback(msg, type) {
+  const el = document.getElementById('import-feedback');
+  el.textContent = msg;
+  el.className = 'import-feedback' + (type ? ' ' + type : '');
+}
+
+function handleFileDrop(event) {
+  event.preventDefault();
+  document.getElementById('file-drop-area').classList.remove('drag-over');
+  const file = event.dataTransfer.files[0];
+  if (file) processImportFile(file);
+}
+
+function handleFileSelect(event) {
+  const file = event.target.files[0];
+  if (file) processImportFile(file);
+}
+
+function processImportFile(file) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      if (_importMode === 'json') importJSON(e.target.result);
+      else importCSV(e.target.result);
+    } catch(err) {
+      setImportFeedback('Error al leer el fichero: ' + err.message, 'err');
+    }
+  };
+  reader.readAsText(file, 'UTF-8');
+}
+
+function importJSON(text) {
+  const data = JSON.parse(text);
+  if (!data.version || !data.months) throw new Error('Formato JSON no reconocido.');
+
+  if (!confirm('Esto reemplazará todos los datos actuales. ¿Continuar?')) return;
+
+  months = data.months.map(m => ({
+    ...m,
+    days: (m.days || []).map(d => ({...d, date: new Date(d.date)}))
+  }));
+  applyConfigToDOM(data.config);
+  currentMonthIdx = 0;
+  saveState();
+  renderTabs();
+  renderTable();
+  renderStats();
+  setImportFeedback(
+    `Backup restaurado correctamente: ${months.length} mes(es) cargados.`, 'ok'
+  );
+}
+
+function importCSV(text) {
+  const lines = text.trim().split('\n').filter(l => l.trim());
+  if (lines.length < 2) throw new Error('El fichero CSV está vacío o no tiene datos.');
+
+  const header = parseCSVLine(lines[0]);
+  // Detect format by checking for ISO date column
+  const isoIdx    = header.indexOf('ISO');
+  const tipoIdx   = header.indexOf('Tipo');
+  const fechaIdx  = header.indexOf('Fecha');
+  const entIdx    = header.indexOf('Entrada');
+  const desIIdx   = header.indexOf('Des.Ini');
+  const desFIdx   = header.indexOf('Des.Fin');
+  const comIIdx   = header.indexOf('Com.Ini');
+  const comFIdx   = header.indexOf('Com.Fin');
+  const salIdx    = header.indexOf('Salida');
+  const telDIdx   = header.indexOf('TeleDia');
+  const telTIdx   = header.indexOf('TeleTarde');
+  const notasIdx  = header.indexOf('Notas');
+
+  if (isoIdx === -1) throw new Error(
+    'Este CSV fue exportado con una versión anterior y no contiene la columna ISO necesaria para la importación. ' +
+    'Exporta de nuevo desde la app actual.'
+  );
+
+  const rows = lines.slice(1).map(l => parseCSVLine(l));
+  if (rows.length === 0) throw new Error('No hay filas de datos.');
+
+  // Determine year/month from first valid row
+  const firstISO = rows.find(r => r[isoIdx])?.at(isoIdx);
+  if (!firstISO) throw new Error('No se encontró ninguna fecha válida.');
+  const refDate = new Date(firstISO);
+  const year = refDate.getFullYear();
+  const month = refDate.getMonth();
+
+  // Build month data
+  const newMonthData = createMonthData(year, month);
+
+  for (const row of rows) {
+    const iso = row[isoIdx];
+    if (!iso) continue;
+    const d = new Date(iso);
+    // Find matching day slot
+    const slot = newMonthData.days.find(day =>
+      day.date.toISOString().slice(0,10) === iso
+    );
+    if (!slot) continue;
+    slot.tipo       = row[tipoIdx]  || 'habil';
+    slot.entrada    = row[entIdx]   || '';
+    slot.desayunoIni= row[desIIdx]  || '';
+    slot.desayunoFin= row[desFIdx]  || '';
+    slot.comidaIni  = row[comIIdx]  || '';
+    slot.comidaFin  = row[comFIdx]  || '';
+    slot.salida     = row[salIdx]   || '';
+    slot.teleDia    = row[telDIdx]  === 'Sí';
+    slot.teleTarde  = row[telTIdx]  === 'Sí';
+    slot.notas      = row[notasIdx] || '';
+  }
+
+  // Replace or insert month
+  const existingIdx = months.findIndex(m => m.year === year && m.month === month);
+  if (existingIdx >= 0) {
+    if (!confirm(`El mes ${MONTH_NAMES[month]} ${year} ya existe. ¿Sobreescribir sus datos?`)) return;
+    months[existingIdx] = newMonthData;
+    currentMonthIdx = existingIdx;
+  } else {
+    months.push(newMonthData);
+    months.sort((a, b) => a.year !== b.year ? a.year - b.year : a.month - b.month);
+    currentMonthIdx = months.findIndex(m => m.year === year && m.month === month);
+  }
+
+  saveState();
+  renderTabs();
+  renderTable();
+  renderStats();
+  setImportFeedback(
+    `${MONTH_NAMES[month]} ${year} importado correctamente (${rows.length} filas procesadas).`, 'ok'
+  );
+}
+
+function parseCSVLine(line) {
+  // Handles quoted fields with escaped quotes
+  const result = [];
+  let cur = '', inQ = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (ch === '"') {
+      if (inQ && line[i+1] === '"') { cur += '"'; i++; }
+      else inQ = !inQ;
+    } else if (ch === ',' && !inQ) {
+      result.push(cur.trim()); cur = '';
+    } else {
+      cur += ch;
+    }
+  }
+  result.push(cur.trim());
+  return result;
+}
+
+// ── Utility: download blob ───────────────────────────────────────────────────
+function downloadBlob(content, filename, mimeType) {
+  const blob = new Blob([content], {type: mimeType});
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = `fichajes_${MONTH_NAMES[m.month]}_${m.year}.csv`;
+  a.download = filename;
   a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 10000);
 }
 
 function parseTimeInput(raw) {
