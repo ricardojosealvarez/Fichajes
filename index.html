@@ -665,45 +665,41 @@ function getConfig() {
 }
 
 function calcSuma(day, cfg) {
-  const entrada   = timeToMins(day.entrada);
-  const desIni    = timeToMins(day.desayunoIni);
-  const desFin    = timeToMins(day.desayunoFin);
-  const comIni    = timeToMins(day.comidaIni);
-  const comFin    = timeToMins(day.comidaFin);
-  const salida    = timeToMins(day.salida);
+  const entrada = timeToMins(day.entrada);
+  const desIni  = timeToMins(day.desayunoIni);
+  const desFin  = timeToMins(day.desayunoFin);
+  const comIni  = timeToMins(day.comidaIni);
+  const comFin  = timeToMins(day.comidaFin);
+  const salida  = timeToMins(day.salida);
 
   if (entrada === null || salida === null) return null;
 
-  // Regla: hora de entrada mínima — si se llega antes, computa como hourIn
+  // Entrada efectiva: nunca antes de la hora mínima de entrada
   const effectiveEntrada = Math.max(entrada, cfg.hourIn);
 
-  // Regla: salida efectiva nunca anterior a horaMinsalida
-  // Cuando hay tarde (comIni rellenado), el límite aplica sobre comIni;
-  // cuando no hay tarde, aplica sobre salida.
-  let effectiveSalida;
-  if (comIni !== null && comFin !== null) {
-    // Hay pausa de comida → trabajamos mañana hasta comIni como mínimo horaMinsalida
+  const hasTarde = comIni !== null && comFin !== null;
+
+  let suma;
+  if (hasTarde) {
+    // Con tarde: SUMA = mañana + tarde - exceso_desayuno - exceso_comida
+    // mañana = desde entrada hasta comIni (con mínimo de salida)
+    // tarde  = desde comFin hasta salida
     const effectiveComIni = Math.max(comIni, cfg.horaMinsalida);
-    // Tarde: desde comFin hasta salida
-    effectiveSalida = effectiveComIni + (comFin !== null && salida !== null ? salida - comFin : 0);
+    const manana     = effectiveComIni - effectiveEntrada;
+    const tarde      = salida - comFin;
+    const desPenalty = (desIni !== null && desFin !== null)
+      ? Math.max(desFin - desIni - cfg.desayunoTime, 0) : 0;
+    const comPenalty = Math.max((comFin - comIni) - cfg.horaLunch, 0);
+    suma = manana + tarde - desPenalty - comPenalty;
   } else {
-    // Sin tarde — salida directa con mínimo
-    effectiveSalida = Math.max(salida, cfg.horaMinsalida);
+    // Sin tarde: SUMA = (salida - entrada) - exceso_desayuno
+    const effectiveSalida = Math.max(salida, cfg.horaMinsalida);
+    const desPenalty = (desIni !== null && desFin !== null)
+      ? Math.max(desFin - desIni - cfg.desayunoTime, 0) : 0;
+    suma = (effectiveSalida - effectiveEntrada) - desPenalty;
   }
 
-  // Regla desayuno: solo penaliza el tiempo que excede cfg.desayunoTime (15 min)
-  const desPenalty = (desIni !== null && desFin !== null)
-    ? Math.max(desFin - desIni - cfg.desayunoTime, 0)
-    : 0;
-
-  // Regla comida: solo penaliza el tiempo que excede cfg.horaLunch (1 hora)
-  const comPenalty = (comIni !== null && comFin !== null)
-    ? Math.max(comFin - comIni - cfg.horaLunch, 0)
-    : 0;
-
-  let suma = (effectiveSalida - effectiveEntrada) - desPenalty - comPenalty;
-  suma = Math.min(suma, 11 * 60); // máximo 11 h
-  return suma;
+  return Math.min(suma, 11 * 60); // máximo 11 h
 }
 
 function calcFridaySalida(day, absPrev, cfg) {
