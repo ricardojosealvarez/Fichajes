@@ -17,12 +17,12 @@
     --bg: #0e0f11;
     --surface: #161719;
     --surface2: #1e2023;
-    --border: #2a2d32;
+    --border: #3d4148;
     --accent: #e8ff47;
     --accent2: #47c8ff;
     --danger: #ff5547;
     --text: #e8eaed;
-    --muted: #6b7280;
+    --muted: #8d95a3;
     --green: #4ade80;
     --orange: #fb923c;
   }
@@ -156,7 +156,7 @@
   }
   th.center { text-align: center; }
   tbody tr {
-    border-bottom: 1px solid var(--border);
+    border-bottom: 2px solid var(--border);
     transition: background 0.1s;
   }
   tbody tr:hover { background: var(--surface2); }
@@ -315,7 +315,7 @@
   .type-menu-item:hover { background: var(--surface2); }
   .type-menu-item .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
 
-  .week-separator { border-bottom: 2px solid var(--border) !important; }
+  .week-separator { border-bottom: 3px solid #5a6070 !important; }
   .modal-overlay {
     display: none;
     position: fixed;
@@ -1044,12 +1044,22 @@ function renderTable() {
 
   let rows = '';
   let prevWeek = null;
+  // Pre-compute which row indices are the LAST day of their week (Friday or last workday before weekend)
+  // so we can apply week-separator as border-bottom on that row, not on the Monday.
+  const weekEndRows = new Set();
+  {
+    let pw = null;
+    for (let i = 0; i < m.days.length; i++) {
+      const wn = getWeekNum(m.days[i].date);
+      if (pw !== null && wn !== pw) weekEndRows.add(i - 1);
+      pw = wn;
+    }
+  }
 
   for (let i = 0; i < m.days.length; i++) {
     const day = m.days[i];
     const dow = day.date.getDay();
     const weekNum = getWeekNum(day.date);
-    const isNewWeek = prevWeek !== null && weekNum !== prevWeek;
     prevWeek = weekNum;
 
     const isFriday = dow === 5;
@@ -1094,10 +1104,9 @@ function renderTable() {
     const teleStr = (day.teleDia || day.teleTarde) ? minsToTime(teleDayData.bolsa) : '';
     const teleCls = teleDayData.warn ? 'warn' : (teleStr === '' ? 'zero' : '');
     const diarioClass = diario !== null ? (diario >= 0 ? 'pos' : 'neg') : '';
-    const weekSep = isNewWeek ? 'class="week-separator"' : '';
-
     const rowTypeClass = day.tipo !== 'habil' ? `row-${day.tipo}` : '';
-    rows += `<tr ${weekSep} ${rowTypeClass ? `class="${rowTypeClass}"` : ''} data-idx="${i}">
+    const rowClasses = [weekEndRows.has(i) ? 'week-separator' : '', rowTypeClass].filter(Boolean).join(' ');
+    rows += `<tr ${rowClasses ? `class="${rowClasses}"` : ''} data-idx="${i}">
       <td class="date-col">${dateStr}</td>
       <td class="day-col">${dayName}</td>
       <td><input class="time-input" type="text" maxlength="5" value="${day.entrada}" placeholder="--:--" onchange="handleTimeInput(this,${i},'entrada')" ${day.tipo !== 'habil' ? 'disabled' : ''}></td>
