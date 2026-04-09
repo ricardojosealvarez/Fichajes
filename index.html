@@ -665,6 +665,18 @@ function getConfig() {
 }
 
 function calcSuma(day, cfg) {
+  // Fórmula fiel al Excel original:
+  // SUMA = MIN(11h, (salida - MAX(entrada, hourIn))
+  //              - IF(hayComida, MAX(comFin-comIni, horaLunch), 0)
+  //              - MAX(desFin-desIni-desayunoTime, 0))
+  //
+  // Regla comida  : resta MAX(duración_real, 1h). Si dura < 1h resta 1h igualmente.
+  //                 Si dura > 1h resta la duración real. NO se separa mañana/tarde.
+  // Regla desayuno: resta solo el exceso sobre cfg.desayunoTime (15 min).
+  // Regla entrada : si se llega antes de hourIn, computa como hourIn.
+  // Regla salida  : salida (o comIni con tarde) nunca anterior a horaMinsalida.
+  //                 Si comIni < horaMinsalida, se suma el ajuste correspondiente.
+
   const entrada = timeToMins(day.entrada);
   const desIni  = timeToMins(day.desayunoIni);
   const desFin  = timeToMins(day.desayunoFin);
@@ -674,32 +686,28 @@ function calcSuma(day, cfg) {
 
   if (entrada === null || salida === null) return null;
 
-  // Entrada efectiva: nunca antes de la hora mínima de entrada
   const effectiveEntrada = Math.max(entrada, cfg.hourIn);
+  const hasTarde         = comIni !== null && comFin !== null;
 
-  const hasTarde = comIni !== null && comFin !== null;
+  // Salida efectiva para el cómputo de tiempo total
+  // Sin tarde: MAX(salida, horaMinsalida)
+  // Con tarde: la salida directa, pero si comIni < horaMinsalida se añade el delta
+  const effectiveSalida = hasTarde
+    ? salida + Math.max(cfg.horaMinsalida - comIni, 0)
+    : Math.max(salida, cfg.horaMinsalida);
 
-  let suma;
-  if (hasTarde) {
-    // Con tarde: SUMA = mañana + tarde - exceso_desayuno - exceso_comida
-    // mañana = desde entrada hasta comIni (con mínimo de salida)
-    // tarde  = desde comFin hasta salida
-    const effectiveComIni = Math.max(comIni, cfg.horaMinsalida);
-    const manana     = effectiveComIni - effectiveEntrada;
-    const tarde      = salida - comFin;
-    const desPenalty = (desIni !== null && desFin !== null)
-      ? Math.max(desFin - desIni - cfg.desayunoTime, 0) : 0;
-    const comPenalty = Math.max((comFin - comIni) - cfg.horaLunch, 0);
-    suma = manana + tarde - desPenalty - comPenalty;
-  } else {
-    // Sin tarde: SUMA = (salida - entrada) - exceso_desayuno
-    const effectiveSalida = Math.max(salida, cfg.horaMinsalida);
-    const desPenalty = (desIni !== null && desFin !== null)
-      ? Math.max(desFin - desIni - cfg.desayunoTime, 0) : 0;
-    suma = (effectiveSalida - effectiveEntrada) - desPenalty;
-  }
+  // Descuento comida: MAX(duración_real, horaLunch)
+  const comDescuento = hasTarde
+    ? Math.max(comFin - comIni, cfg.horaLunch)
+    : 0;
 
-  return Math.min(suma, 11 * 60); // máximo 11 h
+  // Descuento desayuno: solo el exceso sobre cfg.desayunoTime
+  const desDescuento = (desIni !== null && desFin !== null)
+    ? Math.max(desFin - desIni - cfg.desayunoTime, 0)
+    : 0;
+
+  const suma = (effectiveSalida - effectiveEntrada) - comDescuento - desDescuento;
+  return Math.min(suma, 11 * 60);
 }
 
 function calcFridaySalida(day, absPrev, cfg) {
