@@ -723,6 +723,38 @@ function calcFridaySalida(day, absPrev, cfg) {
   return Math.max(salida, cfg.horaMinsalida);
 }
 
+// ── Festivos Comunidad Autónoma de Andalucía 2026 ────────────────────────────
+// Mapa año → lista de fechas ISO festivas con su nombre
+const FESTIVOS_ANDALUCIA = {
+  2026: [
+    { iso: '2026-01-01', nota: 'Año Nuevo' },
+    { iso: '2026-01-06', nota: 'Epifanía del Señor' },
+    { iso: '2026-02-28', nota: 'Día de Andalucía' },
+    { iso: '2026-04-02', nota: 'Jueves Santo' },
+    { iso: '2026-04-03', nota: 'Viernes Santo' },
+    { iso: '2026-05-01', nota: 'Fiesta del Trabajo' },
+    { iso: '2026-08-15', nota: 'Asunción de la Virgen' },
+    { iso: '2026-10-12', nota: 'Fiesta Nacional de España' },
+    { iso: '2026-11-02', nota: 'Día siguiente a Todos los Santos' },
+    { iso: '2026-12-07', nota: 'Lunes siguiente al Día de la Constitución' },
+    { iso: '2026-12-08', nota: 'Inmaculada Concepción' },
+    { iso: '2026-12-25', nota: 'Natividad del Señor' },
+  ]
+};
+
+function applyFestivosAndalucia(monthData) {
+  const festivos = FESTIVOS_ANDALUCIA[monthData.year] || [];
+  for (const day of monthData.days) {
+    const iso = day.date.toISOString().slice(0, 10);
+    const festivo = festivos.find(f => f.iso === iso);
+    if (festivo && day.tipo === 'habil') {
+      day.tipo  = 'festivo';
+      day.notas = festivo.nota;
+    }
+  }
+  return monthData;
+}
+
 function getWorkdays(year, month) {
   const days = [];
   const date = new Date(year, month, 1);
@@ -738,7 +770,7 @@ function getWorkdays(year, month) {
 
 function createMonthData(year, month) {
   const workdays = getWorkdays(year, month);
-  return {
+  const m = {
     year, month,
     days: workdays.map(d => ({
       date: d,
@@ -747,6 +779,7 @@ function createMonthData(year, month) {
       teleDia: false, teleTarde: false, notas: '', tipo: 'habil'
     }))
   };
+  return applyFestivosAndalucia(m);
 }
 
 function parseExistingData() {
@@ -786,6 +819,9 @@ function parseExistingData() {
     teleDia: r.tele || false, teleTarde: false, notas: r.n, tipo: r.tipo || 'habil'
   }));
 
+  applyFestivosAndalucia(enero);
+  applyFestivosAndalucia(febrero);
+  applyFestivosAndalucia(marzo);
   months = [enero, febrero, marzo];
 }
 
