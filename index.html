@@ -634,7 +634,7 @@
       color: var(--muted);
       letter-spacing: 1px;
       text-transform: uppercase;
-    ">v2.1.1</div>
+    ">v2.1.2</div>
     <button id="signout-btn" style="
       padding: 6px 12px;
       background: transparent;
@@ -2205,6 +2205,8 @@ async function loadDataFromSupabase() {
   if (!currentUser) return false;
 
   try {
+    console.log('Cargando datos de Supabase para user:', currentUser.id);
+    
     // Cargar meses
     const monthsRes = await fetch(
       `${SUPABASE_URL}/rest/v1/months?user_id=eq.${currentUser.id}&order=year.asc,month.asc`,
@@ -2215,13 +2217,16 @@ async function loadDataFromSupabase() {
         }
       }
     );
+    console.log('Meses response:', monthsRes.status);
     const monthsData = await monthsRes.json();
-    if (!monthsRes.ok) throw new Error('Error cargando meses');
+    console.log('Meses data:', monthsData);
+    if (!monthsRes.ok) throw new Error('Error cargando meses: ' + JSON.stringify(monthsData));
 
     const monthMap = {};
     for (const m of monthsData) {
       monthMap[m.id] = { year: m.year, month: m.month, days: [] };
     }
+    console.log('Meses cargados:', Object.keys(monthMap).length);
 
     // Cargar días
     if (monthsData.length > 0) {
@@ -2235,7 +2240,9 @@ async function loadDataFromSupabase() {
           }
         }
       );
+      console.log('Días response:', daysRes.status);
       const daysData = await daysRes.json();
+      console.log('Días data:', daysData.length, 'registros');
       if (!daysRes.ok) throw new Error('Error cargando días');
 
       for (const d of daysData) {
@@ -2259,6 +2266,7 @@ async function loadDataFromSupabase() {
     }
 
     // Cargar config
+    console.log('Cargando config...');
     const cfgRes = await fetch(
       `${SUPABASE_URL}/rest/v1/config?user_id=eq.${currentUser.id}`,
       {
@@ -2268,7 +2276,9 @@ async function loadDataFromSupabase() {
         }
       }
     );
+    console.log('Config response:', cfgRes.status);
     const cfgData = await cfgRes.json();
+    console.log('Config data:', cfgData);
     if (cfgRes.ok && cfgData.length > 0) {
       const cfg = cfgData[0];
       const set = (id, val) => {
@@ -2297,6 +2307,7 @@ async function loadDataFromSupabase() {
       days: data.days
     }));
 
+    console.log('✓ Datos cargados correctamente, meses:', months.length);
     saveStateLocal();
     return true;
   } catch (e) {
