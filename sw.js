@@ -1,63 +1,85 @@
-// sw.js — Service Worker para Fichajes PWA
-// Cambia CACHE_VERSION cuando actualices index.html para forzar recarga en todos los clientes
-const CACHE_VERSION = 'fichajes-v1';
-const ASSETS = [
-  './index.html',
-  './manifest.json',
-  './icon-192.png',
-  './icon-512.png',
-  'https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@300;400;500&display=swap'
+const CACHE_NAME = 'fichajes-v2.1.0';
+const ASSETS_TO_CACHE = [
+  '/',
+  '/index.html',
+  '/manifest.json'
 ];
 
-// ── Instalación: precachea todos los assets ──────────────────────────────────
+// Install: cache assets
 self.addEventListener('install', event => {
   event.waitUntil(
-    caches.open(CACHE_VERSION)
-      .then(cache => cache.addAll(ASSETS))
-      .then(() => self.skipWaiting())
+    caches.open(CACHE_NAME).then(cache => {
+      return cache.addAll(ASSETS_TO_CACHE).catch(() => {
+        // Si falla, continúa (algunos assets pueden no estar disponibles)
+      });
+    }).then(() => self.skipWaiting())
   );
 });
 
-// ── Activación: elimina cachés antiguas ──────────────────────────────────────
+// Activate: clean old caches
 self.addEventListener('activate', event => {
   event.waitUntil(
-    caches.keys().then(keys =>
-      Promise.all(
-        keys
-          .filter(key => key !== CACHE_VERSION)
-          .map(key => caches.delete(key))
-      )
-    ).then(() => self.clients.claim())
+    caches.keys().then(cacheNames => {
+      return Promise.all(
+        cacheNames
+          .filter(name => name !== CACHE_NAME)
+          .map(name => caches.delete(name))
+      );
+    }).then(() => self.clients.claim())
   );
 });
 
-// ── Fetch: cache-first con fallback a red ────────────────────────────────────
-// Estrategia: sirve desde caché si existe; si no, va a la red y cachea la respuesta.
-// Para index.html usa network-first para detectar actualizaciones.
+// Fetch: network-first para HTML, cache-first para el resto
 self.addEventListener('fetch', event => {
-  const url = new URL(event.request.url);
-  const isIndexHtml = url.pathname.endsWith('index.html') || url.pathname.endsWith('/');
+  const { request } = event;
+  const url = new URL(request.url);
 
-  if (isIndexHtml) {
-    // Network-first para index.html: detecta nuevas versiones
+  // Ignorar requests no-GET (POST, PUT, DELETE, etc.)
+  if (request.method !== 'GET') {
+    return;
+  }
+
+  // Network-first para index.html
+  if (url.pathname === '/' || url.pathname === '/index.html') {
     event.respondWith(
-      fetch(event.request)
+      fetch(request)
         .then(response => {
-          const clone = response.clone();
-          caches.open(CACHE_VERSION).then(cache => cache.put(event.request, clone));
+          if (response && response.status === 200) {
+            const responseClone = response.clone();
+            caches.open(CACHE_NAME).then(cache => {
+              cache.put(request, responseClone).catch(() => {});
+            });
+          }
           return response;
         })
-        .catch(() => caches.match(event.request))
+        .catch(() => {
+          return caches.match(request).then(cached => {
+            return cached || caches.match('/index.html');
+          });
+        })
     );
   } else {
-    // Cache-first para el resto (fuentes, iconos, manifest)
+    // Cache-first para el resto
     event.respondWith(
-      caches.match(event.request)
-        .then(cached => cached || fetch(event.request).then(response => {
-          const clone = response.clone();
-          caches.open(CACHE_VERSION).then(cache => cache.put(event.request, clone));
-          return response;
-        }))
+      caches.match(request).then(cached => {
+        if (cached) {
+          return cached;
+        }
+        return fetch(request)
+          .then(response => {
+            if (response && response.status === 200) {
+              const responseClone = response.clone();
+              caches.open(CACHE_NAME).then(cache => {
+                cache.put(request, responseClone).catch(() => {});
+              });
+            }
+            return response;
+          })
+          .catch(() => {
+            // Fallback silencioso
+            return null;
+          });
+      })
     );
   }
 });
