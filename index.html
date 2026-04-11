@@ -12,7 +12,6 @@
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon-192.png">
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
-<script src="https://unpkg.com/@supabase/supabase-js@2.39.0"></script>
 <style>
   :root {
     --bg: #0e0f11;
@@ -635,7 +634,7 @@
       color: var(--muted);
       letter-spacing: 1px;
       text-transform: uppercase;
-    ">v2.0.6</div>
+    ">v2.1.0</div>
     <button id="signout-btn" style="
       padding: 6px 12px;
       background: transparent;
@@ -1981,20 +1980,19 @@ if ('serviceWorker' in navigator) {
     .catch(e => console.warn('SW error:', e));
 }
 
-// ── SUPABASE INIT ────────────────────────────────────────────────────────────
+// ── SUPABASE REST API (sin librería JS) ──────────────────────────────────
 
 const SUPABASE_URL = 'https://ruhcjikrtgnwcrbacwcc.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ1aGNqaWtydGdud2NyYmFjd2NjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU5MTM2OTIsImV4cCI6MjA5MTQ4OTY5Mn0.YVrcVB7Qvi3OmEvYe6uZIJSB6afk6KTgqM4IagrL93U';
 
-let supabase;
 let currentUser = null;
+let currentSession = null;
 let isOnline = navigator.onLine;
 let syncQueue = [];
 
 window.addEventListener('online', () => {
   isOnline = true;
   console.log('🟢 Online');
-  if (currentUser) syncChanges();
 });
 
 window.addEventListener('offline', () => {
@@ -2002,47 +2000,324 @@ window.addEventListener('offline', () => {
   console.log('🔴 Offline');
 });
 
-async function initAuth() {
-  const { data: { session } } = await supabase.auth.getSession();
-  if (session) {
-    currentUser = session.user;
-    setupRealtime();
-    return true;
+// ── AUTH REST ────────────────────────────────────────────────────────────
+
+async function signUp(email, password) {
+  try {
+    const res = await fetch(`${SUPABASE_URL}/auth/v1/signup`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': SUPABASE_ANON_KEY
+      },
+      body: JSON.stringify({ email, password })
+    });
+    const data = await res.json();
+    if (!res.ok) return { success: false, error: data.message || 'Error en signup' };
+    
+    currentUser = data.user;
+    currentSession = data.session;
+    localStorage.setItem('auth_token', data.session.access_token);
+    
+    // Crear registro en tabla users
+    await fetch(`${SUPABASE_URL}/rest/v1/users`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': SUPABASE_ANON_KEY,
+        'Authorization': `Bearer ${data.session.access_token}`
+      },
+      body: JSON.stringify({ id: data.user.id, email })
+    });
+    
+    // Crear configuración por defecto
+    await fetch(`${SUPABASE_URL}/rest/v1/config`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': SUPABASE_ANON_KEY,
+        'Authorization': `Bearer ${data.session.access_token}`
+      },
+      body: JSON.stringify({ user_id: data.user.id })
+    });
+    
+    return { success: true };
+  } catch (e) {
+    return { success: false, error: e.message };
   }
-  return false;
 }
 
 async function signIn(email, password) {
-  if (!supabase) {
-    return { success: false, error: 'Conectando a servidor...' };
+  try {
+    const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': SUPABASE_ANON_KEY
+      },
+      body: JSON.stringify({ email, password })
+    });
+    const data = await res.json();
+    if (!res.ok) return { success: false, error: data.message || 'Error en signin' };
+    
+    currentUser = data.user;
+    currentSession = data;
+    localStorage.setItem('auth_token', data.access_token);
+    
+    return { success: true };
+  } catch (e) {
+    return { success: false, error: e.message };
   }
-  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-  if (error) return { success: false, error: error.message };
-  currentUser = data.user;
-  setupRealtime();
-  return { success: true };
 }
 
-async function signUp(email, password) {
-  if (!supabase) {
-    return { success: false, error: 'Conectando a servidor...' };
+async function initAuth() {
+  const token = localStorage.getItem('auth_token');
+  if (!token) return false;
+  
+  try {
+    const res = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+      headers: {
+        'apikey': SUPABASE_ANON_KEY,
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    if (!res.ok) {
+      localStorage.removeItem('auth_token');
+      return false;
+    }
+    
+    const user = await res.json();
+    currentUser = user;
+    currentSession = { access_token: token };
+    return true;
+  } catch (e) {
+    console.error('Error verificando sesión:', e);
+    return false;
   }
-  const { data, error } = await supabase.auth.signUp({ email, password });
-  if (error) return { success: false, error: error.message };
-  currentUser = data.user;
-  
-  const { error: userError } = await supabase
-    .from('users')
-    .insert({ id: data.user.id, email });
-  if (userError) return { success: false, error: userError.message };
-  
-  const { error: cfgError } = await supabase
-    .from('config')
-    .insert({ user_id: data.user.id });
-  if (cfgError) return { success: false, error: cfgError.message };
-  
-  setupRealtime();
-  return { success: true };
+}
+
+async function handleSignOut() {
+  localStorage.removeItem('auth_token');
+  currentUser = null;
+  currentSession = null;
+  location.reload();
+}
+
+// ── SYNC REST ────────────────────────────────────────────────────────────
+
+async function saveDay(monthId, dayIdx, dayData) {
+  if (!currentUser || !isOnline) {
+    saveStateLocal();
+    return;
+  }
+
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/days`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': SUPABASE_ANON_KEY,
+        'Authorization': `Bearer ${currentSession.access_token}`,
+        'Prefer': 'resolution=merge-duplicates'
+      },
+      body: JSON.stringify({
+        id: dayData.id || null,
+        month_id: monthId,
+        date: dayData.date.toISOString().split('T')[0],
+        entrada: dayData.entrada || null,
+        desayunoIni: dayData.desayunoIni || null,
+        desayunoFin: dayData.desayunoFin || null,
+        comidaIni: dayData.comidaIni || null,
+        comidaFin: dayData.comidaFin || null,
+        salida: dayData.salida || null,
+        teleDia: dayData.teleDia || false,
+        teleTarde: dayData.teleTarde || false,
+        notas: dayData.notas || null,
+        tipo: dayData.tipo || 'habil'
+      })
+    });
+    
+    if (!res.ok) throw new Error('Error guardando día');
+    saveStateLocal();
+  } catch (e) {
+    console.error('Error saving day:', e);
+    saveStateLocal();
+  }
+}
+
+async function saveConfig() {
+  if (!currentUser || !isOnline) {
+    saveStateLocal();
+    return;
+  }
+
+  try {
+    await fetch(`${SUPABASE_URL}/rest/v1/config`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': SUPABASE_ANON_KEY,
+        'Authorization': `Bearer ${currentSession.access_token}`
+      },
+      body: JSON.stringify({
+        horaDayInv: document.getElementById('cfg-hora-day-inv')?.value,
+        horaDayVer: document.getElementById('cfg-hora-day-ver')?.value,
+        jiInicio: document.getElementById('cfg-ji-inicio')?.value,
+        jiFin: document.getElementById('cfg-ji-fin')?.value,
+        hourIn: document.getElementById('cfg-hour-in')?.value,
+        desayuno: document.getElementById('cfg-desayuno')?.value,
+        comida: document.getElementById('cfg-comida')?.value,
+        salMin: document.getElementById('cfg-sal-min')?.value,
+        bolsaInicio: document.getElementById('cfg-bolsa-inicio')?.value,
+        teleT1: document.getElementById('cfg-tele-t1')?.value,
+        teleT2: document.getElementById('cfg-tele-t2')?.value,
+        teleT3: document.getElementById('cfg-tele-t3')?.value,
+        teleT4: document.getElementById('cfg-tele-t4')?.value
+      }),
+      params: `user_id=eq.${currentUser.id}`
+    });
+    saveStateLocal();
+  } catch (e) {
+    console.error('Error saving config:', e);
+    saveStateLocal();
+  }
+}
+
+async function loadDataFromSupabase() {
+  if (!currentUser) return false;
+
+  try {
+    // Cargar meses
+    const monthsRes = await fetch(
+      `${SUPABASE_URL}/rest/v1/months?user_id=eq.${currentUser.id}&order=year.asc,month.asc`,
+      {
+        headers: {
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${currentSession.access_token}`
+        }
+      }
+    );
+    const monthsData = await monthsRes.json();
+    if (!monthsRes.ok) throw new Error('Error cargando meses');
+
+    const monthMap = {};
+    for (const m of monthsData) {
+      monthMap[m.id] = { year: m.year, month: m.month, days: [] };
+    }
+
+    // Cargar días
+    if (monthsData.length > 0) {
+      const monthIds = monthsData.map(m => m.id);
+      const daysRes = await fetch(
+        `${SUPABASE_URL}/rest/v1/days?month_id=in.(${monthIds.join(',')})`,
+        {
+          headers: {
+            'apikey': SUPABASE_ANON_KEY,
+            'Authorization': `Bearer ${currentSession.access_token}`
+          }
+        }
+      );
+      const daysData = await daysRes.json();
+      if (!daysRes.ok) throw new Error('Error cargando días');
+
+      for (const d of daysData) {
+        if (monthMap[d.month_id]) {
+          monthMap[d.month_id].days.push({
+            id: d.id,
+            date: new Date(d.date),
+            entrada: d.entrada,
+            desayunoIni: d.desayunoIni,
+            desayunoFin: d.desayunoFin,
+            comidaIni: d.comidaIni,
+            comidaFin: d.comidaFin,
+            salida: d.salida,
+            teleDia: d.teleDia,
+            teleTarde: d.teleTarde,
+            notas: d.notas,
+            tipo: d.tipo
+          });
+        }
+      }
+    }
+
+    // Cargar config
+    const cfgRes = await fetch(
+      `${SUPABASE_URL}/rest/v1/config?user_id=eq.${currentUser.id}`,
+      {
+        headers: {
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${currentSession.access_token}`
+        }
+      }
+    );
+    const cfgData = await cfgRes.json();
+    if (cfgRes.ok && cfgData.length > 0) {
+      const cfg = cfgData[0];
+      const set = (id, val) => {
+        const el = document.getElementById(id);
+        if (el && val != null) el.value = val;
+      };
+      set('cfg-hora-day-inv', cfg.horaDayInv);
+      set('cfg-hora-day-ver', cfg.horaDayVer);
+      set('cfg-ji-inicio', cfg.jiInicio);
+      set('cfg-ji-fin', cfg.jiFin);
+      set('cfg-hour-in', cfg.hourIn);
+      set('cfg-desayuno', cfg.desayuno);
+      set('cfg-comida', cfg.comida);
+      set('cfg-sal-min', cfg.salMin);
+      set('cfg-bolsa-inicio', cfg.bolsaInicio);
+      set('cfg-tele-t1', cfg.teleT1);
+      set('cfg-tele-t2', cfg.teleT2);
+      set('cfg-tele-t3', cfg.teleT3);
+      set('cfg-tele-t4', cfg.teleT4);
+    }
+
+    months = Object.entries(monthMap).map(([monthId, data]) => ({
+      id: monthId,
+      year: data.year,
+      month: data.month,
+      days: data.days
+    }));
+
+    saveStateLocal();
+    return true;
+  } catch (e) {
+    console.error('Error loading from Supabase:', e);
+    return false;
+  }
+}
+
+function switchAuthTab(tab) {
+  const form1 = document.getElementById('auth-signin-form');
+  const form2 = document.getElementById('auth-signup-form');
+  const tab1 = document.getElementById('auth-tab-signin');
+  const tab2 = document.getElementById('auth-tab-signup');
+
+  if (tab === 'signin') {
+    form1.style.display = 'flex';
+    form2.style.display = 'none';
+    tab1.style.color = 'var(--accent)';
+    tab1.style.borderBottomColor = 'var(--accent)';
+    tab2.style.color = 'var(--muted)';
+    tab2.style.borderBottomColor = 'transparent';
+  } else {
+    form1.style.display = 'none';
+    form2.style.display = 'flex';
+    tab1.style.color = 'var(--muted)';
+    tab1.style.borderBottomColor = 'transparent';
+    tab2.style.color = 'var(--accent)';
+    tab2.style.borderBottomColor = 'var(--accent)';
+  }
+}
+
+function showLoginModal() {
+  document.getElementById('auth-modal').style.display = 'flex';
+  document.getElementById('signout-btn').style.display = 'none';
+}
+
+function hideLoginModal() {
+  document.getElementById('auth-modal').style.display = 'none';
+  document.getElementById('signout-btn').style.display = 'block';
 }
 
 async function handleSignIn() {
@@ -2053,14 +2328,6 @@ async function handleSignIn() {
   if (!email || !password) {
     errorDiv.textContent = 'Email y contraseña requeridos';
     errorDiv.style.display = 'block';
-    return;
-  }
-
-  // Esperar a que supabase esté listo
-  if (!supabase) {
-    errorDiv.textContent = 'Conectando al servidor...';
-    errorDiv.style.display = 'block';
-    setTimeout(() => handleSignIn(), 500);
     return;
   }
 
@@ -2098,14 +2365,6 @@ async function handleSignUp() {
     return;
   }
 
-  // Esperar a que supabase esté listo
-  if (!supabase) {
-    errorDiv.textContent = 'Conectando al servidor...';
-    errorDiv.style.display = 'block';
-    setTimeout(() => handleSignUp(), 500);
-    return;
-  }
-
   const result = await signUp(email, password);
   if (!result.success) {
     errorDiv.textContent = result.error;
@@ -2116,263 +2375,55 @@ async function handleSignUp() {
   }
 }
 
-async function handleSignOut() {
-  await supabase.auth.signOut();
-  currentUser = null;
-  location.reload();
+async function syncChanges() {
+  if (!currentUser || !isOnline) return;
+  const currentMonth = months[currentMonthIdx];
+  if (!currentMonth) return;
+  try {
+    for (const day of currentMonth.days) {
+      await saveDay(currentMonth.id, 0, day);
+    }
+    await saveConfig();
+  } catch (e) {
+    console.error('Sync error:', e);
+  }
 }
 
-function switchAuthTab(tab) {
-  const form1 = document.getElementById('auth-signin-form');
-  const form2 = document.getElementById('auth-signup-form');
-  const tab1 = document.getElementById('auth-tab-signin');
-  const tab2 = document.getElementById('auth-tab-signup');
-
-  if (tab === 'signin') {
-    form1.style.display = 'flex';
-    form2.style.display = 'none';
-    tab1.style.color = 'var(--accent)';
-    tab1.style.borderBottomColor = 'var(--accent)';
-    tab2.style.color = 'var(--muted)';
-    tab2.style.borderBottomColor = 'transparent';
+async function initApp() {
+  const hasSession = await initAuth();
+  
+  if (hasSession) {
+    console.log('✓ Sesión restaurada');
+    const hasRemote = await loadDataFromSupabase();
+    if (hasRemote) {
+      renderTabs();
+      renderTable();
+      renderStats();
+    } else {
+      const hasLocal = loadStateLocal();
+      if (hasLocal) {
+        renderTabs();
+        renderTable();
+        renderStats();
+      } else {
+        parseExistingData();
+        renderTabs();
+        renderTable();
+        renderStats();
+      }
+    }
   } else {
-    form1.style.display = 'none';
-    form2.style.display = 'flex';
-    tab1.style.color = 'var(--muted)';
-    tab1.style.borderBottomColor = 'transparent';
-    tab2.style.color = 'var(--accent)';
-    tab2.style.borderBottomColor = 'var(--accent)';
-  }
-}
-
-function showLoginModal() {
-  document.getElementById('auth-modal').style.display = 'flex';
-  document.getElementById('signout-btn').style.display = 'none';
-}
-
-function hideLoginModal() {
-  document.getElementById('auth-modal').style.display = 'none';
-  document.getElementById('signout-btn').style.display = 'block';
-}
-
-async function saveDay(monthId, dayIdx, dayData) {
-  if (!currentUser || !isOnline) {
-    saveStateLocal();
-    return;
-  }
-
-  try {
-    await supabase.from('days').upsert({
-      id: dayData.id || undefined,
-      month_id: monthId,
-      date: dayData.date.toISOString().split('T')[0],
-      entrada: dayData.entrada || null,
-      desayunoIni: dayData.desayunoIni || null,
-      desayunoFin: dayData.desayunoFin || null,
-      comidaIni: dayData.comidaIni || null,
-      comidaFin: dayData.comidaFin || null,
-      salida: dayData.salida || null,
-      teleDia: dayData.teleDia || false,
-      teleTarde: dayData.teleTarde || false,
-      notas: dayData.notas || null,
-      tipo: dayData.tipo || 'habil'
-    });
-    saveStateLocal();
-  } catch (e) {
-    console.error('Error saving day:', e);
-    saveStateLocal();
-  }
-}
-
-async function saveConfig() {
-  if (!currentUser || !isOnline) {
-    saveStateLocal();
-    return;
-  }
-
-  try {
-    await supabase.from('config').update({
-      horaDayInv: document.getElementById('cfg-hora-day-inv')?.value,
-      horaDayVer: document.getElementById('cfg-hora-day-ver')?.value,
-      jiInicio: document.getElementById('cfg-ji-inicio')?.value,
-      jiFin: document.getElementById('cfg-ji-fin')?.value,
-      hourIn: document.getElementById('cfg-hour-in')?.value,
-      desayuno: document.getElementById('cfg-desayuno')?.value,
-      comida: document.getElementById('cfg-comida')?.value,
-      salMin: document.getElementById('cfg-sal-min')?.value,
-      bolsaInicio: document.getElementById('cfg-bolsa-inicio')?.value,
-      teleT1: document.getElementById('cfg-tele-t1')?.value,
-      teleT2: document.getElementById('cfg-tele-t2')?.value,
-      teleT3: document.getElementById('cfg-tele-t3')?.value,
-      teleT4: document.getElementById('cfg-tele-t4')?.value
-    }).eq('user_id', currentUser.id);
-    saveStateLocal();
-  } catch (e) {
-    console.error('Error saving config:', e);
-    saveStateLocal();
-  }
-}
-
-async function loadDataFromSupabase() {
-  if (!currentUser) return false;
-
-  try {
-    const { data: monthsData, error: monthsErr } = await supabase
-      .from('months')
-      .select('id, year, month')
-      .eq('user_id', currentUser.id)
-      .order('year,month');
-
-    if (monthsErr) throw monthsErr;
-
-    const monthMap = {};
-    for (const m of monthsData) {
-      monthMap[m.id] = { year: m.year, month: m.month, days: [] };
-    }
-
-    const { data: daysData, error: daysErr } = await supabase
-      .from('days')
-      .select('*')
-      .in('month_id', monthsData.map(m => m.id));
-
-    if (daysErr) throw daysErr;
-
-    for (const d of daysData) {
-      if (monthMap[d.month_id]) {
-        monthMap[d.month_id].days.push({
-          id: d.id,
-          date: new Date(d.date),
-          entrada: d.entrada,
-          desayunoIni: d.desayunoIni,
-          desayunoFin: d.desayunoFin,
-          comidaIni: d.comidaIni,
-          comidaFin: d.comidaFin,
-          salida: d.salida,
-          teleDia: d.teleDia,
-          teleTarde: d.teleTarde,
-          notas: d.notas,
-          tipo: d.tipo
-        });
-      }
-    }
-
-    const { data: cfgData } = await supabase
-      .from('config')
-      .select('*')
-      .eq('user_id', currentUser.id)
-      .single();
-
-    if (cfgData) {
-      const set = (id, val) => {
-        const el = document.getElementById(id);
-        if (el && val != null) el.value = val;
-      };
-      set('cfg-hora-day-inv', cfgData.horaDayInv);
-      set('cfg-hora-day-ver', cfgData.horaDayVer);
-      set('cfg-ji-inicio', cfgData.jiInicio);
-      set('cfg-ji-fin', cfgData.jiFin);
-      set('cfg-hour-in', cfgData.hourIn);
-      set('cfg-desayuno', cfgData.desayuno);
-      set('cfg-comida', cfgData.comida);
-      set('cfg-sal-min', cfgData.salMin);
-      set('cfg-bolsa-inicio', cfgData.bolsaInicio);
-      set('cfg-tele-t1', cfgData.teleT1);
-      set('cfg-tele-t2', cfgData.teleT2);
-      set('cfg-tele-t3', cfgData.teleT3);
-      set('cfg-tele-t4', cfgData.teleT4);
-    }
-
-    months = Object.entries(monthMap).map(([monthId, data]) => ({
-      id: monthId,
-      year: data.year,
-      month: data.month,
-      days: data.days
-    }));
-
-    saveStateLocal();
-    return true;
-  } catch (e) {
-    console.error('Error loading from Supabase:', e);
-    return false;
-  }
-}
-
-function setupRealtime() {
-  if (!currentUser) return;
-
-  supabase
-    .channel('days_changes')
-    .on(
-      'postgres_changes',
-      {
-        event: '*',
-        schema: 'public',
-        table: 'days'
-      },
-      () => {
-        console.log('Real-time update detected');
-        loadDataFromSupabase().then(() => {
-          renderTable();
-          renderStats();
-        });
-      }
-    )
-    .subscribe();
-}
-
-// Esperar a que supabaseClient esté disponible (con timeout)
-let supabaseReady = false;
-let initAttempts = 0;
-
-function waitForSupabase() {
-  if (window.supabaseClient && !supabaseReady) {
-    console.log('✓ supabaseClient cargado en intento', initAttempts);
-    try {
-      supabase = window.supabaseClient.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-      supabaseReady = true;
-      console.log('✓ Supabase inicializado');
-      
-      initAuth().then(hasSession => {
-        if (hasSession) {
-          console.log('✓ Sesión existente, cargando datos');
-          loadDataFromSupabase().then(success => {
-            if (success) {
-              renderTabs();
-              renderTable();
-              renderStats();
-            } else {
-              const hasLocal = loadStateLocal();
-              if (hasLocal) {
-                renderTabs();
-                renderTable();
-                renderStats();
-              } else {
-                parseExistingData();
-                renderTabs();
-                renderTable();
-                renderStats();
-              }
-            }
-          });
-        } else {
-          console.log('✓ Sin sesión, mostrando login');
-          showLoginModal();
-        }
-      });
-    } catch (e) {
-      console.error('Error inicializando Supabase:', e);
-    }
-  } else if (!supabaseReady && initAttempts < 50) {
-    initAttempts++;
-    setTimeout(waitForSupabase, 200);
-  } else if (!supabaseReady) {
-    console.error('Timeout esperando supabaseClient');
+    console.log('✓ Sin sesión, mostrando login');
     showLoginModal();
   }
 }
 
-console.log('Esperando supabaseClient...');
-waitForSupabase();
+// Iniciar cuando DOM esté listo
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initApp);
+} else {
+  initApp();
+}
 </script>
 </body>
 </html>
