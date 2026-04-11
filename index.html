@@ -2288,43 +2288,35 @@ function setupRealtime() {
     .subscribe();
 }
 
-async function initSupabase() {
-  supabase = window.supabaseClient.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-  const hasSession = await initAuth();
-  
+// Inicializar Supabase inmediatamente (antes de que se llame signUp/signIn)
+supabase = window.supabaseClient.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// Luego verificar sesión existente
+initAuth().then(hasSession => {
   if (hasSession) {
-    const hasRemote = await loadDataFromSupabase();
-    if (hasRemote) {
-      renderTabs();
-      renderTable();
-      renderStats();
-    } else {
-      const hasLocal = loadStateLocal();
-      if (hasLocal) {
+    loadDataFromSupabase().then(success => {
+      if (success) {
         renderTabs();
         renderTable();
         renderStats();
       } else {
-        parseExistingData();
-        renderTabs();
-        renderTable();
-        renderStats();
+        const hasLocal = loadStateLocal();
+        if (hasLocal) {
+          renderTabs();
+          renderTable();
+          renderStats();
+        } else {
+          parseExistingData();
+          renderTabs();
+          renderTable();
+          renderStats();
+        }
       }
-    }
+    });
   } else {
     showLoginModal();
   }
-}
-
-// Esperar a que supabaseClient esté disponible
-let checkCount = 0;
-const checkSupabase = setInterval(() => {
-  if (window.supabaseClient) {
-    clearInterval(checkSupabase);
-    initSupabase();
-  }
-  if (checkCount++ > 20) clearInterval(checkSupabase);
-}, 100);
+});
 </script>
 </body>
 </html>
