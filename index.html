@@ -635,7 +635,7 @@
       color: var(--muted);
       letter-spacing: 1px;
       text-transform: uppercase;
-    ">v2.0.4</div>
+    ">v2.0.5</div>
     <button id="signout-btn" style="
       padding: 6px 12px;
       background: transparent;
@@ -2320,40 +2320,54 @@ function setupRealtime() {
     .subscribe();
 }
 
-// Esperar a que supabaseClient esté disponible
+// Esperar a que supabaseClient esté disponible (con timeout)
+let supabaseReady = false;
+let initAttempts = 0;
+
 function waitForSupabase() {
-  if (window.supabaseClient) {
-    console.log('✓ supabaseClient cargado');
-    supabase = window.supabaseClient.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-    console.log('✓ Supabase inicializado');
-    initAuth().then(hasSession => {
-      if (hasSession) {
-        loadDataFromSupabase().then(success => {
-          if (success) {
-            renderTabs();
-            renderTable();
-            renderStats();
-          } else {
-            const hasLocal = loadStateLocal();
-            if (hasLocal) {
+  if (window.supabaseClient && !supabaseReady) {
+    console.log('✓ supabaseClient cargado en intento', initAttempts);
+    try {
+      supabase = window.supabaseClient.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      supabaseReady = true;
+      console.log('✓ Supabase inicializado');
+      
+      initAuth().then(hasSession => {
+        if (hasSession) {
+          console.log('✓ Sesión existente, cargando datos');
+          loadDataFromSupabase().then(success => {
+            if (success) {
               renderTabs();
               renderTable();
               renderStats();
             } else {
-              parseExistingData();
-              renderTabs();
-              renderTable();
-              renderStats();
+              const hasLocal = loadStateLocal();
+              if (hasLocal) {
+                renderTabs();
+                renderTable();
+                renderStats();
+              } else {
+                parseExistingData();
+                renderTabs();
+                renderTable();
+                renderStats();
+              }
             }
-          }
-        });
-      } else {
-        console.log('✓ Sin sesión, mostrando login');
-        showLoginModal();
-      }
-    });
-  } else {
+          });
+        } else {
+          console.log('✓ Sin sesión, mostrando login');
+          showLoginModal();
+        }
+      });
+    } catch (e) {
+      console.error('Error inicializando Supabase:', e);
+    }
+  } else if (!supabaseReady && initAttempts < 50) {
+    initAttempts++;
     setTimeout(waitForSupabase, 200);
+  } else if (!supabaseReady) {
+    console.error('Timeout esperando supabaseClient');
+    showLoginModal();
   }
 }
 
