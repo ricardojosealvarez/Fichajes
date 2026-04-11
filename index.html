@@ -635,7 +635,7 @@
       color: var(--muted);
       letter-spacing: 1px;
       text-transform: uppercase;
-    ">v2.0.2</div>
+    ">v2.0.3</div>
     <button id="signout-btn" style="
       padding: 6px 12px;
       background: transparent;
@@ -2307,7 +2307,9 @@ function setupRealtime() {
 // Esperar a que supabaseClient esté disponible
 function waitForSupabase() {
   if (window.supabaseClient) {
+    console.log('✓ supabaseClient cargado');
     supabase = window.supabaseClient.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    console.log('✓ Supabase inicializado');
     initAuth().then(hasSession => {
       if (hasSession) {
         loadDataFromSupabase().then(success => {
@@ -2330,14 +2332,16 @@ function waitForSupabase() {
           }
         });
       } else {
+        console.log('✓ Sin sesión, mostrando login');
         showLoginModal();
       }
     });
   } else {
-    setTimeout(waitForSupabase, 100);
+    setTimeout(waitForSupabase, 200);
   }
 }
 
+console.log('Esperando supabaseClient...');
 waitForSupabase();
 </script>
 </body>
