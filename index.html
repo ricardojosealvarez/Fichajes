@@ -627,18 +627,28 @@
     <div class="tabs" id="tabs"></div>
     <button class="add-month-btn" onclick="showAddMonthModal()">+ Mes</button>
   </div>
-  <button id="signout-btn" style="
-    padding: 6px 12px;
-    background: transparent;
-    border: 1px solid var(--border);
-    color: var(--muted);
-    cursor: pointer;
-    font-family: 'Syne', sans-serif;
-    font-size: 12px;
-    border-radius: 6px;
-    transition: all 0.15s;
-    display: none;
-  " onclick="handleSignOut()">Sign Out</button>
+  <div style="display: flex; align-items: center; gap: 16px;">
+    <div style="
+      font-family: 'Syne', sans-serif;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--muted);
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    ">v2.0.0</div>
+    <button id="signout-btn" style="
+      padding: 6px 12px;
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      cursor: pointer;
+      font-family: 'Syne', sans-serif;
+      font-size: 12px;
+      border-radius: 6px;
+      transition: all 0.15s;
+      display: none;
+    " onclick="handleSignOut()">Sign Out</button>
+  </div>
 </header>
 
 <div class="main">
