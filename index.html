@@ -634,7 +634,7 @@
       color: var(--muted);
       letter-spacing: 1px;
       text-transform: uppercase;
-    ">v2.1.0</div>
+    ">v2.1.1</div>
     <button id="signout-btn" style="
       padding: 6px 12px;
       background: transparent;
@@ -2010,39 +2010,52 @@ async function signUp(email, password) {
         'Content-Type': 'application/json',
         'apikey': SUPABASE_ANON_KEY
       },
-      body: JSON.stringify({ email, password })
+      body: JSON.stringify({
+        email,
+        password,
+        data: {}
+      })
     });
     const data = await res.json();
-    if (!res.ok) return { success: false, error: data.message || 'Error en signup' };
+    
+    if (!res.ok) {
+      console.error('Signup error:', data);
+      return { success: false, error: data.message || data.error_description || 'Error en signup' };
+    }
     
     currentUser = data.user;
     currentSession = data.session;
-    localStorage.setItem('auth_token', data.session.access_token);
+    if (data.session?.access_token) {
+      localStorage.setItem('auth_token', data.session.access_token);
+    }
     
     // Crear registro en tabla users
-    await fetch(`${SUPABASE_URL}/rest/v1/users`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'apikey': SUPABASE_ANON_KEY,
-        'Authorization': `Bearer ${data.session.access_token}`
-      },
-      body: JSON.stringify({ id: data.user.id, email })
-    });
-    
-    // Crear configuración por defecto
-    await fetch(`${SUPABASE_URL}/rest/v1/config`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'apikey': SUPABASE_ANON_KEY,
-        'Authorization': `Bearer ${data.session.access_token}`
-      },
-      body: JSON.stringify({ user_id: data.user.id })
-    });
+    if (data.session?.access_token) {
+      await fetch(`${SUPABASE_URL}/rest/v1/users`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${data.session.access_token}`
+        },
+        body: JSON.stringify({ id: data.user.id, email })
+      }).catch(e => console.warn('Error creating user record:', e));
+      
+      // Crear configuración por defecto
+      await fetch(`${SUPABASE_URL}/rest/v1/config`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${data.session.access_token}`
+        },
+        body: JSON.stringify({ user_id: data.user.id })
+      }).catch(e => console.warn('Error creating config:', e));
+    }
     
     return { success: true };
   } catch (e) {
+    console.error('Signup exception:', e);
     return { success: false, error: e.message };
   }
 }
@@ -2058,7 +2071,11 @@ async function signIn(email, password) {
       body: JSON.stringify({ email, password })
     });
     const data = await res.json();
-    if (!res.ok) return { success: false, error: data.message || 'Error en signin' };
+    
+    if (!res.ok) {
+      console.error('Signin error:', data);
+      return { success: false, error: data.message || data.error_description || 'Error en signin' };
+    }
     
     currentUser = data.user;
     currentSession = data;
@@ -2066,6 +2083,7 @@ async function signIn(email, password) {
     
     return { success: true };
   } catch (e) {
+    console.error('Signin exception:', e);
     return { success: false, error: e.message };
   }
 }
