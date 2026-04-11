@@ -635,7 +635,7 @@
       color: var(--muted);
       letter-spacing: 1px;
       text-transform: uppercase;
-    ">v2.0.1</div>
+    ">v2.0.2</div>
     <button id="signout-btn" style="
       padding: 6px 12px;
       background: transparent;
@@ -2013,6 +2013,9 @@ async function initAuth() {
 }
 
 async function signIn(email, password) {
+  if (!supabase) {
+    return { success: false, error: 'Conectando a servidor...' };
+  }
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) return { success: false, error: error.message };
   currentUser = data.user;
@@ -2021,6 +2024,9 @@ async function signIn(email, password) {
 }
 
 async function signUp(email, password) {
+  if (!supabase) {
+    return { success: false, error: 'Conectando a servidor...' };
+  }
   const { data, error } = await supabase.auth.signUp({ email, password });
   if (error) return { success: false, error: error.message };
   currentUser = data.user;
