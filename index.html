@@ -635,7 +635,7 @@
       color: var(--muted);
       letter-spacing: 1px;
       text-transform: uppercase;
-    ">v2.0.3</div>
+    ">v2.0.4</div>
     <button id="signout-btn" style="
       padding: 6px 12px;
       background: transparent;
@@ -2056,6 +2056,14 @@ async function handleSignIn() {
     return;
   }
 
+  // Esperar a que supabase esté listo
+  if (!supabase) {
+    errorDiv.textContent = 'Conectando al servidor...';
+    errorDiv.style.display = 'block';
+    setTimeout(() => handleSignIn(), 500);
+    return;
+  }
+
   const result = await signIn(email, password);
   if (!result.success) {
     errorDiv.textContent = result.error;
@@ -2087,6 +2095,14 @@ async function handleSignUp() {
   if (password.length < 6) {
     errorDiv.textContent = 'Mínimo 6 caracteres';
     errorDiv.style.display = 'block';
+    return;
+  }
+
+  // Esperar a que supabase esté listo
+  if (!supabase) {
+    errorDiv.textContent = 'Conectando al servidor...';
+    errorDiv.style.display = 'block';
+    setTimeout(() => handleSignUp(), 500);
     return;
   }
 
