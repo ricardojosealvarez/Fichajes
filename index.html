@@ -12,6 +12,7 @@
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon-192.png">
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0"></script>
 <style>
   :root {
     --bg: #0e0f11;
@@ -451,10 +452,193 @@
 </head>
 <body>
 
+<!-- AUTH MODAL -->
+<div id="auth-modal" style="
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+">
+  <div style="
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 40px;
+    max-width: 400px;
+    width: 90%;
+  ">
+    <h1 style="
+      font-family: 'Syne', sans-serif;
+      font-size: 24px;
+      font-weight: 700;
+      margin-bottom: 24px;
+      color: var(--accent);
+    ">Fichajes</h1>
+
+    <div style="
+      display: flex;
+      gap: 8px;
+      margin-bottom: 24px;
+      border-bottom: 1px solid var(--border);
+    ">
+      <button id="auth-tab-signin" class="auth-tab" onclick="switchAuthTab('signin')" style="
+        padding: 12px 16px;
+        background: transparent;
+        border: none;
+        color: var(--accent);
+        font-family: 'Syne', sans-serif;
+        font-weight: 600;
+        font-size: 13px;
+        cursor: pointer;
+        border-bottom: 2px solid var(--accent);
+      ">Iniciar sesión</button>
+      <button id="auth-tab-signup" class="auth-tab" onclick="switchAuthTab('signup')" style="
+        padding: 12px 16px;
+        background: transparent;
+        border: none;
+        color: var(--muted);
+        font-family: 'Syne', sans-serif;
+        font-weight: 600;
+        font-size: 13px;
+        cursor: pointer;
+        border-bottom: 2px solid transparent;
+      ">Crear cuenta</button>
+    </div>
+
+    <form id="auth-signin-form" style="display: flex; flex-direction: column; gap: 12px;">
+      <input
+        type="email"
+        id="signin-email"
+        placeholder="Email"
+        style="
+          background: var(--surface2);
+          border: 1px solid var(--border);
+          color: var(--text);
+          padding: 10px 12px;
+          border-radius: 6px;
+          font-family: 'JetBrains Mono', monospace;
+          font-size: 13px;
+        "
+      />
+      <input
+        type="password"
+        id="signin-password"
+        placeholder="Contraseña"
+        style="
+          background: var(--surface2);
+          border: 1px solid var(--border);
+          color: var(--text);
+          padding: 10px 12px;
+          border-radius: 6px;
+          font-family: 'JetBrains Mono', monospace;
+          font-size: 13px;
+        "
+      />
+      <button
+        type="button"
+        onclick="handleSignIn()"
+        style="
+          background: var(--accent);
+          color: #0e0f11;
+          border: none;
+          padding: 10px 16px;
+          border-radius: 6px;
+          font-family: 'Syne', sans-serif;
+          font-weight: 600;
+          font-size: 13px;
+          cursor: pointer;
+          transition: all 0.15s;
+        "
+      >Iniciar sesión</button>
+      <div id="signin-error" style="color: var(--danger); font-size: 12px; display: none;"></div>
+    </form>
+
+    <form id="auth-signup-form" style="display: none; flex-direction: column; gap: 12px;">
+      <input
+        type="email"
+        id="signup-email"
+        placeholder="Email"
+        style="
+          background: var(--surface2);
+          border: 1px solid var(--border);
+          color: var(--text);
+          padding: 10px 12px;
+          border-radius: 6px;
+          font-family: 'JetBrains Mono', monospace;
+          font-size: 13px;
+        "
+      />
+      <input
+        type="password"
+        id="signup-password"
+        placeholder="Contraseña (mín. 6 caracteres)"
+        style="
+          background: var(--surface2);
+          border: 1px solid var(--border);
+          color: var(--text);
+          padding: 10px 12px;
+          border-radius: 6px;
+          font-family: 'JetBrains Mono', monospace;
+          font-size: 13px;
+        "
+      />
+      <input
+        type="password"
+        id="signup-password-confirm"
+        placeholder="Confirmar contraseña"
+        style="
+          background: var(--surface2);
+          border: 1px solid var(--border);
+          color: var(--text);
+          padding: 10px 12px;
+          border-radius: 6px;
+          font-family: 'JetBrains Mono', monospace;
+          font-size: 13px;
+        "
+      />
+      <button
+        type="button"
+        onclick="handleSignUp()"
+        style="
+          background: var(--accent);
+          color: #0e0f11;
+          border: none;
+          padding: 10px 16px;
+          border-radius: 6px;
+          font-family: 'Syne', sans-serif;
+          font-weight: 600;
+          font-size: 13px;
+          cursor: pointer;
+          transition: all 0.15s;
+        "
+      >Crear cuenta</button>
+      <div id="signup-error" style="color: var(--danger); font-size: 12px; display: none;"></div>
+    </form>
+  </div>
+</div>
+
 <header>
   <div class="logo">FICH<span>AJES</span></div>
-  <div class="tabs" id="tabs"></div>
-  <button class="add-month-btn" onclick="showAddMonthModal()">+ Mes</button>
+  <div style="display: flex; align-items: center; gap: 12px;">
+    <div class="tabs" id="tabs"></div>
+    <button class="add-month-btn" onclick="showAddMonthModal()">+ Mes</button>
+  </div>
+  <button id="signout-btn" style="
+    padding: 6px 12px;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    cursor: pointer;
+    font-family: 'Syne', sans-serif;
+    font-size: 12px;
+    border-radius: 6px;
+    transition: all 0.15s;
+    display: none;
+  " onclick="handleSignOut()">Sign Out</button>
 </header>
 
 <div class="main">
@@ -1701,61 +1885,29 @@ function validateConfigTime(el) {
   recalcAll();
 }
 
-// ── Persistencia localStorage ───────────────────────────────────────────────
-const STORAGE_KEY = 'fichajes_v1';
+// ── Persistencia localStorage (caché offline) ───────────────────────────────
+const STORAGE_KEY = 'fichajes_v2_cache';
 
-function saveState() {
+function saveStateLocal() {
   try {
-    // Serialize months (dates as ISO strings)
     const data = {
       months: months.map(m => ({
         ...m,
-        days: m.days.map(d => ({...d, date: d.date.toISOString()}))
+        days: m.days.map(d => ({ ...d, date: d.date.toISOString() }))
       })),
-      config: {
-        horaDayInv:   document.getElementById('cfg-hora-day-inv')?.value,
-        horaDayVer:   document.getElementById('cfg-hora-day-ver')?.value,
-        jiInicio:     document.getElementById('cfg-ji-inicio')?.value,
-        jiFin:        document.getElementById('cfg-ji-fin')?.value,
-        hourIn:       document.getElementById('cfg-hour-in')?.value,
-        desayuno:     document.getElementById('cfg-desayuno')?.value,
-        comida:       document.getElementById('cfg-comida')?.value,
-        salMin:       document.getElementById('cfg-sal-min')?.value,
-        bolsaInicio:  document.getElementById('cfg-bolsa-inicio')?.value,
-        teleT1:       document.getElementById('cfg-tele-t1')?.value,
-        teleT2:       document.getElementById('cfg-tele-t2')?.value,
-        teleT3:       document.getElementById('cfg-tele-t3')?.value,
-        teleT4:       document.getElementById('cfg-tele-t4')?.value,
-      }
+      syncQueue,
+      lastSync: new Date().toISOString()
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-  } catch(e) { console.warn('No se pudo guardar el estado:', e); }
+  } catch (e) { console.warn('Error saving to localStorage:', e); }
 }
 
-function loadState() {
+function loadStateLocal() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return false;
     const data = JSON.parse(raw);
-
-    // Restore config
-    const cfg = data.config || {};
-    const set = (id, val) => { const el = document.getElementById(id); if (el && val != null) el.value = val; };
-    set('cfg-hora-day-inv', cfg.horaDayInv);
-    set('cfg-hora-day-ver', cfg.horaDayVer);
-    set('cfg-ji-inicio',    cfg.jiInicio);
-    set('cfg-ji-fin',       cfg.jiFin);
-    set('cfg-hour-in',      cfg.hourIn);
-    set('cfg-desayuno',     cfg.desayuno);
-    set('cfg-comida',       cfg.comida);
-    set('cfg-sal-min',      cfg.salMin);
-    set('cfg-bolsa-inicio', cfg.bolsaInicio);
-    set('cfg-tele-t1',      cfg.teleT1);
-    set('cfg-tele-t2',      cfg.teleT2);
-    set('cfg-tele-t3',      cfg.teleT3);
-    set('cfg-tele-t4',      cfg.teleT4);
-
-    // Restore months
+    
     months = (data.months || []).map(m => ({
       ...m,
       days: (m.days || []).map(d => ({
@@ -1763,8 +1915,35 @@ function loadState() {
         date: new Date(d.date)
       }))
     }));
-    return months.length > 0;
-  } catch(e) { console.warn('No se pudo cargar el estado:', e); return false; }
+    
+    syncQueue = data.syncQueue || [];
+    return true;
+  } catch (e) { console.warn('Error loading from localStorage:', e); return false; }
+}
+
+// Función fallback para compatible con código existente
+function saveState() {
+  saveStateLocal();
+  if (currentUser && isOnline) syncChanges();
+}
+
+// Sincronizar cambios a Supabase
+async function syncChanges() {
+  if (!currentUser || !isOnline) return;
+  
+  const currentMonth = months[currentMonthIdx];
+  if (!currentMonth) return;
+
+  try {
+    // Sincronizar días del mes actual
+    for (const day of currentMonth.days) {
+      await saveDay(currentMonth.id, 0, day);
+    }
+    // Sincronizar configuración
+    await saveConfig();
+  } catch (e) {
+    console.error('Sync error:', e);
+  }
 }
 
 // Patch all mutating functions to auto-save
@@ -1792,12 +1971,360 @@ if ('serviceWorker' in navigator) {
     .catch(e => console.warn('SW error:', e));
 }
 
-// ── Init ─────────────────────────────────────────────────────────────────────
-const restored = loadState();
-if (!restored) parseExistingData();
-renderTabs();
-renderTable();
-renderStats();
+// ── SUPABASE INIT ────────────────────────────────────────────────────────────
+
+const SUPABASE_URL = 'https://ruhcjikrtgnwcrbacwcc.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ1aGNqaWtydGdud2NyYmFjd2NjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU5MTM2OTIsImV4cCI6MjA5MTQ4OTY5Mn0.YVrcVB7Qvi3OmEvYe6uZIJSB6afk6KTgqM4IagrL93U';
+
+let supabase;
+let currentUser = null;
+let isOnline = navigator.onLine;
+let syncQueue = [];
+
+window.addEventListener('online', () => {
+  isOnline = true;
+  console.log('🟢 Online');
+  if (currentUser) syncChanges();
+});
+
+window.addEventListener('offline', () => {
+  isOnline = false;
+  console.log('🔴 Offline');
+});
+
+async function initAuth() {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (session) {
+    currentUser = session.user;
+    setupRealtime();
+    return true;
+  }
+  return false;
+}
+
+async function signIn(email, password) {
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+  if (error) return { success: false, error: error.message };
+  currentUser = data.user;
+  setupRealtime();
+  return { success: true };
+}
+
+async function signUp(email, password) {
+  const { data, error } = await supabase.auth.signUp({ email, password });
+  if (error) return { success: false, error: error.message };
+  currentUser = data.user;
+  
+  const { error: userError } = await supabase
+    .from('users')
+    .insert({ id: data.user.id, email });
+  if (userError) return { success: false, error: userError.message };
+  
+  const { error: cfgError } = await supabase
+    .from('config')
+    .insert({ user_id: data.user.id });
+  if (cfgError) return { success: false, error: cfgError.message };
+  
+  setupRealtime();
+  return { success: true };
+}
+
+async function handleSignIn() {
+  const email = document.getElementById('signin-email').value;
+  const password = document.getElementById('signin-password').value;
+  const errorDiv = document.getElementById('signin-error');
+
+  if (!email || !password) {
+    errorDiv.textContent = 'Email y contraseña requeridos';
+    errorDiv.style.display = 'block';
+    return;
+  }
+
+  const result = await signIn(email, password);
+  if (!result.success) {
+    errorDiv.textContent = result.error;
+    errorDiv.style.display = 'block';
+  } else {
+    hideLoginModal();
+    location.reload();
+  }
+}
+
+async function handleSignUp() {
+  const email = document.getElementById('signup-email').value;
+  const password = document.getElementById('signup-password').value;
+  const confirm = document.getElementById('signup-password-confirm').value;
+  const errorDiv = document.getElementById('signup-error');
+
+  if (!email || !password || !confirm) {
+    errorDiv.textContent = 'Todos los campos requeridos';
+    errorDiv.style.display = 'block';
+    return;
+  }
+
+  if (password !== confirm) {
+    errorDiv.textContent = 'Las contraseñas no coinciden';
+    errorDiv.style.display = 'block';
+    return;
+  }
+
+  if (password.length < 6) {
+    errorDiv.textContent = 'Mínimo 6 caracteres';
+    errorDiv.style.display = 'block';
+    return;
+  }
+
+  const result = await signUp(email, password);
+  if (!result.success) {
+    errorDiv.textContent = result.error;
+    errorDiv.style.display = 'block';
+  } else {
+    hideLoginModal();
+    location.reload();
+  }
+}
+
+async function handleSignOut() {
+  await supabase.auth.signOut();
+  currentUser = null;
+  location.reload();
+}
+
+function switchAuthTab(tab) {
+  const form1 = document.getElementById('auth-signin-form');
+  const form2 = document.getElementById('auth-signup-form');
+  const tab1 = document.getElementById('auth-tab-signin');
+  const tab2 = document.getElementById('auth-tab-signup');
+
+  if (tab === 'signin') {
+    form1.style.display = 'flex';
+    form2.style.display = 'none';
+    tab1.style.color = 'var(--accent)';
+    tab1.style.borderBottomColor = 'var(--accent)';
+    tab2.style.color = 'var(--muted)';
+    tab2.style.borderBottomColor = 'transparent';
+  } else {
+    form1.style.display = 'none';
+    form2.style.display = 'flex';
+    tab1.style.color = 'var(--muted)';
+    tab1.style.borderBottomColor = 'transparent';
+    tab2.style.color = 'var(--accent)';
+    tab2.style.borderBottomColor = 'var(--accent)';
+  }
+}
+
+function showLoginModal() {
+  document.getElementById('auth-modal').style.display = 'flex';
+  document.getElementById('signout-btn').style.display = 'none';
+}
+
+function hideLoginModal() {
+  document.getElementById('auth-modal').style.display = 'none';
+  document.getElementById('signout-btn').style.display = 'block';
+}
+
+async function saveDay(monthId, dayIdx, dayData) {
+  if (!currentUser || !isOnline) {
+    saveStateLocal();
+    return;
+  }
+
+  try {
+    await supabase.from('days').upsert({
+      id: dayData.id || undefined,
+      month_id: monthId,
+      date: dayData.date.toISOString().split('T')[0],
+      entrada: dayData.entrada || null,
+      desayunoIni: dayData.desayunoIni || null,
+      desayunoFin: dayData.desayunoFin || null,
+      comidaIni: dayData.comidaIni || null,
+      comidaFin: dayData.comidaFin || null,
+      salida: dayData.salida || null,
+      teleDia: dayData.teleDia || false,
+      teleTarde: dayData.teleTarde || false,
+      notas: dayData.notas || null,
+      tipo: dayData.tipo || 'habil'
+    });
+    saveStateLocal();
+  } catch (e) {
+    console.error('Error saving day:', e);
+    saveStateLocal();
+  }
+}
+
+async function saveConfig() {
+  if (!currentUser || !isOnline) {
+    saveStateLocal();
+    return;
+  }
+
+  try {
+    await supabase.from('config').update({
+      horaDayInv: document.getElementById('cfg-hora-day-inv')?.value,
+      horaDayVer: document.getElementById('cfg-hora-day-ver')?.value,
+      jiInicio: document.getElementById('cfg-ji-inicio')?.value,
+      jiFin: document.getElementById('cfg-ji-fin')?.value,
+      hourIn: document.getElementById('cfg-hour-in')?.value,
+      desayuno: document.getElementById('cfg-desayuno')?.value,
+      comida: document.getElementById('cfg-comida')?.value,
+      salMin: document.getElementById('cfg-sal-min')?.value,
+      bolsaInicio: document.getElementById('cfg-bolsa-inicio')?.value,
+      teleT1: document.getElementById('cfg-tele-t1')?.value,
+      teleT2: document.getElementById('cfg-tele-t2')?.value,
+      teleT3: document.getElementById('cfg-tele-t3')?.value,
+      teleT4: document.getElementById('cfg-tele-t4')?.value
+    }).eq('user_id', currentUser.id);
+    saveStateLocal();
+  } catch (e) {
+    console.error('Error saving config:', e);
+    saveStateLocal();
+  }
+}
+
+async function loadDataFromSupabase() {
+  if (!currentUser) return false;
+
+  try {
+    const { data: monthsData, error: monthsErr } = await supabase
+      .from('months')
+      .select('id, year, month')
+      .eq('user_id', currentUser.id)
+      .order('year,month');
+
+    if (monthsErr) throw monthsErr;
+
+    const monthMap = {};
+    for (const m of monthsData) {
+      monthMap[m.id] = { year: m.year, month: m.month, days: [] };
+    }
+
+    const { data: daysData, error: daysErr } = await supabase
+      .from('days')
+      .select('*')
+      .in('month_id', monthsData.map(m => m.id));
+
+    if (daysErr) throw daysErr;
+
+    for (const d of daysData) {
+      if (monthMap[d.month_id]) {
+        monthMap[d.month_id].days.push({
+          id: d.id,
+          date: new Date(d.date),
+          entrada: d.entrada,
+          desayunoIni: d.desayunoIni,
+          desayunoFin: d.desayunoFin,
+          comidaIni: d.comidaIni,
+          comidaFin: d.comidaFin,
+          salida: d.salida,
+          teleDia: d.teleDia,
+          teleTarde: d.teleTarde,
+          notas: d.notas,
+          tipo: d.tipo
+        });
+      }
+    }
+
+    const { data: cfgData } = await supabase
+      .from('config')
+      .select('*')
+      .eq('user_id', currentUser.id)
+      .single();
+
+    if (cfgData) {
+      const set = (id, val) => {
+        const el = document.getElementById(id);
+        if (el && val != null) el.value = val;
+      };
+      set('cfg-hora-day-inv', cfgData.horaDayInv);
+      set('cfg-hora-day-ver', cfgData.horaDayVer);
+      set('cfg-ji-inicio', cfgData.jiInicio);
+      set('cfg-ji-fin', cfgData.jiFin);
+      set('cfg-hour-in', cfgData.hourIn);
+      set('cfg-desayuno', cfgData.desayuno);
+      set('cfg-comida', cfgData.comida);
+      set('cfg-sal-min', cfgData.salMin);
+      set('cfg-bolsa-inicio', cfgData.bolsaInicio);
+      set('cfg-tele-t1', cfgData.teleT1);
+      set('cfg-tele-t2', cfgData.teleT2);
+      set('cfg-tele-t3', cfgData.teleT3);
+      set('cfg-tele-t4', cfgData.teleT4);
+    }
+
+    months = Object.entries(monthMap).map(([monthId, data]) => ({
+      id: monthId,
+      year: data.year,
+      month: data.month,
+      days: data.days
+    }));
+
+    saveStateLocal();
+    return true;
+  } catch (e) {
+    console.error('Error loading from Supabase:', e);
+    return false;
+  }
+}
+
+function setupRealtime() {
+  if (!currentUser) return;
+
+  supabase
+    .channel('days_changes')
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'days'
+      },
+      () => {
+        console.log('Real-time update detected');
+        loadDataFromSupabase().then(() => {
+          renderTable();
+          renderStats();
+        });
+      }
+    )
+    .subscribe();
+}
+
+async function initSupabase() {
+  supabase = window.supabaseClient.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  const hasSession = await initAuth();
+  
+  if (hasSession) {
+    const hasRemote = await loadDataFromSupabase();
+    if (hasRemote) {
+      renderTabs();
+      renderTable();
+      renderStats();
+    } else {
+      const hasLocal = loadStateLocal();
+      if (hasLocal) {
+        renderTabs();
+        renderTable();
+        renderStats();
+      } else {
+        parseExistingData();
+        renderTabs();
+        renderTable();
+        renderStats();
+      }
+    }
+  } else {
+    showLoginModal();
+  }
+}
+
+// Esperar a que supabaseClient esté disponible
+let checkCount = 0;
+const checkSupabase = setInterval(() => {
+  if (window.supabaseClient) {
+    clearInterval(checkSupabase);
+    initSupabase();
+  }
+  if (checkCount++ > 20) clearInterval(checkSupabase);
+}, 100);
 </script>
 </body>
 </html>
