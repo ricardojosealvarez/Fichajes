@@ -634,7 +634,7 @@
       color: var(--muted);
       letter-spacing: 1px;
       text-transform: uppercase;
-    ">v2.2.0</div>
+    ">v2.2.1</div>
     <button id="signout-btn" style="
       padding: 6px 12px;
       background: transparent;
@@ -2126,7 +2126,8 @@ async function ensureCurrentMonthExists() {
     console.log('📅 Creando mes actual con valores predefinidos...');
     const now = new Date();
     const year = now.getFullYear();
-    const month = now.getMonth();
+    const monthIdx = now.getMonth(); // 0-11
+    const monthNum = monthIdx + 1;   // 1-12 para BD
     
     // Generar UUID para el mes
     const monthId = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
@@ -2148,7 +2149,7 @@ async function ensureCurrentMonthExists() {
           id: monthId,
           user_id: currentUser.id,
           year: year,
-          month: month + 1
+          month: monthNum
         })
       });
       
@@ -2158,14 +2159,14 @@ async function ensureCurrentMonthExists() {
         return;
       }
       
-      console.log('✓ Mes creado');
+      console.log('✓ Mes creado:', monthNum);
       
       // 2. Generar todos los días del mes con valores predefinidos
-      const daysInMonth = new Date(year, month + 1, 0).getDate();
+      const daysInMonth = new Date(year, monthNum, 0).getDate();
       const defaultDays = [];
       
       for (let i = 1; i <= daysInMonth; i++) {
-        const dayDate = new Date(year, month, i);
+        const dayDate = new Date(year, monthIdx, i);
         const dayId = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
           const r = Math.random() * 16 | 0;
           const v = c === 'x' ? r : (r & 0x3 | 0x8);
