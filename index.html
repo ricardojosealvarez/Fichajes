@@ -634,7 +634,7 @@
       color: var(--muted);
       letter-spacing: 1px;
       text-transform: uppercase;
-    ">v2.1.7</div>
+    ">v2.2.0</div>
     <button id="signout-btn" style="
       padding: 6px 12px;
       background: transparent;
@@ -2121,11 +2121,101 @@ async function initAuth() {
   }
 }
 
-async function handleSignOut() {
-  localStorage.removeItem('auth_token');
-  currentUser = null;
-  currentSession = null;
-  location.reload();
+async function ensureCurrentMonthExists() {
+  if (months.length === 0) {
+    console.log('📅 Creando mes actual con valores predefinidos...');
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth();
+    
+    // Generar UUID para el mes
+    const monthId = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+      const r = Math.random() * 16 | 0;
+      const v = c === 'x' ? r : (r & 0x3 | 0x8);
+      return v.toString(16);
+    });
+    
+    try {
+      // 1. Crear mes en Supabase
+      const monthRes = await fetch(`${SUPABASE_URL}/rest/v1/months`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${currentSession.access_token}`
+        },
+        body: JSON.stringify({
+          id: monthId,
+          user_id: currentUser.id,
+          year: year,
+          month: month + 1
+        })
+      });
+      
+      if (!monthRes.ok) {
+        const err = await monthRes.json();
+        console.error('Error creando mes:', err);
+        return;
+      }
+      
+      console.log('✓ Mes creado');
+      
+      // 2. Generar todos los días del mes con valores predefinidos
+      const daysInMonth = new Date(year, month + 1, 0).getDate();
+      const defaultDays = [];
+      
+      for (let i = 1; i <= daysInMonth; i++) {
+        const dayDate = new Date(year, month, i);
+        const dayId = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+          const r = Math.random() * 16 | 0;
+          const v = c === 'x' ? r : (r & 0x3 | 0x8);
+          return v.toString(16);
+        });
+        
+        defaultDays.push({
+          id: dayId,
+          month_id: monthId,
+          date: dayDate.toISOString().split('T')[0],
+          entrada: '08:00',
+          desayunoini: '09:00',
+          desayunofin: '09:15',
+          comidaini: null,
+          comidafin: null,
+          salida: '15:00',
+          teledia: false,
+          teletarde: false,
+          notas: null,
+          tipo: 'habil'
+        });
+      }
+      
+      // 3. Insertar días en Supabase
+      const daysRes = await fetch(`${SUPABASE_URL}/rest/v1/days`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${currentSession.access_token}`,
+          'Prefer': 'resolution=merge-duplicates'
+        },
+        body: JSON.stringify(defaultDays)
+      });
+      
+      if (!daysRes.ok) {
+        const err = await daysRes.json();
+        console.error('Error creando días:', err);
+        return;
+      }
+      
+      console.log('✓ Días creados:', defaultDays.length);
+      
+      // 4. Recargar datos
+      await loadDataFromSupabase();
+      
+    } catch (e) {
+      console.error('Error en ensureCurrentMonthExists:', e);
+    }
+  }
 }
 
 // ── SYNC REST ────────────────────────────────────────────────────────────
@@ -2454,6 +2544,8 @@ async function initApp() {
     console.log('✓ Sesión restaurada');
     const hasRemote = await loadDataFromSupabase();
     if (hasRemote) {
+      // Asegurar que existe mes actual con días predefinidos
+      await ensureCurrentMonthExists();
       hideLoginModal();
       renderTabs();
       renderTable();
@@ -2461,12 +2553,14 @@ async function initApp() {
     } else {
       const hasLocal = loadStateLocal();
       if (hasLocal) {
+        await ensureCurrentMonthExists();
         hideLoginModal();
         renderTabs();
         renderTable();
         renderStats();
       } else {
         parseExistingData();
+        await ensureCurrentMonthExists();
         hideLoginModal();
         renderTabs();
         renderTable();
