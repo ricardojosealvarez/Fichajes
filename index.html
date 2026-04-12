@@ -634,7 +634,7 @@
       color: var(--muted);
       letter-spacing: 1px;
       text-transform: uppercase;
-    ">v2.2.4</div>
+    ">v2.2.5</div>
     <button id="signout-btn" style="
       padding: 6px 12px;
       background: transparent;
@@ -1030,6 +1030,7 @@ function parseExistingData() {
 }
 
 function renderTabs() {
+  console.log('🔄 renderTabs - months:', months.map(m => `${MONTH_NAMES[m.month]} ${m.year} (${m.days.length} días)`));
   const tabs = document.getElementById('tabs');
   tabs.innerHTML = months.map((m, i) =>
     `<button class="tab ${i === currentMonthIdx ? 'active' : ''}" onclick="switchMonth(${i})">${MONTH_NAMES[m.month]} ${m.year}</button>`
