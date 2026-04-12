@@ -634,7 +634,7 @@
       color: var(--muted);
       letter-spacing: 1px;
       text-transform: uppercase;
-    ">v2.1.4</div>
+    ">v2.1.5</div>
     <button id="signout-btn" style="
       padding: 6px 12px;
       background: transparent;
@@ -2137,13 +2137,13 @@ async function saveDay(monthId, dayIdx, dayData) {
       month_id: monthId,
       date: dayData.date.toISOString().split('T')[0],
       entrada: dayData.entrada || null,
-      desayunoIni: dayData.desayunoIni || null,
-      desayunoFin: dayData.desayunoFin || null,
-      comidaIni: dayData.comidaIni || null,
-      comidaFin: dayData.comidaFin || null,
+      desayunoini: dayData.desayunoIni || null,
+      desayunofin: dayData.desayunoFin || null,
+      comidaini: dayData.comidaIni || null,
+      comidafin: dayData.comidaFin || null,
       salida: dayData.salida || null,
-      teleDia: dayData.teleDia || false,
-      teleTarde: dayData.teleTarde || false,
+      teledia: dayData.teleDia || false,
+      teletarde: dayData.teleTarde || false,
       notas: dayData.notas || null,
       tipo: dayData.tipo || 'habil'
     };
@@ -2265,13 +2265,13 @@ async function loadDataFromSupabase() {
             id: d.id,
             date: new Date(d.date),
             entrada: d.entrada,
-            desayunoIni: d.desayunoIni,
-            desayunoFin: d.desayunoFin,
-            comidaIni: d.comidaIni,
-            comidaFin: d.comidaFin,
+            desayunoIni: d.desayunoini,
+            desayunoFin: d.desayunofin,
+            comidaIni: d.comidaini,
+            comidaFin: d.comidafin,
             salida: d.salida,
-            teleDia: d.teleDia,
-            teleTarde: d.teleTarde,
+            teleDia: d.teledia,
+            teleTarde: d.teletarde,
             notas: d.notas,
             tipo: d.tipo
           });
