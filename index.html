@@ -95,36 +95,7 @@
     display: flex;
     flex-direction: column;
     gap: 24px;
-    transition: width 0.2s ease, padding 0.2s ease;
   }
-  .sidebar.collapsed {
-    width: 40px;
-    padding: 12px 0;
-    overflow: hidden;
-  }
-  .sidebar.collapsed > *:not(#sidebar-toggle-wrap) { display: none; }
-  #sidebar-toggle-wrap {
-    display: flex;
-    justify-content: center;
-    flex-shrink: 0;
-  }
-  .sidebar.collapsed #sidebar-toggle-wrap { justify-content: center; }
-  #sidebar-toggle-btn {
-    background: transparent;
-    border: 1px solid var(--border);
-    color: var(--muted);
-    border-radius: 5px;
-    width: 24px;
-    height: 24px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    font-size: 12px;
-    flex-shrink: 0;
-    transition: color 0.15s, border-color 0.15s;
-  }
-  #sidebar-toggle-btn:hover { color: var(--accent); border-color: var(--accent); }
   .section-title {
     font-family: 'Syne', sans-serif;
     font-weight: 700;
@@ -477,6 +448,29 @@
   }
   .tele-warning-banner.show { display: block; }
 
+  /* Day edit modal */
+  .day-edit-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .day-edit-row { display: flex; flex-direction: column; gap: 4px; }
+  .day-edit-row.full { grid-column: 1 / -1; }
+  .day-edit-label { font-size: 11px; color: var(--muted); font-family: 'Syne', sans-serif; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; }
+  .day-edit-input {
+    background: var(--surface2); border: 1px solid var(--border); color: var(--text);
+    padding: 8px 10px; border-radius: 6px; font-family: 'JetBrains Mono', monospace;
+    font-size: 14px; width: 100%; transition: border-color 0.15s;
+  }
+  .day-edit-input:focus { outline: none; border-color: var(--accent); }
+  .day-edit-input:disabled { opacity: 0.35; cursor: not-allowed; }
+  .day-edit-subtitle { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--muted); margin-top: -8px; }
+  .day-edit-tele-row { display: flex; gap: 8px; }
+  .day-edit-tele-btn {
+    flex: 1; padding: 8px; border-radius: 6px; font-family: 'Syne', sans-serif;
+    font-weight: 700; font-size: 11px; letter-spacing: 0.5px; cursor: pointer;
+    border: 1px solid var(--border); background: transparent; color: var(--muted); transition: all 0.15s; text-align: center;
+  }
+  .day-edit-tele-btn.active-dia   { background: #1a1f0a; border-color: var(--accent); color: var(--accent); }
+  .day-edit-tele-btn.active-tarde { background: #0d1a1f; border-color: var(--accent2); color: var(--accent2); }
+  #day-edit-modal .modal { width: 480px; max-width: 96vw; gap: 18px; }
+
 </style>
 </head>
 <body>
@@ -655,6 +649,7 @@
   <div style="display: flex; align-items: center; gap: 12px;">
     <div class="tabs" id="tabs"></div>
     <button class="add-month-btn" onclick="showAddMonthModal()">+ Mes</button>
+    <button class="add-month-btn" onclick="openDayEditGeneral()" id="btn-add-fichaje">+ Fichaje</button>
   </div>
   <div style="display: flex; align-items: center; gap: 16px;">
     <div style="
@@ -664,7 +659,7 @@
       color: var(--muted);
       letter-spacing: 1px;
       text-transform: uppercase;
-    ">v2.3.16</div>
+    ">v2.3.17</div>
     <button id="signout-btn" style="
       padding: 6px 12px;
       background: transparent;
@@ -681,10 +676,7 @@
 </header>
 
 <div class="main">
-  <div class="sidebar scrollbar-thin" id="sidebar">
-    <div id="sidebar-toggle-wrap">
-      <button id="sidebar-toggle-btn" onclick="toggleSidebar()" title="Mostrar/ocultar panel">‹</button>
-    </div>
+  <div class="sidebar scrollbar-thin">
     <div>
       <div class="section-title">Configuración</div>
       <div class="config-grid">
@@ -780,6 +772,38 @@
   </div>
 
   <div class="content scrollbar-thin" id="content"></div>
+</div>
+
+<!-- Day Edit Modal -->
+<div class="modal-overlay" id="day-edit-modal">
+  <div class="modal">
+    <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:18px">Editar fichaje</div>
+    <div class="day-edit-subtitle" id="day-edit-subtitle"></div>
+    <div id="day-edit-date-row" style="display:none">
+      <div class="day-edit-label" style="margin-bottom:6px">Fecha</div>
+      <select class="select-input" id="de-date-select" onchange="deLoadDate()"></select>
+    </div>
+    <div class="day-edit-grid">
+      <div class="day-edit-row"><div class="day-edit-label">Entrada</div><input class="day-edit-input" id="de-entrada" type="text" maxlength="5" placeholder="--:--"></div>
+      <div class="day-edit-row"><div class="day-edit-label">Salida</div><input class="day-edit-input" id="de-salida" type="text" maxlength="5" placeholder="--:--"></div>
+      <div class="day-edit-row"><div class="day-edit-label">Des. inicio</div><input class="day-edit-input" id="de-desayunoIni" type="text" maxlength="5" placeholder="--:--"></div>
+      <div class="day-edit-row"><div class="day-edit-label">Des. fin</div><input class="day-edit-input" id="de-desayunoFin" type="text" maxlength="5" placeholder="--:--"></div>
+      <div class="day-edit-row"><div class="day-edit-label">Com. inicio</div><input class="day-edit-input" id="de-comidaIni" type="text" maxlength="5" placeholder="--:--"></div>
+      <div class="day-edit-row"><div class="day-edit-label">Com. fin</div><input class="day-edit-input" id="de-comidaFin" type="text" maxlength="5" placeholder="--:--"></div>
+      <div class="day-edit-row full"><div class="day-edit-label">Notas</div><input class="day-edit-input" id="de-notas" type="text" placeholder="—"></div>
+      <div class="day-edit-row full">
+        <div class="day-edit-label">Teletrabajo</div>
+        <div class="day-edit-tele-row">
+          <button class="day-edit-tele-btn" id="de-tele-dia" onclick="deToggleTele('dia')">DÍA COMPLETO</button>
+          <button class="day-edit-tele-btn" id="de-tele-tarde" onclick="deToggleTele('tarde')">TARDE</button>
+        </div>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('day-edit-modal')">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveDayEdit()">Guardar</button>
+    </div>
+  </div>
 </div>
 
 <!-- Import Modal -->
@@ -1371,6 +1395,7 @@ function renderTable() {
           </div>
         </div>
       </td>
+      <td><button class="btn btn-secondary" style="padding:3px 8px;font-size:12px" onclick="openDayEdit(${i})" title="Editar fichaje">✎</button></td>
     </tr>`;
   }
 
@@ -1392,6 +1417,7 @@ function renderTable() {
           <th>Teletrabajo</th>
           <th>Notas</th>
           <th>Tipo</th>
+          <th></th>
         </tr>
       </thead>
       <tbody>${rows}</tbody>
@@ -2617,15 +2643,15 @@ async function loadDataFromSupabase() {
           monthMap[d.month_id].days.push({
             id: d.id,
             date: new Date(String(d.date).slice(0, 10) + 'T00:00:00'),
-            entrada: d.entrada ?? '',
-            desayunoIni: d.desayunoini ?? '',
-            desayunoFin: d.desayunofin ?? '',
-            comidaIni: d.comidaini ?? '',
-            comidaFin: d.comidafin ?? '',
-            salida: d.salida ?? '',
-            teleDia: d.teledia ?? false,
-            teleTarde: d.teletarde ?? false,
-            notas: d.notas ?? '',
+            entrada: d.entrada,
+            desayunoIni: d.desayunoini,
+            desayunoFin: d.desayunofin,
+            comidaIni: d.comidaini,
+            comidaFin: d.comidafin,
+            salida: d.salida,
+            teleDia: d.teledia,
+            teleTarde: d.teletarde,
+            notas: d.notas,
             tipo: d.tipo
           });
         }
@@ -2833,7 +2859,6 @@ async function initApp() {
     // Asegurar que existe mes actual con días predefinidos
     await ensureCurrentMonthExists();
     hideLoginModal();
-    initSidebarState();
     renderTabs();
     renderTable();
     renderStats();
@@ -2844,23 +2869,88 @@ async function initApp() {
   }
 }
 
-function toggleSidebar() {
-  const sidebar = document.getElementById('sidebar');
-  const btn = document.getElementById('sidebar-toggle-btn');
-  const collapsed = sidebar.classList.toggle('collapsed');
-  btn.textContent = collapsed ? '›' : '‹';
-  btn.title = collapsed ? 'Mostrar panel' : 'Ocultar panel';
-  localStorage.setItem('sidebarCollapsed', collapsed ? '1' : '0');
+
+// Day Edit Modal
+let _deIdx = null;
+
+function _dePopulateFields(day) {
+  const isHabil = day.tipo === 'habil';
+  ['entrada','desayunoIni','desayunoFin','comidaIni','comidaFin','salida'].forEach(f => {
+    const el = document.getElementById('de-' + f);
+    el.value = day[f] || '';
+    el.disabled = !isHabil;
+  });
+  document.getElementById('de-notas').value = day.notas || '';
+  const btnDia   = document.getElementById('de-tele-dia');
+  const btnTarde = document.getElementById('de-tele-tarde');
+  btnDia.className   = 'day-edit-tele-btn' + (day.teleDia   ? ' active-dia'   : '');
+  btnTarde.className = 'day-edit-tele-btn' + (day.teleTarde ? ' active-tarde' : '');
+  btnDia.disabled   = !isHabil || day.teleTarde;
+  btnTarde.disabled = !isHabil || day.teleDia;
 }
 
-function initSidebarState() {
-  if (localStorage.getItem('sidebarCollapsed') === '1') {
-    const sidebar = document.getElementById('sidebar');
-    const btn = document.getElementById('sidebar-toggle-btn');
-    sidebar.classList.add('collapsed');
-    btn.textContent = '›';
-    btn.title = 'Mostrar panel';
-  }
+function openDayEdit(idx) {
+  const day = months[currentMonthIdx].days[idx];
+  _deIdx = idx;
+  const dateStr = day.date.toLocaleDateString('es-ES', {weekday:'long',day:'2-digit',month:'long',year:'numeric'});
+  document.getElementById('day-edit-subtitle').textContent = dateStr.charAt(0).toUpperCase() + dateStr.slice(1);
+  document.getElementById('day-edit-date-row').style.display = 'none';
+  _dePopulateFields(day);
+  document.getElementById('day-edit-modal').style.display = 'flex';
+}
+
+function openDayEditGeneral() {
+  const m = months[currentMonthIdx];
+  if (!m) return;
+  // Build date selector with all days of active month
+  const sel = document.getElementById('de-date-select');
+  sel.innerHTML = m.days.map((d, i) => {
+    const dateStr = d.date.toLocaleDateString('es-ES', {weekday:'short', day:'2-digit', month:'2-digit'});
+    return `<option value="${i}">${dateStr} \u2014 ${DAY_TYPES.find(t=>t.key===d.tipo)?.label||d.tipo}</option>`;
+  }).join('');
+  sel.value = '0';
+  _deIdx = 0;
+  document.getElementById('day-edit-date-row').style.display = 'block';
+  const subtitle = m.days[0].date.toLocaleDateString('es-ES', {weekday:'long',day:'2-digit',month:'long',year:'numeric'});
+  document.getElementById('day-edit-subtitle').textContent = subtitle.charAt(0).toUpperCase() + subtitle.slice(1);
+  _dePopulateFields(m.days[0]);
+  document.getElementById('day-edit-modal').style.display = 'flex';
+}
+
+function deLoadDate() {
+  const idx = parseInt(document.getElementById('de-date-select').value);
+  _deIdx = idx;
+  const day = months[currentMonthIdx].days[idx];
+  const dateStr = day.date.toLocaleDateString('es-ES', {weekday:'long',day:'2-digit',month:'long',year:'numeric'});
+  document.getElementById('day-edit-subtitle').textContent = dateStr.charAt(0).toUpperCase() + dateStr.slice(1);
+  _dePopulateFields(day);
+}
+
+function deToggleTele(mode) {
+  if (_deIdx === null) return;
+  const day = months[currentMonthIdx].days[_deIdx];
+  if (mode === 'dia') { day.teleDia = !day.teleDia; if (day.teleDia) day.teleTarde = false; }
+  else               { day.teleTarde = !day.teleTarde; if (day.teleTarde) day.teleDia = false; }
+  const btnDia   = document.getElementById('de-tele-dia');
+  const btnTarde = document.getElementById('de-tele-tarde');
+  btnDia.className   = 'day-edit-tele-btn' + (day.teleDia   ? ' active-dia'   : '');
+  btnTarde.className = 'day-edit-tele-btn' + (day.teleTarde ? ' active-tarde' : '');
+  btnDia.disabled   = day.teleTarde;
+  btnTarde.disabled = day.teleDia;
+}
+
+function saveDayEdit() {
+  if (_deIdx === null) return;
+  const day = months[currentMonthIdx].days[_deIdx];
+  ['entrada','desayunoIni','desayunoFin','comidaIni','comidaFin','salida'].forEach(f => {
+    day[f] = document.getElementById('de-' + f).value.trim();
+  });
+  day.notas = document.getElementById('de-notas').value.trim();
+  closeModal('day-edit-modal');
+  renderTable();
+  renderStats();
+  saveDay(months[currentMonthIdx].id, _deIdx, day);
+  _deIdx = null;
 }
 
 // Iniciar cuando DOM esté listo
