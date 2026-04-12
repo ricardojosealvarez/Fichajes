@@ -634,7 +634,7 @@
       color: var(--muted);
       letter-spacing: 1px;
       text-transform: uppercase;
-    ">v2.2.1</div>
+    ">v2.2.3</div>
     <button id="signout-btn" style="
       padding: 6px 12px;
       background: transparent;
@@ -2122,12 +2122,15 @@ async function initAuth() {
 }
 
 async function ensureCurrentMonthExists() {
+  console.log('📅 ensureCurrentMonthExists - meses actuales:', months.length);
   if (months.length === 0) {
     console.log('📅 Creando mes actual con valores predefinidos...');
     const now = new Date();
     const year = now.getFullYear();
     const monthIdx = now.getMonth(); // 0-11
     const monthNum = monthIdx + 1;   // 1-12 para BD
+    
+    console.log('Año:', year, 'Mes:', monthNum, '(índice:', monthIdx + ')');
     
     // Generar UUID para el mes
     const monthId = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
@@ -2138,6 +2141,7 @@ async function ensureCurrentMonthExists() {
     
     try {
       // 1. Crear mes en Supabase
+      console.log('1️⃣ Insertando mes...');
       const monthRes = await fetch(`${SUPABASE_URL}/rest/v1/months`, {
         method: 'POST',
         headers: {
@@ -2153,16 +2157,18 @@ async function ensureCurrentMonthExists() {
         })
       });
       
+      console.log('Mes response status:', monthRes.status);
       if (!monthRes.ok) {
         const err = await monthRes.json();
-        console.error('Error creando mes:', err);
+        console.error('❌ Error creando mes:', err);
         return;
       }
       
-      console.log('✓ Mes creado:', monthNum);
+      console.log('✓ Mes creado:', monthId);
       
       // 2. Generar todos los días del mes con valores predefinidos
       const daysInMonth = new Date(year, monthNum, 0).getDate();
+      console.log('2️⃣ Generando', daysInMonth, 'días...');
       const defaultDays = [];
       
       for (let i = 1; i <= daysInMonth; i++) {
@@ -2190,7 +2196,10 @@ async function ensureCurrentMonthExists() {
         });
       }
       
+      console.log('Payload días (primero):', defaultDays[0]);
+      
       // 3. Insertar días en Supabase
+      console.log('3️⃣ Insertando días...');
       const daysRes = await fetch(`${SUPABASE_URL}/rest/v1/days`, {
         method: 'POST',
         headers: {
@@ -2202,20 +2211,27 @@ async function ensureCurrentMonthExists() {
         body: JSON.stringify(defaultDays)
       });
       
+      console.log('Días response status:', daysRes.status);
+      const daysRespText = await daysRes.text();
+      console.log('Días response body:', daysRespText);
+      
       if (!daysRes.ok) {
-        const err = await daysRes.json();
-        console.error('Error creando días:', err);
+        console.error('❌ Error creando días');
         return;
       }
       
       console.log('✓ Días creados:', defaultDays.length);
       
       // 4. Recargar datos
+      console.log('4️⃣ Recargando datos...');
       await loadDataFromSupabase();
+      console.log('✓ Datos recargados');
       
     } catch (e) {
-      console.error('Error en ensureCurrentMonthExists:', e);
+      console.error('❌ Error en ensureCurrentMonthExists:', e);
     }
+  } else {
+    console.log('✓ Ya hay meses, no es necesario crear');
   }
 }
 
@@ -2350,9 +2366,9 @@ async function loadDataFromSupabase() {
 
     // Cargar días
     if (monthsData.length > 0) {
-      const monthIds = monthsData.map(m => m.id);
+      const monthIds = monthsData.map(m => `"${m.id}"`).join(',');
       const daysRes = await fetch(
-        `${SUPABASE_URL}/rest/v1/days?month_id=in.(${monthIds.join(',')})`,
+        `${SUPABASE_URL}/rest/v1/days?month_id=in.(${monthIds})`,
         {
           headers: {
             'apikey': SUPABASE_ANON_KEY,
