@@ -634,7 +634,7 @@
       color: var(--muted);
       letter-spacing: 1px;
       text-transform: uppercase;
-    ">v2.2.3</div>
+    ">v2.2.4</div>
     <button id="signout-btn" style="
       padding: 6px 12px;
       background: transparent;
@@ -2560,30 +2560,12 @@ async function initApp() {
   if (hasSession) {
     console.log('✓ Sesión restaurada');
     const hasRemote = await loadDataFromSupabase();
-    if (hasRemote) {
-      // Asegurar que existe mes actual con días predefinidos
-      await ensureCurrentMonthExists();
-      hideLoginModal();
-      renderTabs();
-      renderTable();
-      renderStats();
-    } else {
-      const hasLocal = loadStateLocal();
-      if (hasLocal) {
-        await ensureCurrentMonthExists();
-        hideLoginModal();
-        renderTabs();
-        renderTable();
-        renderStats();
-      } else {
-        parseExistingData();
-        await ensureCurrentMonthExists();
-        hideLoginModal();
-        renderTabs();
-        renderTable();
-        renderStats();
-      }
-    }
+    // Asegurar que existe mes actual con días predefinidos
+    await ensureCurrentMonthExists();
+    hideLoginModal();
+    renderTabs();
+    renderTable();
+    renderStats();
   } else {
     console.log('✓ Sin sesión, mostrando login');
     showLoginModal();
