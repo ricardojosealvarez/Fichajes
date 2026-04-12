@@ -95,7 +95,36 @@
     display: flex;
     flex-direction: column;
     gap: 24px;
+    transition: width 0.2s ease, padding 0.2s ease;
   }
+  .sidebar.collapsed {
+    width: 40px;
+    padding: 12px 0;
+    overflow: hidden;
+  }
+  .sidebar.collapsed > *:not(#sidebar-toggle-wrap) { display: none; }
+  #sidebar-toggle-wrap {
+    display: flex;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .sidebar.collapsed #sidebar-toggle-wrap { justify-content: center; }
+  #sidebar-toggle-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    border-radius: 5px;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 12px;
+    flex-shrink: 0;
+    transition: color 0.15s, border-color 0.15s;
+  }
+  #sidebar-toggle-btn:hover { color: var(--accent); border-color: var(--accent); }
   .section-title {
     font-family: 'Syne', sans-serif;
     font-weight: 700;
@@ -635,7 +664,7 @@
       color: var(--muted);
       letter-spacing: 1px;
       text-transform: uppercase;
-    ">v2.3.13</div>
+    ">v2.3.15</div>
     <button id="signout-btn" style="
       padding: 6px 12px;
       background: transparent;
@@ -652,7 +681,10 @@
 </header>
 
 <div class="main">
-  <div class="sidebar scrollbar-thin">
+  <div class="sidebar scrollbar-thin" id="sidebar">
+    <div id="sidebar-toggle-wrap">
+      <button id="sidebar-toggle-btn" onclick="toggleSidebar()" title="Mostrar/ocultar panel">‹</button>
+    </div>
     <div>
       <div class="section-title">Configuración</div>
       <div class="config-grid">
@@ -2585,15 +2617,15 @@ async function loadDataFromSupabase() {
           monthMap[d.month_id].days.push({
             id: d.id,
             date: new Date(String(d.date).slice(0, 10) + 'T00:00:00'),
-            entrada: d.entrada ?? '',
-            desayunoIni: d.desayunoini ?? '',
-            desayunoFin: d.desayunofin ?? '',
-            comidaIni: d.comidaini ?? '',
-            comidaFin: d.comidafin ?? '',
-            salida: d.salida ?? '',
-            teleDia: d.teledia ?? false,
-            teleTarde: d.teletarde ?? false,
-            notas: d.notas ?? '',
+            entrada: d.entrada,
+            desayunoIni: d.desayunoini,
+            desayunoFin: d.desayunofin,
+            comidaIni: d.comidaini,
+            comidaFin: d.comidafin,
+            salida: d.salida,
+            teleDia: d.teledia,
+            teleTarde: d.teletarde,
+            notas: d.notas,
             tipo: d.tipo
           });
         }
@@ -2801,6 +2833,7 @@ async function initApp() {
     // Asegurar que existe mes actual con días predefinidos
     await ensureCurrentMonthExists();
     hideLoginModal();
+    initSidebarState();
     renderTabs();
     renderTable();
     renderStats();
@@ -2808,6 +2841,25 @@ async function initApp() {
   } else {
     console.log('✓ Sin sesión, mostrando login');
     showLoginModal();
+  }
+}
+
+function toggleSidebar() {
+  const sidebar = document.getElementById('sidebar');
+  const btn = document.getElementById('sidebar-toggle-btn');
+  const collapsed = sidebar.classList.toggle('collapsed');
+  btn.textContent = collapsed ? '›' : '‹';
+  btn.title = collapsed ? 'Mostrar panel' : 'Ocultar panel';
+  localStorage.setItem('sidebarCollapsed', collapsed ? '1' : '0');
+}
+
+function initSidebarState() {
+  if (localStorage.getItem('sidebarCollapsed') === '1') {
+    const sidebar = document.getElementById('sidebar');
+    const btn = document.getElementById('sidebar-toggle-btn');
+    sidebar.classList.add('collapsed');
+    btn.textContent = '›';
+    btn.title = 'Mostrar panel';
   }
 }
 
