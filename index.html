@@ -634,7 +634,7 @@
       color: var(--muted);
       letter-spacing: 1px;
       text-transform: uppercase;
-    ">v2.1.3</div>
+    ">v2.1.4</div>
     <button id="signout-btn" style="
       padding: 6px 12px;
       background: transparent;
@@ -2125,11 +2125,30 @@ async function handleSignOut() {
 
 async function saveDay(monthId, dayIdx, dayData) {
   if (!currentUser || !isOnline) {
+    console.log('Guardando en cache local (no online o no user)');
     saveStateLocal();
     return;
   }
 
   try {
+    console.log('Guardando día:', dayData);
+    const payload = {
+      id: dayData.id || null,
+      month_id: monthId,
+      date: dayData.date.toISOString().split('T')[0],
+      entrada: dayData.entrada || null,
+      desayunoIni: dayData.desayunoIni || null,
+      desayunoFin: dayData.desayunoFin || null,
+      comidaIni: dayData.comidaIni || null,
+      comidaFin: dayData.comidaFin || null,
+      salida: dayData.salida || null,
+      teleDia: dayData.teleDia || false,
+      teleTarde: dayData.teleTarde || false,
+      notas: dayData.notas || null,
+      tipo: dayData.tipo || 'habil'
+    };
+    console.log('Payload:', payload);
+    
     const res = await fetch(`${SUPABASE_URL}/rest/v1/days`, {
       method: 'POST',
       headers: {
@@ -2138,24 +2157,19 @@ async function saveDay(monthId, dayIdx, dayData) {
         'Authorization': `Bearer ${currentSession.access_token}`,
         'Prefer': 'resolution=merge-duplicates'
       },
-      body: JSON.stringify({
-        id: dayData.id || null,
-        month_id: monthId,
-        date: dayData.date.toISOString().split('T')[0],
-        entrada: dayData.entrada || null,
-        desayunoIni: dayData.desayunoIni || null,
-        desayunoFin: dayData.desayunoFin || null,
-        comidaIni: dayData.comidaIni || null,
-        comidaFin: dayData.comidaFin || null,
-        salida: dayData.salida || null,
-        teleDia: dayData.teleDia || false,
-        teleTarde: dayData.teleTarde || false,
-        notas: dayData.notas || null,
-        tipo: dayData.tipo || 'habil'
-      })
+      body: JSON.stringify(payload)
     });
     
-    if (!res.ok) throw new Error('Error guardando día');
+    console.log('Response status:', res.status);
+    const respText = await res.text();
+    console.log('Response:', respText);
+    
+    if (!res.ok) {
+      console.error('Error guardando día, status:', res.status, 'body:', respText);
+      throw new Error('Error guardando día: ' + res.status);
+    }
+    
+    console.log('✓ Día guardado');
     saveStateLocal();
   } catch (e) {
     console.error('Error saving day:', e);
