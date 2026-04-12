@@ -2183,7 +2183,7 @@ async function ensureCurrentMonthExists() {
         defaultDays.push({
           id: dayId,
           month_id: monthId,
-          date: dayDate.toISOString().split('T')[0],
+          date: `${dayDate.getFullYear()}-${String(dayDate.getMonth()+1).padStart(2,'0')}-${String(dayDate.getDate()).padStart(2,'0')}`,
           entrada: '08:00',
           desayunoini: '09:00',
           desayunofin: '09:15',
@@ -2367,7 +2367,7 @@ async function loadDataFromSupabase() {
 
     // Cargar días
     if (monthsData.length > 0) {
-      const monthIds = monthsData.map(m => `"${m.id}"`).join(',');
+      const monthIds = monthsData.map(m => m.id).join(',');
       const daysRes = await fetch(
         `${SUPABASE_URL}/rest/v1/days?month_id=in.(${monthIds})`,
         {
@@ -2386,7 +2386,7 @@ async function loadDataFromSupabase() {
         if (monthMap[d.month_id]) {
           monthMap[d.month_id].days.push({
             id: d.id,
-            date: new Date(d.date),
+            date: new Date(d.date + 'T00:00:00'),
             entrada: d.entrada,
             desayunoIni: d.desayunoini,
             desayunoFin: d.desayunofin,
@@ -2440,7 +2440,7 @@ async function loadDataFromSupabase() {
     months = Object.entries(monthMap).map(([monthId, data]) => ({
       id: monthId,
       year: data.year,
-      month: data.month,
+      month: data.month - 1,
       days: data.days
     }));
 
