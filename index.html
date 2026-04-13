@@ -54,6 +54,27 @@
     color: var(--accent);
   }
   .logo span { color: var(--text); }
+  .tabs-wrap {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .tabs-nav-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    border-radius: 6px;
+    width: 28px; height: 28px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    font-size: 13px;
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    transition: all 0.15s;
+    flex-shrink: 0;
+  }
+  .tabs-nav-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+  .tabs-nav-btn:disabled { opacity: 0.2; cursor: default; }
   .tabs {
     display: flex;
     gap: 4px;
@@ -667,7 +688,11 @@
 <header>
   <div class="logo">FICH<span>AJES</span></div>
   <div style="display: flex; align-items: center; gap: 12px;">
-    <div class="tabs" id="tabs"></div>
+    <div class="tabs-wrap" id="tabs-wrap">
+      <button class="tabs-nav-btn" id="tabs-prev" onclick="tabsScroll(-1)" title="Anterior" disabled>&lt;</button>
+      <div class="tabs" id="tabs"></div>
+      <button class="tabs-nav-btn" id="tabs-next" onclick="tabsScroll(1)" title="Siguiente" disabled>&gt;</button>
+    </div>
     <button class="add-month-btn" onclick="showAddMonthModal()">+ Mes</button>
     <button class="add-month-btn" onclick="openDayEditGeneral()" id="btn-add-fichaje">+ Fichaje</button>
   </div>
@@ -679,7 +704,7 @@
       color: var(--muted);
       letter-spacing: 1px;
       text-transform: uppercase;
-    ">v2.3.18</div>
+    ">v2.3.19</div>
     <button id="signout-btn" style="
       padding: 6px 12px;
       background: transparent;
@@ -887,6 +912,7 @@ const DAY_TYPES = [
 ];
 let months = [];
 let currentMonthIdx = 0;
+let tabsOffset = 0;
 let openMenuIdx = null;
 
 function timeToMins(t) {
@@ -1111,11 +1137,51 @@ function parseExistingData() {
 }
 
 function renderTabs() {
-  console.log('🔄 renderTabs - months:', months.map(m => `${MONTH_NAMES[m.month]} ${m.year} (${m.days.length} días)`));
+  const MAX_TABS = 12;
   const tabs = document.getElementById('tabs');
-  tabs.innerHTML = months.map((m, i) =>
-    `<button class="tab ${i === currentMonthIdx ? 'active' : ''}" onclick="switchMonth(${i})">${MONTH_NAMES[m.month]} ${m.year}</button>`
-  ).join('');
+  const btnPrev = document.getElementById('tabs-prev');
+  const btnNext = document.getElementById('tabs-next');
+
+  const total = months.length;
+  const useCarousel = total > MAX_TABS;
+
+  // Clamp tabsOffset so active tab is always visible
+  if (useCarousel) {
+    const maxOffset = total - MAX_TABS;
+    tabsOffset = Math.max(0, Math.min(tabsOffset, maxOffset));
+    // If active tab is out of view, adjust offset
+    if (currentMonthIdx < tabsOffset) tabsOffset = currentMonthIdx;
+    if (currentMonthIdx >= tabsOffset + MAX_TABS) tabsOffset = currentMonthIdx - MAX_TABS + 1;
+  } else {
+    tabsOffset = 0;
+  }
+
+  const visible = useCarousel ? months.slice(tabsOffset, tabsOffset + MAX_TABS) : months;
+  tabs.innerHTML = visible.map((m, vi) => {
+    const realIdx = useCarousel ? tabsOffset + vi : vi;
+    return `<button class="tab ${realIdx === currentMonthIdx ? 'active' : ''}" onclick="switchMonth(${realIdx})">${MONTH_NAMES[m.month]} ${m.year}</button>`;
+  }).join('');
+
+  if (btnPrev && btnNext) {
+    const wrap = document.getElementById('tabs-wrap');
+    if (useCarousel) {
+      wrap.style.display = 'flex';
+      btnPrev.style.display = 'flex';
+      btnNext.style.display = 'flex';
+      btnPrev.disabled = tabsOffset === 0;
+      btnNext.disabled = tabsOffset + MAX_TABS >= total;
+    } else {
+      btnPrev.style.display = 'none';
+      btnNext.style.display = 'none';
+    }
+  }
+}
+
+function tabsScroll(dir) {
+  const MAX_TABS = 12;
+  const maxOffset = months.length - MAX_TABS;
+  tabsOffset = Math.max(0, Math.min(tabsOffset + dir, maxOffset));
+  renderTabs();
 }
 
 function switchMonth(idx) {
