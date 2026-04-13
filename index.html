@@ -704,7 +704,7 @@
       color: var(--muted);
       letter-spacing: 1px;
       text-transform: uppercase;
-    ">v2.3.19</div>
+    ">v2.3.20</div>
     <button id="signout-btn" style="
       padding: 6px 12px;
       background: transparent;
@@ -1473,7 +1473,7 @@ function renderTable() {
         <button class="tele-btn ${day.teleTarde ? 'active-tarde' : ''}" onclick="setTele(${i},'tarde')" ${(day.tipo !== 'habil' || day.teleDia) ? 'disabled' : ''} title="Tarde en teletrabajo">TARDE</button>
         <span class="tele-bolsa ${teleCls}">${teleStr ? teleStr : ''}</span>
       </td>
-      <td><input class="notes-input" type="text" value="${day.notas}" oninput="updateDay(${i},'notas',this.value)" placeholder="—"></td>
+      <td><input class="notes-input" type="text" value="${day.notas}" oninput="updateDayField(${i},'notas',this.value)" onblur="saveDay(months[currentMonthIdx].id,${i},months[currentMonthIdx].days[${i}])" placeholder="—"></td>
       <td>
         <div class="type-dropdown-wrap">
           <div class="type-pill ${day.tipo}" onclick="toggleTypeMenu(event,${i})" title="Cambiar tipo de día">
@@ -1567,6 +1567,11 @@ function updateDay(idx, field, value) {
   months[currentMonthIdx].days[idx][field] = value;
   renderTable();
   renderStats();
+}
+
+// Updates state without re-rendering (for fields edited inline like notas)
+function updateDayField(idx, field, value) {
+  months[currentMonthIdx].days[idx][field] = value;
 }
 
 function setTele(idx, mode) {
