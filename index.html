@@ -501,6 +501,7 @@
   }
   .day-edit-input:focus { outline: none; border-color: var(--accent); }
   .day-edit-input:disabled { opacity: 0.35; cursor: not-allowed; }
+  .day-edit-input.invalid { border-color: var(--danger) !important; color: var(--danger); }
   .day-edit-subtitle { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--muted); margin-top: -8px; }
   .day-edit-tele-row { display: flex; gap: 8px; }
   .day-edit-tele-btn {
@@ -704,7 +705,7 @@
       color: var(--muted);
       letter-spacing: 1px;
       text-transform: uppercase;
-    ">v2.3.20</div>
+    ">v2.3.21</div>
     <button id="signout-btn" style="
       padding: 6px 12px;
       background: transparent;
@@ -1968,6 +1969,72 @@ function parseTimeInput(raw) {
   return String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0');
 }
 
+
+// Sequence validation
+function validateDaySequence(d) {
+  const t = f => { const v = timeToMins(f); return (v === null || f === '') ? null : v; };
+  const entrada     = t(d.entrada);
+  const desayunoIni = t(d.desayunoIni);
+  const desayunoFin = t(d.desayunoFin);
+  const comidaIni   = t(d.comidaIni);
+  const comidaFin   = t(d.comidaFin);
+  const salida      = t(d.salida);
+  const errors = [];
+
+  if (desayunoIni !== null && entrada !== null && desayunoIni <= entrada)
+    errors.push({ field: 'desayunoIni', msg: 'Debe ser posterior a Entrada' });
+
+  if (desayunoFin !== null && desayunoIni !== null && desayunoFin <= desayunoIni)
+    errors.push({ field: 'desayunoFin', msg: 'Debe ser posterior a Des. inicio' });
+
+  if (comidaIni !== null) {
+    if (desayunoFin !== null && comidaIni <= desayunoFin)
+      errors.push({ field: 'comidaIni', msg: 'Debe ser posterior a Des. fin' });
+    else if (desayunoFin === null && entrada !== null && comidaIni <= entrada)
+      errors.push({ field: 'comidaIni', msg: 'Debe ser posterior a Entrada' });
+  }
+
+  if (comidaFin !== null && comidaIni !== null && comidaFin <= comidaIni)
+    errors.push({ field: 'comidaFin', msg: 'Debe ser posterior a Com. inicio' });
+
+  if (salida !== null) {
+    const prev = [
+      { val: comidaFin,   name: 'Com. fin' },
+      { val: comidaIni,   name: 'Com. inicio' },
+      { val: desayunoFin, name: 'Des. fin' },
+      { val: desayunoIni, name: 'Des. inicio' },
+      { val: entrada,     name: 'Entrada' },
+    ];
+    for (const p of prev) {
+      if (p.val !== null && salida <= p.val) {
+        errors.push({ field: 'salida', msg: 'Debe ser posterior a ' + p.name });
+        break;
+      }
+    }
+  }
+  return errors;
+}
+
+const _SEQ_FIELDS = ['entrada','desayunoIni','desayunoFin','comidaIni','comidaFin','salida'];
+
+function applyTableRowValidation(idx) {
+  const day = months[currentMonthIdx].days[idx];
+  const errors = validateDaySequence(day);
+  const row = document.querySelector('tr[data-idx="' + idx + '"]');
+  if (!row) return;
+  const inputs = row.querySelectorAll('.time-input');
+  inputs.forEach((el, fi) => {
+    const field = _SEQ_FIELDS[fi];
+    if (!field) return;
+    const err = errors.find(e => e.field === field);
+    if (err) {
+      el.classList.add('invalid'); el.title = err.msg;
+    } else if (el.title && el.title !== 'Hora no v\u00e1lida' && !el.title.startsWith('M\u00ednimo')) {
+      el.classList.remove('invalid'); el.title = '';
+    }
+  });
+}
+
 function handleTimeInput(el, idx, field, minTime) {
   const parsed = parseTimeInput(el.value);
   if (parsed === null) {
@@ -1990,6 +2057,14 @@ function handleTimeInput(el, idx, field, minTime) {
   el.title = '';
   el.value = parsed;
   months[currentMonthIdx].days[idx][field] = parsed;
+  const _seqErr = validateDaySequence(months[currentMonthIdx].days[idx]);
+  const _thisErr = _seqErr.find(e => e.field === field);
+  if (_thisErr) {
+    el.classList.add('invalid');
+    el.title = _thisErr.msg;
+    return;
+  }
+  applyTableRowValidation(idx);
   renderTable();
   renderStats();
 }
@@ -3036,10 +3111,17 @@ function deToggleTele(mode) {
 
 function saveDayEdit() {
   if (_deIdx === null) return;
+  const fields = ['entrada','desayunoIni','desayunoFin','comidaIni','comidaFin','salida'];
+  fields.forEach(f => { const el = document.getElementById('de-' + f); if (el) { el.classList.remove('invalid'); el.title = ''; } });
+  const tempDay = Object.assign({}, months[currentMonthIdx].days[_deIdx]);
+  fields.forEach(f => { tempDay[f] = document.getElementById('de-' + f).value.trim(); });
+  const errors = validateDaySequence(tempDay);
+  if (errors.length > 0) {
+    errors.forEach(e => { const el = document.getElementById('de-' + e.field); if (el) { el.classList.add('invalid'); el.title = e.msg; } });
+    return;
+  }
   const day = months[currentMonthIdx].days[_deIdx];
-  ['entrada','desayunoIni','desayunoFin','comidaIni','comidaFin','salida'].forEach(f => {
-    day[f] = document.getElementById('de-' + f).value.trim();
-  });
+  fields.forEach(f => { day[f] = tempDay[f]; });
   day.notas = document.getElementById('de-notas').value.trim();
   closeModal('day-edit-modal');
   renderTable();
