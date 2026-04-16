@@ -320,6 +320,10 @@
   tbody tr.row-vacaciones td,
   tbody tr.row-navidad td { opacity: 0.5; }
   tbody tr.row-festivo td:last-child,
+  tbody tr.row-today { background: #1a1b0a !important; }
+  tbody tr.row-today td:first-child { 
+    box-shadow: inset 4px 0 0 var(--accent);
+  }
   tbody tr.row-puente td:last-child,
   tbody tr.row-propios td:last-child,
   tbody tr.row-vacaciones td:last-child,
@@ -705,7 +709,7 @@
       color: var(--muted);
       letter-spacing: 1px;
       text-transform: uppercase;
-    ">v2.3.21</div>
+    ">v2.3.22</div>
     <button id="signout-btn" style="
       padding: 6px 12px;
       background: transparent;
@@ -1388,6 +1392,7 @@ function renderTable() {
   m.days.sort((a, b) => a.date - b.date);
   const cfg = getConfig();
   let absRunning = getPrevMonthEndABS();
+  const now = new Date();
   const teleBolsaByDay = computeTeleBolsaPerDay();
 
   // Update warning banner
@@ -1411,6 +1416,7 @@ function renderTable() {
     const day = m.days[i];
     const dow = day.date.getDay();
     const weekNum = getWeekNum(day.date);
+    const isToday = day.date.toDateString() === now.toDateString();
     prevWeek = weekNum;
 
     const isFriday = dow === 5;
@@ -1456,7 +1462,11 @@ function renderTable() {
     const teleCls = teleDayData.warn ? 'warn' : (teleStr === '' ? 'zero' : '');
     const diarioClass = diario !== null ? (diario >= 0 ? 'pos' : 'neg') : '';
     const rowTypeClass = day.tipo !== 'habil' ? `row-${day.tipo}` : '';
-    const rowClasses = [weekEndRows.has(i) ? 'week-separator' : '', rowTypeClass].filter(Boolean).join(' ');
+    const rowClasses = [
+      weekEndRows.has(i) ? 'week-separator' : '', 
+      rowTypeClass,
+      isToday ? 'row-today' : ''
+    ].filter(Boolean).join(' ');
     rows += `<tr ${rowClasses ? `class="${rowClasses}"` : ''} data-idx="${i}">
       <td class="date-col">${dateStr}</td>
       <td class="day-col">${dayName}</td>
@@ -3027,6 +3037,16 @@ async function initApp() {
     const hasRemote = await loadDataFromSupabase();
     // Asegurar que existe mes actual con días predefinidos
     await ensureCurrentMonthExists();
+
+    // Seleccionar por defecto el mes actual si existe, si no el primero disponible
+    const now = new Date();
+    const foundIdx = months.findIndex(m => m.year === now.getFullYear() && m.month === now.getMonth());
+    if (foundIdx !== -1) {
+      currentMonthIdx = foundIdx;
+    } else if (months.length > 0) {
+      currentMonthIdx = 0;
+    }
+
     hideLoginModal();
     initSidebarState();
     renderTabs();
@@ -3151,6 +3171,26 @@ function initSidebarState() {
     }
   }
 }
+
+// Iniciar cuando DOM esté listo
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initApp);
+} else {
+  initApp();
+}
+</script>
+</body>
+</html>
+
+// Iniciar cuando DOM esté listo
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initApp);
+} else {
+  initApp();
+}
+</script>
+</body>
+</html>
 
 // Iniciar cuando DOM esté listo
 if (document.readyState === 'loading') {
