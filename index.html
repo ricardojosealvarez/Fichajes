@@ -709,7 +709,7 @@
       color: var(--muted);
       letter-spacing: 1px;
       text-transform: uppercase;
-    ">v2.3.22</div>
+    ">v2.3.23</div>
     <button id="signout-btn" style="
       padding: 6px 12px;
       background: transparent;
@@ -1470,21 +1470,21 @@ function renderTable() {
     rows += `<tr ${rowClasses ? `class="${rowClasses}"` : ''} data-idx="${i}">
       <td class="date-col">${dateStr}</td>
       <td class="day-col">${dayName}</td>
-      <td><input class="time-input" type="text" maxlength="5" value="${day.entrada}" placeholder="--:--" onchange="handleTimeInput(this,${i},'entrada')" ${day.tipo !== 'habil' ? 'disabled' : ''}></td>
-      <td><input class="time-input" type="text" maxlength="5" value="${day.desayunoIni}" placeholder="--:--" onchange="handleTimeInput(this,${i},'desayunoIni')" ${day.tipo !== 'habil' ? 'disabled' : ''}></td>
-      <td><input class="time-input" type="text" maxlength="5" value="${day.desayunoFin}" placeholder="--:--" onchange="handleTimeInput(this,${i},'desayunoFin')" ${day.tipo !== 'habil' ? 'disabled' : ''}></td>
-      <td><input class="time-input" type="text" maxlength="5" value="${day.comidaIni}" placeholder="--:--" onchange="handleTimeInput(this,${i},'comidaIni',getCfgSalMin())" ${day.tipo !== 'habil' ? 'disabled' : ''}></td>
-      <td><input class="time-input" type="text" maxlength="5" value="${day.comidaFin}" placeholder="--:--" onchange="handleTimeInput(this,${i},'comidaFin')" ${day.tipo !== 'habil' ? 'disabled' : ''}></td>
-      <td><input class="time-input ${salidaAuto ? 'auto-calc' : ''}" type="text" maxlength="5" value="${salidaAuto ? salidaDisplay : day.salida}" placeholder="${salidaAuto ? '← auto' : '--:--'}" onchange="handleTimeInput(this,${i},'salida',getCfgSalMin())" ${day.tipo !== 'habil' ? 'disabled' : ''}></td>
+      <td><input class="time-input" type="text" maxlength="5" value="${day.entrada}" placeholder="--:--" onblur="handleTimeInput(this,${i},'entrada')" data-field="entrada" ${day.tipo !== 'habil' ? 'disabled' : ''}></td>
+      <td><input class="time-input" type="text" maxlength="5" value="${day.desayunoIni}" placeholder="--:--" onblur="handleTimeInput(this,${i},'desayunoIni')" data-field="desayunoIni" ${day.tipo !== 'habil' ? 'disabled' : ''}></td>
+      <td><input class="time-input" type="text" maxlength="5" value="${day.desayunoFin}" placeholder="--:--" onblur="handleTimeInput(this,${i},'desayunoFin')" data-field="desayunoFin" ${day.tipo !== 'habil' ? 'disabled' : ''}></td>
+      <td><input class="time-input" type="text" maxlength="5" value="${day.comidaIni}" placeholder="--:--" onblur="handleTimeInput(this,${i},'comidaIni',getCfgSalMin())" data-field="comidaIni" ${day.tipo !== 'habil' ? 'disabled' : ''}></td>
+      <td><input class="time-input" type="text" maxlength="5" value="${day.comidaFin}" placeholder="--:--" onblur="handleTimeInput(this,${i},'comidaFin')" data-field="comidaFin" ${day.tipo !== 'habil' ? 'disabled' : ''}></td>
+      <td><input class="time-input ${salidaAuto ? 'auto-calc' : ''}" type="text" maxlength="5" value="${salidaAuto ? salidaDisplay : day.salida}" placeholder="${salidaAuto ? '← auto' : '--:--'}" onblur="handleTimeInput(this,${i},'salida',getCfgSalMin())" data-field="salida" ${day.tipo !== 'habil' ? 'disabled' : ''}></td>
       <td class="center"><span class="calc-cell suma">${sumaStr}</span></td>
       <td class="center"><span class="calc-cell diario ${diarioClass}">${diarioStr}</span></td>
       <td class="center"><span class="calc-cell abs">${absStr}</span></td>
       <td class="tele-cell">
         <button class="tele-btn ${day.teleDia ? 'active-dia' : ''}" onclick="setTele(${i},'dia')" ${(day.tipo !== 'habil' || day.teleTarde) ? 'disabled' : ''} title="Día completo de teletrabajo">DÍA</button>
         <button class="tele-btn ${day.teleTarde ? 'active-tarde' : ''}" onclick="setTele(${i},'tarde')" ${(day.tipo !== 'habil' || day.teleDia) ? 'disabled' : ''} title="Tarde en teletrabajo">TARDE</button>
-        <span class="tele-bolsa ${teleCls}">${teleStr ? teleStr : ''}</span>
+        <span class="tele-bolsa ${teleCls}">${teleStr}</span>
       </td>
-      <td><input class="notes-input" type="text" value="${day.notas}" oninput="updateDayField(${i},'notas',this.value)" onblur="saveDay(months[currentMonthIdx].id,${i},months[currentMonthIdx].days[${i}])" placeholder="—"></td>
+      <td><input class="notes-input" type="text" value="${day.notas}" oninput="updateDayField(${i},'notas',this.value)" data-field="notas" placeholder="—"></td>
       <td>
         <div class="type-dropdown-wrap">
           <div class="type-pill ${day.tipo}" onclick="toggleTypeMenu(event,${i})" title="Cambiar tipo de día">
@@ -1495,7 +1495,10 @@ function renderTable() {
           </div>
         </div>
       </td>
-      <td><button class="btn btn-secondary" style="padding:3px 8px;font-size:12px" onclick="openDayEdit(${i})" title="Editar fichaje">✎</button></td>
+      <td>
+        <button class="btn btn-secondary" style="padding:3px 8px;font-size:12px" onclick="saveRowChanges(${i})" title="Guardar cambios de la fila">💾</button>
+        <button class="btn btn-secondary" style="padding:3px 8px;font-size:12px" onclick="openDayEdit(${i})" title="Editar fichaje">✎</button>
+      </td>
     </tr>`;
   }
 
@@ -2025,7 +2028,7 @@ function validateDaySequence(d) {
   return errors;
 }
 
-const _SEQ_FIELDS = ['entrada','desayunoIni','desayunoFin','comidaIni','comidaFin','salida'];
+const _SEQ_FIELDS = ['entrada', 'desayunoIni', 'desayunoFin', 'comidaIni', 'comidaFin', 'salida'];
 
 function applyTableRowValidation(idx) {
   const day = months[currentMonthIdx].days[idx];
@@ -2045,7 +2048,7 @@ function applyTableRowValidation(idx) {
   });
 }
 
-function handleTimeInput(el, idx, field, minTime) {
+function handleTimeInput(el, idx, field, minTime = null) {
   const parsed = parseTimeInput(el.value);
   if (parsed === null) {
     el.classList.add('invalid');
@@ -2066,10 +2069,41 @@ function handleTimeInput(el, idx, field, minTime) {
   el.classList.remove('invalid');
   el.title = '';
   el.value = parsed;
-  months[currentMonthIdx].days[idx][field] = parsed;
-  const _seqErr = validateDaySequence(months[currentMonthIdx].days[idx]);
-  const _thisErr = _seqErr.find(e => e.field === field);
-  if (_thisErr) {
+  months[currentMonthIdx].days[idx][field] = parsed; // Update the local day object
+  // No global re-rendering or validation here. That's for saveRowChanges.
+}
+
+// New function to save changes for a specific row
+function saveRowChanges(idx) {
+  const day = months[currentMonthIdx].days[idx];
+  const row = document.querySelector(`tr[data-idx="${idx}"]`);
+  if (!row) {
+    console.error('Row not found for index:', idx);
+    return;
+  }
+
+  // First, ensure all individual inputs have their latest parsed values and local validation applied
+  // This is important because handleTimeInput only updates the local day object and its own element's invalid state.
+  // We need to re-run handleTimeInput for all time fields in the row to ensure the day object is fully up-to-date
+  // and individual field validation is reflected before full row sequence validation.
+  const timeInputs = row.querySelectorAll('.time-input');
+  timeInputs.forEach(inputEl => {
+    const fieldName = inputEl.dataset.field;
+    let minTime = null;
+    if (fieldName === 'comidaIni' || fieldName === 'salida') {
+      minTime = getCfgSalMin();
+    }
+    handleTimeInput(inputEl, idx, fieldName, minTime);
+  });
+
+  // Now, apply full row sequence validation
+  applyTableRowValidation(idx);
+
+  // Check if any input in the row is marked as invalid
+  const invalidInputs = row.querySelectorAll('.time-input.invalid');
+  if (invalidInputs.length > 0) {
+    // Find the first invalid input and set its title as the alert message
+    const firstInvalid = invalidInputs[0];
     el.classList.add('invalid');
     el.title = _thisErr.msg;
     return;
