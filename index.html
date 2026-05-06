@@ -236,6 +236,17 @@
   .time-input:focus { outline: none; border-color: var(--accent); background: var(--surface2); }
   .time-input.auto-calc { color: var(--accent2); font-style: italic; }
   .time-input.invalid { border-color: var(--danger) !important; color: var(--danger); }
+  .time-display {
+    color: var(--text);
+    display: inline-block;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    min-width: 58px;
+    padding: 4px 6px;
+    text-align: center;
+  }
+  .time-display.auto-calc { color: var(--accent2); font-style: italic; }
+  .time-display.empty { color: var(--muted); opacity: 0.55; }
   .calc-cell {
     font-family: 'JetBrains Mono', monospace;
     font-size: 13px;
@@ -714,7 +725,7 @@
       color: var(--muted);
       letter-spacing: 1px;
       text-transform: uppercase;
-    ">v2.3.24</div>
+    ">v2.4.0</div>
     <button id="signout-btn" style="
       padding: 6px 12px;
       background: transparent;
@@ -1475,12 +1486,12 @@ function renderTable() {
     rows += `<tr ${rowClasses ? `class="${rowClasses}"` : ''} data-idx="${i}">
       <td class="date-col">${dateStr}</td>
       <td class="day-col">${dayName}</td>
-      <td><input class="time-input" type="text" maxlength="5" value="${day.entrada}" placeholder="--:--" onblur="handleTimeInput(this,${i},'entrada')" data-field="entrada" ${day.tipo !== 'habil' ? 'disabled' : ''}></td>
-      <td><input class="time-input" type="text" maxlength="5" value="${day.desayunoIni}" placeholder="--:--" onblur="handleTimeInput(this,${i},'desayunoIni')" data-field="desayunoIni" ${day.tipo !== 'habil' ? 'disabled' : ''}></td>
-      <td><input class="time-input" type="text" maxlength="5" value="${day.desayunoFin}" placeholder="--:--" onblur="handleTimeInput(this,${i},'desayunoFin')" data-field="desayunoFin" ${day.tipo !== 'habil' ? 'disabled' : ''}></td>
-      <td><input class="time-input" type="text" maxlength="5" value="${day.comidaIni}" placeholder="--:--" onblur="handleTimeInput(this,${i},'comidaIni',getCfgSalMin())" data-field="comidaIni" ${day.tipo !== 'habil' ? 'disabled' : ''}></td>
-      <td><input class="time-input" type="text" maxlength="5" value="${day.comidaFin}" placeholder="--:--" onblur="handleTimeInput(this,${i},'comidaFin')" data-field="comidaFin" ${day.tipo !== 'habil' ? 'disabled' : ''}></td>
-      <td><input class="time-input ${salidaAuto ? 'auto-calc' : ''}" type="text" maxlength="5" value="${salidaAuto ? salidaDisplay : day.salida}" placeholder="${salidaAuto ? '← auto' : '--:--'}" onblur="handleTimeInput(this,${i},'salida',getCfgSalMin())" data-field="salida" ${day.tipo !== 'habil' ? 'disabled' : ''}></td>
+      <td>${renderTimeDisplay(day.entrada)}</td>
+      <td>${renderTimeDisplay(day.desayunoIni)}</td>
+      <td>${renderTimeDisplay(day.desayunoFin)}</td>
+      <td>${renderTimeDisplay(day.comidaIni)}</td>
+      <td>${renderTimeDisplay(day.comidaFin)}</td>
+      <td>${renderTimeDisplay(salidaAuto ? salidaDisplay : day.salida, salidaAuto ? 'auto-calc' : '')}</td>
       <td class="center"><span class="calc-cell suma">${sumaStr}</span></td>
       <td class="center"><span class="calc-cell diario ${diarioClass}">${diarioStr}</span></td>
       <td class="center"><span class="calc-cell abs">${absStr}</span></td>
@@ -1489,7 +1500,7 @@ function renderTable() {
         <button class="tele-btn ${day.teleTarde ? 'active-tarde' : ''}" onclick="setTele(${i},'tarde')" ${(day.tipo !== 'habil' || day.teleDia) ? 'disabled' : ''} title="Tarde en teletrabajo">TARDE</button>
         <span class="tele-bolsa ${teleCls}">${teleStr}</span>
       </td>
-      <td><input class="notes-input" type="text" value="${day.notas}" oninput="updateDayField(${i},'notas',this.value)" data-field="notas" placeholder="—"></td>
+      <td><input class="notes-input" type="text" value="${day.notas}" oninput="updateDayField(${i},'notas',this.value)" onblur="persistDayChange(${i})" data-field="notas" placeholder="—"></td>
       <td class="type-cell">
         <div class="type-dropdown-wrap">
           <div class="type-pill ${day.tipo}" onclick="toggleTypeMenu(event,${i})" title="Cambiar tipo de día">
@@ -1501,7 +1512,6 @@ function renderTable() {
         </div>
       </td>
       <td>
-        <button class="btn btn-secondary" style="padding:3px 8px;font-size:12px" onclick="saveRowChanges(${i})" title="Guardar cambios de la fila">💾</button>
         <button class="btn btn-secondary" style="padding:3px 8px;font-size:12px" onclick="openDayEdit(${i})" title="Editar fichaje">✎</button>
       </td>
     </tr>`;
@@ -1586,6 +1596,12 @@ function updateDay(idx, field, value) {
   months[currentMonthIdx].days[idx][field] = value;
   renderTable();
   renderStats();
+}
+
+function renderTimeDisplay(value, extraClass = '') {
+  const displayValue = value || '--:--';
+  const emptyClass = value ? '' : ' empty';
+  return `<span class="time-display${extraClass ? ' ' + extraClass : ''}${emptyClass}">${displayValue}</span>`;
 }
 
 // Updates state without re-rendering (for fields edited inline like notas)
@@ -2250,6 +2266,17 @@ async function syncChanges() {
   }
 }
 
+async function persistDayChange(idx) {
+  const currentMonth = months[currentMonthIdx];
+  const day = currentMonth?.days?.[idx];
+  if (!currentMonth || !day) return;
+
+  saveStateLocal();
+  if (currentUser && isOnline) {
+    await saveDay(currentMonth.id, idx, day);
+  }
+}
+
 function applyDefaultTimes(monthData) {
   for (const day of monthData.days) {
     if (day.tipo === 'habil') {
@@ -2333,9 +2360,9 @@ async function saveNewMonthToSupabase(monthData) {
 const _origUpdateDay = updateDay;
 updateDay = function(...args) { _origUpdateDay(...args); saveState(); };
 const _origSetTele = setTele;
-setTele = function(...args) { _origSetTele(...args); saveState(); };
+setTele = function(idx, ...args) { _origSetTele(idx, ...args); persistDayChange(idx); };
 const _origSetDayType = setDayType;
-setDayType = function(...args) { _origSetDayType(...args); saveState(); };
+setDayType = function(idx, ...args) { _origSetDayType(idx, ...args); persistDayChange(idx); };
 const _origAddMonth = addMonth;
 addMonth = async function(...args) {
   _origAddMonth(...args);
