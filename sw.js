@@ -1,4 +1,4 @@
-const CACHE_NAME = 'fichajes-v2.4.1';
+const CACHE_NAME = 'fichajes-v2.5.0';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',

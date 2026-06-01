@@ -725,7 +725,7 @@
       color: var(--muted);
       letter-spacing: 1px;
       text-transform: uppercase;
-    ">v2.4.1</div>
+    ">v2.5.0</div>
     <button id="signout-btn" style="
       padding: 6px 12px;
       background: transparent;
@@ -1215,7 +1215,7 @@ function switchMonth(idx) {
 // ── Bolsa cap rules ──────────────────────────────────────────────────────────
 // Outside intensiva: cap 5h on Fridays, free Mon-Thu
 // Inside intensiva:  cap 2h on Fridays, free Mon-Thu
-// On first day of intensiva: reset to 0
+// On first day of intensiva: carry positive balance up to 2h
 // On first day after intensiva ends: reset to 0
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -1251,6 +1251,12 @@ function isFirstDayAfterJI(date) {
   return true;
 }
 
+function applyBolsaBoundaryForDate(date, abs) {
+  if (isJIStartDay(date)) return Math.min(Math.max(abs, 0), 2 * 60);
+  if (isFirstDayAfterJI(date)) return 0;
+  return abs;
+}
+
 // Compute bolsa at a given state accumulating from monthIdx=0 day=0 up to
 // (but not including) the requested month/day boundary.
 // Returns the bolsa value to use as starting point for that month.
@@ -1268,9 +1274,7 @@ function computeBolsaUpTo(targetMonthIdx) {
     const m = months[mi];
     for (let i = 0; i < m.days.length; i++) {
       const d = m.days[i];
-      // Reset events
-      if (isJIStartDay(d.date))       { abs = 0; continue; }
-      if (isFirstDayAfterJI(d.date))  { abs = 0; }
+      abs = applyBolsaBoundaryForDate(d.date, abs);
 
       if (d.tipo !== 'habil' || !d.entrada) continue;
       const suma = calcSuma(d, cfg);
@@ -1448,9 +1452,7 @@ function renderTable() {
     let salidaAuto = false;
 
     const horaDay = getHoraDay(day.date);
-    // Bolsa reset events
-    if (isJIStartDay(day.date))      absRunning = 0;
-    else if (isFirstDayAfterJI(day.date)) absRunning = 0;
+    absRunning = applyBolsaBoundaryForDate(day.date, absRunning);
 
     if (day.tipo === 'habil' && day.entrada) {
       if (isFriday && !day.salida) {
@@ -1556,9 +1558,7 @@ function renderStats() {
 
   for (let i = 0; i < m.days.length; i++) {
     const day = m.days[i];
-    // Bolsa reset events (check before skipping non-habil)
-    if (isJIStartDay(day.date))           absRunning = 0;
-    else if (isFirstDayAfterJI(day.date)) absRunning = 0;
+    absRunning = applyBolsaBoundaryForDate(day.date, absRunning);
     if (day.tipo !== 'habil') { festivos++; continue; }
     if (!day.entrada) continue;
     const suma = calcSuma(day, cfg);
