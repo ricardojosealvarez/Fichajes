@@ -725,7 +725,7 @@
       color: var(--muted);
       letter-spacing: 1px;
       text-transform: uppercase;
-    ">v2.4.0</div>
+    ">v2.4.1</div>
     <button id="signout-btn" style="
       padding: 6px 12px;
       background: transparent;
@@ -1298,6 +1298,16 @@ function getTeleBolsaForQuarter(month) {
 
 function getQuarterForMonth(month) { return Math.floor(month / 3); } // 0..3
 
+function calcTeleTardeConsumed(day, cfg) {
+  const comIni = timeToMins(day.comidaIni);
+  const comFin = timeToMins(day.comidaFin);
+  const salida = timeToMins(day.salida);
+  if (comIni === null || comFin === null || salida === null) return 0;
+
+  const effectiveComFin = Math.max(comFin, comIni + (cfg.horaLunch || 0));
+  return Math.max(salida - effectiveComFin, 0);
+}
+
 // Compute tele bolsa state: returns {bolsa, warnings}
 // bolsa = remaining tele minutes for the quarter of targetMonth at start of targetMonth
 // warnings = array of {quarter, deficit} for any quarter with negative bolsa
@@ -1317,9 +1327,7 @@ function computeTeleBolsa(targetMonthIdx) {
       if (d.teleDia) {
         consumed[q] += suma;
       } else if (d.teleTarde) {
-        const comFin = timeToMins(d.comidaFin);
-        const salida = timeToMins(d.salida);
-        if (comFin !== null && salida !== null) consumed[q] += (salida - comFin);
+        consumed[q] += calcTeleTardeConsumed(d, cfg);
       }
     }
   }
@@ -1362,9 +1370,7 @@ function computeTeleBolsaPerDay() {
       if (d.teleDia) {
         consumed[pq] += suma;
       } else if (d.teleTarde) {
-        const comFin = timeToMins(d.comidaFin);
-        const salida = timeToMins(d.salida);
-        if (comFin !== null && salida !== null) consumed[pq] += (salida - comFin);
+        consumed[pq] += calcTeleTardeConsumed(d, cfg);
       }
     }
   }
@@ -1381,9 +1387,7 @@ function computeTeleBolsaPerDay() {
         if (day.teleDia) {
           dayConsumed = suma;
         } else if (day.teleTarde) {
-          const comFin = timeToMins(day.comidaFin);
-          const salida = timeToMins(day.salida);
-          if (comFin !== null && salida !== null) dayConsumed = salida - comFin;
+          dayConsumed = calcTeleTardeConsumed(day, cfg);
         }
       }
     }
@@ -2149,9 +2153,7 @@ function updateTeleWarningBanner() {
       if (d.teleDia) {
         consumed[q] += suma;
       } else if (d.teleTarde) {
-        const comFin = timeToMins(d.comidaFin);
-        const salida = timeToMins(d.salida);
-        if (comFin !== null && salida !== null) consumed[q] += (salida - comFin);
+        consumed[q] += calcTeleTardeConsumed(d, cfg);
       }
     }
   }
