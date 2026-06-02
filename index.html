@@ -725,7 +725,7 @@
       color: var(--muted);
       letter-spacing: 1px;
       text-transform: uppercase;
-    ">v2.5.0</div>
+    ">v2.5.1</div>
     <button id="signout-btn" style="
       padding: 6px 12px;
       background: transparent;
@@ -1215,8 +1215,8 @@ function switchMonth(idx) {
 // ── Bolsa cap rules ──────────────────────────────────────────────────────────
 // Outside intensiva: cap 5h on Fridays, free Mon-Thu
 // Inside intensiva:  cap 2h on Fridays, free Mon-Thu
-// On first day of intensiva: carry positive balance up to 2h
-// On first day after intensiva ends: reset to 0
+// On first day of intensiva: reset to 0
+// On first day after intensiva ends: carry positive balance up to 2h
 // ─────────────────────────────────────────────────────────────────────────────
 
 function getBolsaCap(date) {
@@ -1252,8 +1252,8 @@ function isFirstDayAfterJI(date) {
 }
 
 function applyBolsaBoundaryForDate(date, abs) {
-  if (isJIStartDay(date)) return Math.min(Math.max(abs, 0), 2 * 60);
-  if (isFirstDayAfterJI(date)) return 0;
+  if (isJIStartDay(date)) return 0;
+  if (isFirstDayAfterJI(date)) return Math.min(Math.max(abs, 0), 2 * 60);
   return abs;
 }
 
