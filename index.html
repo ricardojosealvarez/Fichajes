@@ -725,7 +725,7 @@
       color: var(--muted);
       letter-spacing: 1px;
       text-transform: uppercase;
-    ">v2.5.1</div>
+    ">v2.5.2</div>
     <button id="signout-btn" style="
       padding: 6px 12px;
       background: transparent;
@@ -1257,6 +1257,48 @@ function applyBolsaBoundaryForDate(date, abs) {
   return abs;
 }
 
+/**
+ * Calcula el resultado de bolsa de un día, incluida la salida automática
+ * de los viernes, para que todas las vistas compartan el mismo saldo.
+ */
+function calculateBolsaDay(day, abs, cfg) {
+  const nextAbs = applyBolsaBoundaryForDate(day.date, abs);
+  const result = {
+    abs: nextAbs,
+    salida: day.salida,
+    salidaAuto: false,
+    suma: null,
+    diario: null
+  };
+
+  if (day.tipo !== 'habil' || !day.entrada) return result;
+
+  const isFriday = day.date.getDay() === 5;
+  if (isFriday && !day.salida) {
+    const autoSalida = calcFridaySalida(
+      day,
+      nextAbs,
+      {...cfg, horaDay: getHoraDay(day.date)}
+    );
+    if (autoSalida !== null) {
+      result.salida = minsToTime(autoSalida);
+      result.salidaAuto = true;
+    }
+  }
+
+  const calculatedDay = result.salidaAuto
+    ? {...day, salida: result.salida}
+    : day;
+  result.suma = calcSuma(calculatedDay, cfg);
+  if (result.suma === null) return result;
+
+  result.diario = result.suma - getHoraDay(day.date);
+  result.abs = isFriday
+    ? Math.min(nextAbs + result.diario, getBolsaCap(day.date))
+    : nextAbs + result.diario;
+  return result;
+}
+
 // Compute bolsa at a given state accumulating from monthIdx=0 day=0 up to
 // (but not including) the requested month/day boundary.
 // Returns the bolsa value to use as starting point for that month.
@@ -1274,16 +1316,7 @@ function computeBolsaUpTo(targetMonthIdx) {
     const m = months[mi];
     for (let i = 0; i < m.days.length; i++) {
       const d = m.days[i];
-      abs = applyBolsaBoundaryForDate(d.date, abs);
-
-      if (d.tipo !== 'habil' || !d.entrada) continue;
-      const suma = calcSuma(d, cfg);
-      if (suma === null) continue;
-      const dow = d.date.getDay();
-      const hd  = getHoraDay(d.date);
-      const diario = suma - hd;
-      abs += diario;
-      if (dow === 5) abs = Math.min(abs, getBolsaCap(d.date));
+      abs = calculateBolsaDay(d, abs, cfg).abs;
     }
   }
   return abs;
@@ -1443,38 +1476,17 @@ function renderTable() {
     const isToday = day.date.toDateString() === now.toDateString();
     prevWeek = weekNum;
 
-    const isFriday = dow === 5;
     const dateStr = day.date.toLocaleDateString('es-ES', {day:'2-digit', month:'2-digit'});
     const dayName = DAY_NAMES[dow];
 
-    let suma = null, diario = null;
-    let salidaDisplay = day.salida;
-    let salidaAuto = false;
-
-    const horaDay = getHoraDay(day.date);
-    absRunning = applyBolsaBoundaryForDate(day.date, absRunning);
-
-    if (day.tipo === 'habil' && day.entrada) {
-      if (isFriday && !day.salida) {
-        const cfgRow = {...cfg, horaDay};
-        const autoSal = calcFridaySalida(day, absRunning, cfgRow);
-        if (autoSal !== null) {
-          salidaDisplay = minsToTime(autoSal);
-          salidaAuto = true;
-        }
-      }
-      const tempDay = {...day, salida: salidaAuto ? salidaDisplay : day.salida};
-      suma = calcSuma(tempDay, cfg);
-      if (suma !== null) {
-        diario = suma - horaDay;
-        if (isFriday) {
-          absRunning = Math.min(absRunning + diario, getBolsaCap(day.date));
-        } else {
-          absRunning += diario;
-        }
-        // tele bolsa tracked per-day via computeTeleBolsaPerDay()
-      }
-    }
+    const bolsaDay = calculateBolsaDay(day, absRunning, cfg);
+    absRunning = bolsaDay.abs;
+    const {
+      suma,
+      diario,
+      salida: salidaDisplay,
+      salidaAuto
+    } = bolsaDay;
 
     const sumaStr = suma !== null ? minsToTime(suma) : '';
     const diarioStr = diario !== null ? minsToTime(diario) : '';
@@ -1554,32 +1566,21 @@ function renderStats() {
 
   const cfg = getConfig();
   let absRunning = getPrevMonthEndABS();
-  let totalSuma = 0, days = 0, festivos = 0;
+  let totalSuma = 0, expected = 0, days = 0, festivos = 0;
 
   for (let i = 0; i < m.days.length; i++) {
     const day = m.days[i];
-    absRunning = applyBolsaBoundaryForDate(day.date, absRunning);
+    const bolsaDay = calculateBolsaDay(day, absRunning, cfg);
+    absRunning = bolsaDay.abs;
     if (day.tipo !== 'habil') { festivos++; continue; }
     if (!day.entrada) continue;
-    const suma = calcSuma(day, cfg);
-    if (suma !== null) {
-      totalSuma += suma;
+    if (bolsaDay.suma !== null) {
+      totalSuma += bolsaDay.suma;
+      expected += getHoraDay(day.date);
       days++;
-      const hdDay = getHoraDay(day.date);
-      const diario = suma - hdDay;
-      const isFriday = day.date.getDay() === 5;
-      if (isFriday) absRunning = Math.min(absRunning + diario, getBolsaCap(day.date));
-      else absRunning += diario;
     }
   }
 
-  // Expected is sum of horaDay per worked day (may mix verano/invierno)
-  let expected = 0;
-  for (const day of m.days) {
-    if (day.tipo !== 'habil' || !day.entrada) continue;
-    const suma = calcSuma(day, cfg);
-    if (suma !== null) expected += getHoraDay(day.date);
-  }
   const diff = totalSuma - expected;
 
   const stats = [
@@ -1725,22 +1726,17 @@ function exportCSV() {
   let abs = getPrevMonthEndABS();
   for (const day of m.days) {
     const dow  = day.date.getDay();
-    const suma = day.tipo !== 'habil' ? null : calcSuma(day, cfg);
-    const hd   = getHoraDay(day.date);
-    const diario = suma !== null ? suma - hd : null;
-    if (suma !== null) {
-      if (dow === 5) abs = Math.min(abs + diario, getBolsaCap(day.date));
-      else abs += diario;
-    }
+    const bolsaDay = calculateBolsaDay(day, abs, cfg);
+    abs = bolsaDay.abs;
     csv += [
       day.date.toLocaleDateString('es-ES'),
       day.date.toISOString().slice(0,10),
       DAY_NAMES[dow],
       day.tipo,
       day.entrada, day.desayunoIni, day.desayunoFin,
-      day.comidaIni, day.comidaFin, day.salida,
-      suma !== null ? minsToTime(suma) : '',
-      diario !== null ? minsToTime(diario) : '',
+      day.comidaIni, day.comidaFin, bolsaDay.salida,
+      bolsaDay.suma !== null ? minsToTime(bolsaDay.suma) : '',
+      bolsaDay.diario !== null ? minsToTime(bolsaDay.diario) : '',
       day.teleDia   ? 'Sí' : 'No',
       day.teleTarde ? 'Sí' : 'No',
       day.notas

@@ -31,7 +31,7 @@ La aplicación implementa las siguientes reglas de cómputo:
 
 ### Bolsa de Horas (ABS)
 -   **Viernes**: Se aplica un tope (cap) automático (5h en invierno, 2h en jornada intensiva).
--   **Resets**: La bolsa se reinicia a 0 automáticamente al inicio y fin de la jornada intensiva.
+-   **Límites de jornada intensiva**: La bolsa se reinicia a 0 al inicio. El primer día hábil posterior conserva únicamente el saldo positivo, con un máximo de 2 horas.
 
 ### Teletrabajo
 -   Se gestiona por trimestres (T1-T4).
