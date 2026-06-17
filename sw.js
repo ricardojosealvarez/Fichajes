@@ -1,19 +1,27 @@
-const CACHE_NAME = 'fichajes-v2.6.0';
+const APP_VERSION = '2.6.1';
+const CACHE_NAME = `fichajes-v${APP_VERSION}`;
 const ASSETS_TO_CACHE = [
-  '/',
-  '/index.html',
-  '/manifest.json'
+  './',
+  './index.html',
+  './manifest.json'
 ];
 
 // Install: cache assets
 self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE_NAME).then(cache => {
-      return cache.addAll(ASSETS_TO_CACHE).catch(() => {
+      const requests = ASSETS_TO_CACHE.map(asset => new Request(asset, { cache: 'reload' }));
+      return cache.addAll(requests).catch(() => {
         // Si falla, continúa (algunos assets pueden no estar disponibles)
       });
     }).then(() => self.skipWaiting())
   );
+});
+
+self.addEventListener('message', event => {
+  if (event.data?.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
 });
 
 // Activate: clean old caches
@@ -39,10 +47,10 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // Network-first para index.html
-  if (url.pathname === '/' || url.pathname === '/index.html') {
+  // Network-first para navegación/HTML
+  if (request.mode === 'navigate' || url.pathname.endsWith('/index.html')) {
     event.respondWith(
-      fetch(request)
+      fetch(request, { cache: 'reload' })
         .then(response => {
           if (response && response.status === 200) {
             const responseClone = response.clone();
@@ -54,7 +62,7 @@ self.addEventListener('fetch', event => {
         })
         .catch(() => {
           return caches.match(request).then(cached => {
-            return cached || caches.match('/index.html');
+            return cached || caches.match('./index.html');
           });
         })
     );

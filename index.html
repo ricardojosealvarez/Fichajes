@@ -699,7 +699,7 @@
       color: var(--muted);
       letter-spacing: 1px;
       text-transform: uppercase;
-    ">v2.6.0</div>
+    ">v2.6.1</div>
     <span id="sync-status" style="
       font-family: 'JetBrains Mono', monospace;
       font-size: 11px;
@@ -2459,8 +2459,32 @@ document.querySelectorAll('.config-input, .select-input').forEach(el => {
 
 // ── Service Worker registration ──────────────────────────────────────────────
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js')
-    .then(() => console.log('SW registrado'))
+  const swVersion = '2.6.1';
+  let swRefreshing = false;
+
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (swRefreshing) return;
+    swRefreshing = true;
+    window.location.reload();
+  });
+
+  navigator.serviceWorker.register(`sw.js?v=${swVersion}`, { updateViaCache: 'none' })
+    .then(registration => {
+      registration.update();
+      if (registration.waiting) {
+        registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+      }
+      registration.addEventListener('updatefound', () => {
+        const worker = registration.installing;
+        if (!worker) return;
+        worker.addEventListener('statechange', () => {
+          if (worker.state === 'installed' && navigator.serviceWorker.controller) {
+            worker.postMessage({ type: 'SKIP_WAITING' });
+          }
+        });
+      });
+      console.log('SW registrado');
+    })
     .catch(e => console.warn('SW error:', e));
 }
 
