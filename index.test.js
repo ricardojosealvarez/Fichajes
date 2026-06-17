@@ -1,7 +1,6 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const test = require('node:test');
-const { TextDecoder, TextEncoder } = require('node:util');
 const vm = require('node:vm');
 
 const html = fs.readFileSync(new URL('./index.html', `file://${__filename}`), 'utf8');
@@ -34,23 +33,6 @@ const createContext = overrides => {
   ].forEach(name => vm.runInContext(extractFunction(name), context));
   Object.assign(context, overrides);
   vm.runInContext(extractFunction('calculateBolsaDay'), context);
-  return context;
-};
-
-const createGitHubContext = () => {
-  const context = vm.createContext({
-    TextDecoder,
-    TextEncoder,
-    Uint8Array,
-    btoa: value => Buffer.from(value, 'binary').toString('base64'),
-    atob: value => Buffer.from(value, 'base64').toString('binary')
-  });
-  [
-    'encodeGitHubPath',
-    'encodeBase64Unicode',
-    'decodeBase64Unicode',
-    'getSnapshotDataScore'
-  ].forEach(name => vm.runInContext(extractFunction(name), context));
   return context;
 };
 
@@ -125,28 +107,4 @@ test('los días no hábiles conservan el límite aplicado en la frontera', () =>
 
   assert.equal(result.abs, 2 * 60);
   assert.equal(result.suma, null);
-});
-
-test('codifica rutas GitHub conservando separadores', () => {
-  const context = createGitHubContext();
-
-  assert.equal(
-    context.encodeGitHubPath('data/Fichajes 2026/á.json'),
-    'data/Fichajes%202026/%C3%A1.json'
-  );
-});
-
-test('codifica y decodifica contenido remoto con unicode', () => {
-  const context = createGitHubContext();
-  const content = JSON.stringify({nota: 'mañana €', lineas: ['uno', 'dos']});
-
-  assert.equal(context.decodeBase64Unicode(context.encodeBase64Unicode(content)), content);
-});
-
-test('detecta snapshots con más datos registrados', () => {
-  const context = createGitHubContext();
-  const emptySnapshot = {months: [{days: [{tipo: 'habil', entrada: '', salida: ''}]}]};
-  const filledSnapshot = {months: [{days: [{tipo: 'habil', entrada: '08:00', salida: '15:00'}]}]};
-
-  assert.ok(context.getSnapshotDataScore(filledSnapshot) > context.getSnapshotDataScore(emptySnapshot));
 });

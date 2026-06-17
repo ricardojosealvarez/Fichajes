@@ -537,7 +537,7 @@
 </head>
 <body>
 
-<!-- GitHub sync modal -->
+<!-- AUTH MODAL -->
 <div id="auth-modal" style="
   position: fixed;
   top: 0; left: 0;
@@ -560,61 +560,45 @@
       font-family: 'Syne', sans-serif;
       font-size: 24px;
       font-weight: 700;
-      margin-bottom: 8px;
+      margin-bottom: 24px;
       color: var(--accent);
-    ">Sincronizar con GitHub</h1>
-    <p style="font-size:12px;color:var(--muted);line-height:1.6;margin:0 0 18px">
-      Usa un fine-grained token limitado al repo privado de datos con permiso
-      <strong>Contents: read/write</strong>. La app guarda un único JSON remoto.
-    </p>
+    ">Fichajes</h1>
 
-    <form id="github-sync-form" style="display: flex; flex-direction: column; gap: 12px;">
+    <div style="
+      display: flex;
+      gap: 8px;
+      margin-bottom: 24px;
+      border-bottom: 1px solid var(--border);
+    ">
+      <button id="auth-tab-signin" class="auth-tab" onclick="switchAuthTab('signin')" style="
+        padding: 12px 16px;
+        background: transparent;
+        border: none;
+        color: var(--accent);
+        font-family: 'Syne', sans-serif;
+        font-weight: 600;
+        font-size: 13px;
+        cursor: pointer;
+        border-bottom: 2px solid var(--accent);
+      ">Iniciar sesión</button>
+      <button id="auth-tab-signup" class="auth-tab" onclick="switchAuthTab('signup')" style="
+        padding: 12px 16px;
+        background: transparent;
+        border: none;
+        color: var(--muted);
+        font-family: 'Syne', sans-serif;
+        font-weight: 600;
+        font-size: 13px;
+        cursor: pointer;
+        border-bottom: 2px solid transparent;
+      ">Crear cuenta</button>
+    </div>
+
+    <form id="auth-signin-form" style="display: flex; flex-direction: column; gap: 12px;">
       <input
-        type="text"
-        id="github-owner"
-        placeholder="Usuario u organización"
-        style="
-          background: var(--surface2);
-          border: 1px solid var(--border);
-          color: var(--text);
-          padding: 10px 12px;
-          border-radius: 6px;
-          font-family: 'JetBrains Mono', monospace;
-          font-size: 13px;
-        "
-      />
-      <input
-        type="text"
-        id="github-repo"
-        placeholder="Repositorio privado de datos"
-        style="
-          background: var(--surface2);
-          border: 1px solid var(--border);
-          color: var(--text);
-          padding: 10px 12px;
-          border-radius: 6px;
-          font-family: 'JetBrains Mono', monospace;
-          font-size: 13px;
-        "
-      />
-      <input
-        type="text"
-        id="github-branch"
-        placeholder="Rama (main)"
-        style="
-          background: var(--surface2);
-          border: 1px solid var(--border);
-          color: var(--text);
-          padding: 10px 12px;
-          border-radius: 6px;
-          font-family: 'JetBrains Mono', monospace;
-          font-size: 13px;
-        "
-      />
-      <input
-        type="text"
-        id="github-path"
-        placeholder="Ruta del JSON (data/fichajes.json)"
+        type="email"
+        id="signin-email"
+        placeholder="Email"
         style="
           background: var(--surface2);
           border: 1px solid var(--border);
@@ -627,8 +611,8 @@
       />
       <input
         type="password"
-        id="github-token"
-        placeholder="Fine-grained token"
+        id="signin-password"
+        placeholder="Contraseña"
         style="
           background: var(--surface2);
           border: 1px solid var(--border);
@@ -639,43 +623,85 @@
           font-size: 13px;
         "
       />
-      <div style="display:flex;gap:8px">
-        <button
-          type="button"
-          onclick="handleGitHubConnect()"
-          style="
-            flex:1;
-            background: var(--accent);
-            color: #0e0f11;
-            border: none;
-            padding: 10px 16px;
-            border-radius: 6px;
-            font-family: 'Syne', sans-serif;
-            font-weight: 600;
-            font-size: 13px;
-            cursor: pointer;
-            transition: all 0.15s;
-          "
-        >Conectar</button>
-        <button
-          type="button"
-          onclick="hideLoginModal()"
-          id="github-cache-btn"
-          style="
-            background: transparent;
-            color: var(--muted);
-            border: 1px solid var(--border);
-            padding: 10px 16px;
-            border-radius: 6px;
-            font-family: 'Syne', sans-serif;
-            font-weight: 600;
-            font-size: 13px;
-            cursor: pointer;
-            transition: all 0.15s;
-          "
-        >Usar caché</button>
-      </div>
-      <div id="github-error" style="color: var(--danger); font-size: 12px; display: none;"></div>
+      <button
+        type="button"
+        onclick="handleSignIn()"
+        style="
+          background: var(--accent);
+          color: #0e0f11;
+          border: none;
+          padding: 10px 16px;
+          border-radius: 6px;
+          font-family: 'Syne', sans-serif;
+          font-weight: 600;
+          font-size: 13px;
+          cursor: pointer;
+          transition: all 0.15s;
+        "
+      >Iniciar sesión</button>
+      <div id="signin-error" style="color: var(--danger); font-size: 12px; display: none;"></div>
+    </form>
+
+    <form id="auth-signup-form" style="display: none; flex-direction: column; gap: 12px;">
+      <input
+        type="email"
+        id="signup-email"
+        placeholder="Email"
+        style="
+          background: var(--surface2);
+          border: 1px solid var(--border);
+          color: var(--text);
+          padding: 10px 12px;
+          border-radius: 6px;
+          font-family: 'JetBrains Mono', monospace;
+          font-size: 13px;
+        "
+      />
+      <input
+        type="password"
+        id="signup-password"
+        placeholder="Contraseña (mín. 6 caracteres)"
+        style="
+          background: var(--surface2);
+          border: 1px solid var(--border);
+          color: var(--text);
+          padding: 10px 12px;
+          border-radius: 6px;
+          font-family: 'JetBrains Mono', monospace;
+          font-size: 13px;
+        "
+      />
+      <input
+        type="password"
+        id="signup-password-confirm"
+        placeholder="Confirmar contraseña"
+        style="
+          background: var(--surface2);
+          border: 1px solid var(--border);
+          color: var(--text);
+          padding: 10px 12px;
+          border-radius: 6px;
+          font-family: 'JetBrains Mono', monospace;
+          font-size: 13px;
+        "
+      />
+      <button
+        type="button"
+        onclick="handleSignUp()"
+        style="
+          background: var(--accent);
+          color: #0e0f11;
+          border: none;
+          padding: 10px 16px;
+          border-radius: 6px;
+          font-family: 'Syne', sans-serif;
+          font-weight: 600;
+          font-size: 13px;
+          cursor: pointer;
+          transition: all 0.15s;
+        "
+      >Crear cuenta</button>
+      <div id="signup-error" style="color: var(--danger); font-size: 12px; display: none;"></div>
     </form>
   </div>
 </div>
@@ -699,12 +725,7 @@
       color: var(--muted);
       letter-spacing: 1px;
       text-transform: uppercase;
-    ">v2.6.1</div>
-    <span id="sync-status" style="
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 11px;
-      color: var(--muted);
-    ">local</span>
+    ">v2.6.2</div>
     <button id="signout-btn" style="
       padding: 6px 12px;
       background: transparent;
@@ -716,7 +737,7 @@
       border-radius: 6px;
       transition: all 0.15s;
       display: none;
-    " onclick="showGitHubModal(false)">GitHub</button>
+    " onclick="handleSignOut()">Sign Out</button>
   </div>
 </header>
 
@@ -2102,14 +2123,15 @@ function saveRowChanges(idx) {
   // Check if any input in the row is marked as invalid
   const invalidInputs = row.querySelectorAll('.time-input.invalid');
   if (invalidInputs.length > 0) {
+    // Find the first invalid input and set its title as the alert message
     const firstInvalid = invalidInputs[0];
-    firstInvalid.focus();
+    el.classList.add('invalid');
+    el.title = _thisErr.msg;
     return;
   }
   applyTableRowValidation(idx);
   renderTable();
   renderStats();
-  saveState();
 }
 
 function updateTeleWarningBanner() {
@@ -2162,7 +2184,8 @@ function validateBolsaInicio(el) {
     el.value = parsed;
   }
   recalcAll();
-  saveState();
+  saveStateLocal();
+  saveConfig();
 }
 
 function validateConfigTime(el) {
@@ -2174,82 +2197,24 @@ function validateConfigTime(el) {
   el.style.borderColor = '';
   el.value = parsed;
   recalcAll();
-  saveState();
+  saveStateLocal();
+  saveConfig();
 }
 
-// ── Persistencia local + sincronización GitHub ──────────────────────────────
+// ── Persistencia localStorage (caché offline) ───────────────────────────────
 const STORAGE_KEY = 'fichajes_v2_cache';
-const STORAGE_BACKUP_PREFIX = 'fichajes_v2_backup_';
-const GITHUB_SETTINGS_KEY = 'fichajes_github_settings';
-const GITHUB_API_BASE = 'https://api.github.com';
-const DEFAULT_GITHUB_BRANCH = 'main';
-const DEFAULT_GITHUB_PATH = 'data/fichajes.json';
-
-let githubSettings = null;
-let githubRemoteSha = null;
-let githubSaveTimer = null;
-let githubSaving = false;
-let githubPendingSave = false;
-let githubConflict = false;
-let isOnline = navigator.onLine;
-
-function buildStateSnapshot() {
-  return {
-    version: 2,
-    app: 'fichajes',
-    exportedAt: new Date().toISOString(),
-    config: readConfigFromDOM(),
-    months: months.map(m => ({
-      ...m,
-      days: m.days.map(d => ({ ...d, date: d.date.toISOString() }))
-    }))
-  };
-}
-
-function applyStateSnapshot(data) {
-  if (!data || !Array.isArray(data.months)) {
-    throw new Error('Formato JSON remoto no reconocido.');
-  }
-  months = data.months.map(m => ({
-    ...m,
-    days: (m.days || []).map(d => ({ ...d, date: new Date(d.date) }))
-  }));
-  applyConfigToDOM(data.config);
-}
-
-function getSnapshotDataScore(data) {
-  if (!data || !Array.isArray(data.months)) return 0;
-  return data.months.reduce((total, month) => {
-    const daysScore = (month.days || []).reduce((dayTotal, day) => {
-      const fields = ['entrada', 'desayunoIni', 'desayunoFin', 'comidaIni', 'comidaFin', 'salida', 'notas'];
-      const filledFields = fields.filter(field => String(day[field] || '').trim()).length;
-      const typeScore = day.tipo && day.tipo !== 'habil' ? 1 : 0;
-      const teleScore = day.teleDia || day.teleTarde ? 1 : 0;
-      return dayTotal + filledFields + typeScore + teleScore;
-    }, 0);
-    return total + 1 + daysScore;
-  }, 0);
-}
-
-function saveStateBackup(reason) {
-  try {
-    const data = buildStateSnapshot();
-    data.backupReason = reason;
-    data.backupCreatedAt = new Date().toISOString();
-    localStorage.setItem(`${STORAGE_BACKUP_PREFIX}${data.backupCreatedAt}`, JSON.stringify(data));
-
-    Object.keys(localStorage)
-      .filter(key => key.startsWith(STORAGE_BACKUP_PREFIX))
-      .sort()
-      .slice(0, -5)
-      .forEach(key => localStorage.removeItem(key));
-  } catch (e) { console.warn('Error saving local backup:', e); }
-}
 
 function saveStateLocal() {
   try {
-    const data = buildStateSnapshot();
-    data.lastLocalSave = new Date().toISOString();
+    const data = {
+      months: months.map(m => ({
+        ...m,
+        days: m.days.map(d => ({ ...d, date: d.date.toISOString() }))
+      })),
+      config: readConfigFromDOM(),
+      syncQueue,
+      lastSync: new Date().toISOString()
+    };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
   } catch (e) { console.warn('Error saving to localStorage:', e); }
 }
@@ -2258,210 +2223,56 @@ function loadStateLocal() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return false;
-    applyStateSnapshot(JSON.parse(raw));
+    const data = JSON.parse(raw);
+    
+    months = (data.months || []).map(m => ({
+      ...m,
+      days: (m.days || []).map(d => ({
+        ...d,
+        date: new Date(d.date)
+      }))
+    }));
+    
+    if (data.config) applyConfigToDOM(data.config);
+    syncQueue = data.syncQueue || [];
     return true;
   } catch (e) { console.warn('Error loading from localStorage:', e); return false; }
 }
 
-function loadGitHubSettings() {
-  try {
-    const raw = localStorage.getItem(GITHUB_SETTINGS_KEY);
-    githubSettings = raw ? JSON.parse(raw) : null;
-  } catch (e) {
-    githubSettings = null;
-  }
-  return githubSettings;
-}
-
-function saveGitHubSettings(settings) {
-  githubSettings = {
-    owner: settings.owner.trim(),
-    repo: settings.repo.trim(),
-    branch: (settings.branch || DEFAULT_GITHUB_BRANCH).trim(),
-    path: (settings.path || DEFAULT_GITHUB_PATH).trim(),
-    token: settings.token.trim()
-  };
-  localStorage.setItem(GITHUB_SETTINGS_KEY, JSON.stringify(githubSettings));
-}
-
-function clearGitHubSettings() {
-  githubSettings = null;
-  githubRemoteSha = null;
-  localStorage.removeItem(GITHUB_SETTINGS_KEY);
-}
-
-function isGitHubConfigured() {
-  return Boolean(githubSettings?.owner && githubSettings?.repo &&
-    githubSettings?.branch && githubSettings?.path && githubSettings?.token);
-}
-
-function encodeGitHubPath(path) {
-  return path.split('/').map(part => encodeURIComponent(part)).join('/');
-}
-
-function getGitHubContentUrl() {
-  const owner = encodeURIComponent(githubSettings.owner);
-  const repo = encodeURIComponent(githubSettings.repo);
-  return `${GITHUB_API_BASE}/repos/${owner}/${repo}/contents/${encodeGitHubPath(githubSettings.path)}`;
-}
-
-function getGitHubHeaders() {
-  return {
-    'Accept': 'application/vnd.github+json',
-    'Authorization': `Bearer ${githubSettings.token}`,
-    'X-GitHub-Api-Version': '2022-11-28'
-  };
-}
-
-function encodeBase64Unicode(value) {
-  const bytes = new TextEncoder().encode(value);
-  let binary = '';
-  for (const byte of bytes) binary += String.fromCharCode(byte);
-  return btoa(binary);
-}
-
-function decodeBase64Unicode(value) {
-  const binary = atob(String(value || '').replace(/\s/g, ''));
-  const bytes = Uint8Array.from(binary, ch => ch.charCodeAt(0));
-  return new TextDecoder().decode(bytes);
-}
-
-function setSyncStatus(text, kind = 'muted') {
-  const el = document.getElementById('sync-status');
-  if (!el) return;
-  el.textContent = text;
-  const colors = {
-    ok: 'var(--accent)',
-    warn: 'var(--orange)',
-    error: 'var(--danger)',
-    muted: 'var(--muted)'
-  };
-  el.style.color = colors[kind] || colors.muted;
-}
-
-function _showConfigToast(msg, isError) {
-  let el = document.getElementById('cfg-save-toast');
-  if (!el) {
-    el = document.createElement('div');
-    el.id = 'cfg-save-toast';
-    el.style.cssText = 'position:fixed;bottom:20px;right:20px;padding:8px 14px;border-radius:8px;font-size:13px;font-weight:600;z-index:9999;transition:opacity 0.4s;pointer-events:none;';
-    document.body.appendChild(el);
-  }
-  el.textContent = msg;
-  el.style.background = isError ? '#e53e3e' : '#2d7d3a';
-  el.style.color = '#fff';
-  el.style.opacity = '1';
-  clearTimeout(el._hideTimer);
-  el._hideTimer = setTimeout(() => { el.style.opacity = '0'; }, 2500);
-}
-
-async function fetchGitHubContent() {
-  const url = `${getGitHubContentUrl()}?ref=${encodeURIComponent(githubSettings.branch)}`;
-  const res = await fetch(url, { headers: getGitHubHeaders() });
-  if (res.status === 404) return null;
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.message || `GitHub GET ${res.status}`);
-  return data;
-}
-
-async function loadDataFromGitHub() {
-  if (!isGitHubConfigured() || !isOnline) return false;
-  setSyncStatus('cargando...', 'warn');
-  const remote = await fetchGitHubContent();
-  if (!remote) {
-    githubRemoteSha = null;
-    await saveRemoteState({message: 'Create fichajes data'});
-    return true;
-  }
-  githubRemoteSha = remote.sha;
-  const remoteSnapshot = JSON.parse(decodeBase64Unicode(remote.content));
-  const localSnapshot = buildStateSnapshot();
-  if (getSnapshotDataScore(localSnapshot) > getSnapshotDataScore(remoteSnapshot)) {
-    githubConflict = true;
-    setSyncStatus('conflicto', 'error');
-    throw new Error('GitHub contiene menos datos que la caché local. No se ha sobrescrito nada.');
-  }
-  saveStateBackup('before-github-load');
-  applyStateSnapshot(remoteSnapshot);
-  saveStateLocal();
-  setSyncStatus('sincronizado', 'ok');
-  githubConflict = false;
-  return true;
-}
-
-async function saveRemoteState(options = {}) {
-  if (!isGitHubConfigured() || !isOnline) {
-    setSyncStatus(isGitHubConfigured() ? 'offline' : 'local', 'warn');
-    return false;
-  }
-  if (githubConflict && !options.force) {
-    setSyncStatus('conflicto', 'error');
-    return false;
-  }
-  if (githubSaving) {
-    githubPendingSave = true;
-    return false;
-  }
-  githubSaving = true;
-  setSyncStatus('guardando...', 'warn');
-  try {
-    const body = {
-      message: options.message || `Update fichajes ${new Date().toISOString()}`,
-      content: encodeBase64Unicode(JSON.stringify(buildStateSnapshot(), null, 2)),
-      branch: githubSettings.branch
-    };
-    if (githubRemoteSha) body.sha = githubRemoteSha;
-    const res = await fetch(getGitHubContentUrl(), {
-      method: 'PUT',
-      headers: {...getGitHubHeaders(), 'Content-Type': 'application/json'},
-      body: JSON.stringify(body)
-    });
-    const data = await res.json().catch(() => ({}));
-    if (res.status === 409) {
-      githubConflict = true;
-      setSyncStatus('conflicto', 'error');
-      _showConfigToast('Conflicto remoto: recarga desde GitHub o fuerza subida local.', true);
-      return false;
-    }
-    if (!res.ok) throw new Error(data.message || `GitHub PUT ${res.status}`);
-    githubRemoteSha = data.content?.sha || githubRemoteSha;
-    githubConflict = false;
-    setSyncStatus('sincronizado', 'ok');
-    return true;
-  } catch (e) {
-    console.error('Error syncing with GitHub:', e);
-    setSyncStatus('error sync', 'error');
-    _showConfigToast('Error GitHub: ' + e.message, true);
-    return false;
-  } finally {
-    githubSaving = false;
-    if (githubPendingSave) {
-      githubPendingSave = false;
-      scheduleGitHubSave(500);
-    }
-  }
-}
-
-function scheduleGitHubSave(delay = 1200) {
-  if (!isGitHubConfigured()) {
-    setSyncStatus('local', 'muted');
-    return;
-  }
-  clearTimeout(githubSaveTimer);
-  githubSaveTimer = setTimeout(() => { saveRemoteState(); }, delay);
-}
-
+// Función fallback para compatible con código existente
 function saveState() {
   saveStateLocal();
-  scheduleGitHubSave();
+  if (currentUser && isOnline) syncChanges();
 }
 
+// Sincronizar cambios a Supabase
 async function syncChanges() {
-  return saveRemoteState();
+  if (!currentUser || !isOnline) return;
+  
+  const currentMonth = months[currentMonthIdx];
+  if (!currentMonth) return;
+
+  try {
+    // Sincronizar días del mes actual
+    for (const day of currentMonth.days) {
+      await saveDay(currentMonth.id, 0, day);
+    }
+    // Sincronizar configuración
+    await saveConfig();
+  } catch (e) {
+    console.error('Sync error:', e);
+  }
 }
 
-async function persistDayChange() {
-  saveState();
+async function persistDayChange(idx) {
+  const currentMonth = months[currentMonthIdx];
+  const day = currentMonth?.days?.[idx];
+  if (!currentMonth || !day) return;
+
+  saveStateLocal();
+  if (currentUser && isOnline) {
+    await saveDay(currentMonth.id, idx, day);
+  }
 }
 
 function applyDefaultTimes(monthData) {
@@ -2475,6 +2286,74 @@ function applyDefaultTimes(monthData) {
   }
 }
 
+async function saveNewMonthToSupabase(monthData) {
+  if (!currentUser || !isOnline) return;
+  try {
+    // 1. Create month record
+    const mRes = await fetch(`${SUPABASE_URL}/rest/v1/months`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': SUPABASE_ANON_KEY,
+        'Authorization': `Bearer ${currentSession.access_token}`
+      },
+      body: JSON.stringify({
+        id: monthData.id,
+        user_id: currentUser.id,
+        year: monthData.year,
+        month: monthData.month + 1
+      })
+    });
+    if (!mRes.ok) {
+      console.error('Error creando mes en Supabase:', await mRes.text());
+      return;
+    }
+    // 2. Insert days (assign IDs to local days for future upserts)
+    const daysPayload = monthData.days.map(d => {
+      if (!d.id) {
+        d.id = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+          const r = Math.random() * 16 | 0;
+          return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+        });
+      }
+      const isoDate = `${d.date.getFullYear()}-${String(d.date.getMonth()+1).padStart(2,'0')}-${String(d.date.getDate()).padStart(2,'0')}`;
+      return {
+        id: d.id,
+        month_id: monthData.id,
+        date: isoDate,
+        entrada: d.entrada || null,
+        desayunoini: d.desayunoIni || null,
+        desayunofin: d.desayunoFin || null,
+        comidaini: d.comidaIni || null,
+        comidafin: d.comidaFin || null,
+        salida: d.salida || null,
+        teledia: d.teleDia || false,
+        teletarde: d.teleTarde || false,
+        notas: d.notas || null,
+        tipo: d.tipo || 'habil'
+      };
+    });
+    const dRes = await fetch(`${SUPABASE_URL}/rest/v1/days`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': SUPABASE_ANON_KEY,
+        'Authorization': `Bearer ${currentSession.access_token}`,
+        'Prefer': 'resolution=merge-duplicates'
+      },
+      body: JSON.stringify(daysPayload)
+    });
+    if (!dRes.ok) {
+      console.error('Error creando días en Supabase:', await dRes.text());
+    } else {
+      console.log('✓ Mes guardado en Supabase:', monthData.id);
+      saveStateLocal();
+    }
+  } catch (e) {
+    console.error('Error en saveNewMonthToSupabase:', e);
+  }
+}
+
 // Patch all mutating functions to auto-save
 const _origUpdateDay = updateDay;
 updateDay = function(...args) { _origUpdateDay(...args); saveState(); };
@@ -2485,19 +2364,21 @@ setDayType = function(idx, ...args) { _origSetDayType(idx, ...args); persistDayC
 const _origAddMonth = addMonth;
 addMonth = async function(...args) {
   _origAddMonth(...args);
-  saveState();
+  saveStateLocal();
+  const newlyAddedMonth = months[currentMonthIdx];
+  if (newlyAddedMonth) await saveNewMonthToSupabase(newlyAddedMonth);
 };
 const _origConfirmDelete = confirmDeleteMonth;
 confirmDeleteMonth = function(...args) { _origConfirmDelete(...args); saveState(); };
 
 // Also save on config changes (only on change/blur, not on every keystroke)
 document.querySelectorAll('.config-input, .select-input').forEach(el => {
-  el.addEventListener('change', () => { saveState(); });
+  el.addEventListener('change', () => { saveStateLocal(); saveConfig(); });
 });
 
 // ── Service Worker registration ──────────────────────────────────────────────
 if ('serviceWorker' in navigator) {
-  const swVersion = '2.6.1';
+  const swVersion = '2.6.2';
   let swRefreshing = false;
 
   navigator.serviceWorker.addEventListener('controllerchange', () => {
@@ -2526,23 +2407,611 @@ if ('serviceWorker' in navigator) {
     .catch(e => console.warn('SW error:', e));
 }
 
+// ── SUPABASE REST API (sin librería JS) ──────────────────────────────────
+
+const SUPABASE_URL = 'https://ruhcjikrtgnwcrbacwcc.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ1aGNqaWtydGdud2NyYmFjd2NjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU5MTM2OTIsImV4cCI6MjA5MTQ4OTY5Mn0.YVrcVB7Qvi3OmEvYe6uZIJSB6afk6KTgqM4IagrL93U';
+
+let currentUser = null;
+let currentSession = null;
+let isOnline = navigator.onLine;
+let syncQueue = [];
+
 window.addEventListener('online', () => {
   isOnline = true;
-  setSyncStatus(isGitHubConfigured() ? 'online' : 'local', isGitHubConfigured() ? 'warn' : 'muted');
-  scheduleGitHubSave(200);
+  console.log('🟢 Online');
 });
 
 window.addEventListener('offline', () => {
   isOnline = false;
-  setSyncStatus('offline', 'warn');
+  console.log('🔴 Offline');
 });
 
+// ── AUTH REST ────────────────────────────────────────────────────────────
+
+async function signUp(email, password) {
+  try {
+    const res = await fetch(`${SUPABASE_URL}/auth/v1/signup`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': SUPABASE_ANON_KEY
+      },
+      body: JSON.stringify({
+        email,
+        password,
+        data: {}
+      })
+    });
+    const data = await res.json();
+    
+    if (!res.ok) {
+      console.error('Signup error:', data);
+      return { success: false, error: data.message || data.error_description || 'Error en signup' };
+    }
+    
+    currentUser = data.user;
+    currentSession = data.session;
+    if (data.session?.access_token) {
+      localStorage.setItem('auth_token', data.session.access_token);
+      if (data.session.refresh_token) localStorage.setItem('refresh_token', data.session.refresh_token);
+    }
+    
+    // Crear registro en tabla users
+    if (data.session?.access_token) {
+      await fetch(`${SUPABASE_URL}/rest/v1/users`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${data.session.access_token}`
+        },
+        body: JSON.stringify({ id: data.user.id, email })
+      }).catch(e => console.warn('Error creating user record:', e));
+      
+      // Crear configuración por defecto
+      await fetch(`${SUPABASE_URL}/rest/v1/config`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${data.session.access_token}`
+        },
+        body: JSON.stringify({ user_id: data.user.id })
+      }).catch(e => console.warn('Error creating config:', e));
+    }
+    
+    return { success: true };
+  } catch (e) {
+    console.error('Signup exception:', e);
+    return { success: false, error: e.message };
+  }
+}
+
+async function signIn(email, password) {
+  try {
+    const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': SUPABASE_ANON_KEY
+      },
+      body: JSON.stringify({ email, password })
+    });
+    const data = await res.json();
+    
+    if (!res.ok) {
+      console.error('Signin error:', data);
+      return { success: false, error: data.message || data.error_description || 'Error en signin' };
+    }
+    
+    currentUser = data.user;
+    currentSession = data;
+    localStorage.setItem('auth_token', data.access_token);
+    if (data.refresh_token) localStorage.setItem('refresh_token', data.refresh_token);
+    
+    return { success: true };
+  } catch (e) {
+    console.error('Signin exception:', e);
+    return { success: false, error: e.message };
+  }
+}
+
+// Comprueba si un JWT (base64) está expirado
+function _isJwtExpired(token) {
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    return payload.exp && payload.exp * 1000 < Date.now();
+  } catch (e) { return true; }
+}
+
+// Renueva el access_token usando el refresh_token
+async function refreshSession() {
+  const refreshToken = localStorage.getItem('refresh_token');
+  if (!refreshToken) return false;
+  try {
+    const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=refresh_token`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON_KEY },
+      body: JSON.stringify({ refresh_token: refreshToken })
+    });
+    if (!res.ok) {
+      console.warn('No se pudo renovar el token, status:', res.status);
+      localStorage.removeItem('auth_token');
+      localStorage.removeItem('refresh_token');
+      return false;
+    }
+    const data = await res.json();
+    currentUser = data.user;
+    currentSession = data;
+    localStorage.setItem('auth_token', data.access_token);
+    if (data.refresh_token) localStorage.setItem('refresh_token', data.refresh_token);
+    console.log('✓ Token renovado');
+    return true;
+  } catch (e) {
+    console.error('Error renovando token:', e);
+    return false;
+  }
+}
+
+async function initAuth() {
+  const token = localStorage.getItem('auth_token');
+  if (!token) return false;
+
+  // Si el token está expirado, intentar renovarlo antes de usarlo
+  if (_isJwtExpired(token)) {
+    console.log('Token expirado, intentando renovar...');
+    const renewed = await refreshSession();
+    if (!renewed) return false;
+    return true;
+  }
+
+  try {
+    const res = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+      headers: {
+        'apikey': SUPABASE_ANON_KEY,
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    if (!res.ok) {
+      // Intentar refresh antes de descartar la sesión
+      console.warn('Token inválido (status', res.status, '), intentando renovar...');
+      return await refreshSession();
+    }
+    
+    const user = await res.json();
+    currentUser = user;
+    currentSession = { access_token: token };
+    return true;
+  } catch (e) {
+    console.error('Error verificando sesión:', e);
+    return false;
+  }
+}
+
 async function ensureCurrentMonthExists() {
+  console.log('📅 ensureCurrentMonthExists - meses actuales:', months.length);
   if (months.length === 0) {
+    console.log('📅 Creando mes actual con valores predefinidos...');
     const now = new Date();
-    const newM = createMonthData(now.getFullYear(), now.getMonth());
-    applyDefaultTimes(newM);
-    months = [newM];
+    const year = now.getFullYear();
+    const monthIdx = now.getMonth(); // 0-11
+    const monthNum = monthIdx + 1;   // 1-12 para BD
+    
+    console.log('Año:', year, 'Mes:', monthNum, '(índice:', monthIdx + ')');
+    
+    // Generar UUID para el mes
+    const monthId = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+      const r = Math.random() * 16 | 0;
+      const v = c === 'x' ? r : (r & 0x3 | 0x8);
+      return v.toString(16);
+    });
+    
+    try {
+      // 1. Crear mes en Supabase
+      console.log('1️⃣ Insertando mes...');
+      const monthRes = await fetch(`${SUPABASE_URL}/rest/v1/months`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${currentSession.access_token}`
+        },
+        body: JSON.stringify({
+          id: monthId,
+          user_id: currentUser.id,
+          year: year,
+          month: monthNum
+        })
+      });
+      
+      console.log('Mes response status:', monthRes.status);
+      if (!monthRes.ok) {
+        const err = await monthRes.json();
+        console.error('❌ Error creando mes:', err);
+        return;
+      }
+      
+      console.log('✓ Mes creado:', monthId);
+      
+      // 2. Generar todos los días del mes con valores predefinidos
+      const daysInMonth = new Date(year, monthNum, 0).getDate();
+      console.log('2️⃣ Generando', daysInMonth, 'días...');
+      const defaultDays = [];
+      const _festivosYear = FESTIVOS_ANDALUCIA[year] || [];
+      const _festivosMap = {};
+      for (const f of _festivosYear) _festivosMap[f.iso] = f.nota;
+
+      for (let i = 1; i <= daysInMonth; i++) {
+        const dayDate = new Date(year, monthIdx, i);
+        const dow = dayDate.getDay();
+        if (dow === 0 || dow === 6) continue; // skip weekends
+
+        const isoDate = `${dayDate.getFullYear()}-${String(dayDate.getMonth()+1).padStart(2,'0')}-${String(dayDate.getDate()).padStart(2,'0')}`;
+        const esFestivo = isoDate in _festivosMap;
+        const dayId = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+          const r = Math.random() * 16 | 0;
+          const v = c === 'x' ? r : (r & 0x3 | 0x8);
+          return v.toString(16);
+        });
+
+        defaultDays.push({
+          id: dayId,
+          month_id: monthId,
+          date: isoDate,
+          entrada: esFestivo ? null : '08:00',
+          desayunoini: esFestivo ? null : '09:00',
+          desayunofin: esFestivo ? null : '09:15',
+          comidaini: null,
+          comidafin: null,
+          salida: esFestivo ? null : '15:00',
+          teledia: false,
+          teletarde: false,
+          notas: esFestivo ? _festivosMap[isoDate] : null,
+          tipo: esFestivo ? 'festivo' : 'habil'
+        });
+      }
+      
+      console.log('Payload días (primero):', defaultDays[0]);
+      
+      // 3. Insertar días en Supabase
+      console.log('3️⃣ Insertando días...');
+      const daysRes = await fetch(`${SUPABASE_URL}/rest/v1/days`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${currentSession.access_token}`,
+          'Prefer': 'resolution=merge-duplicates'
+        },
+        body: JSON.stringify(defaultDays)
+      });
+      
+      console.log('Días response status:', daysRes.status);
+      const daysRespText = await daysRes.text();
+      console.log('Días response body:', daysRespText);
+      
+      if (!daysRes.ok) {
+        console.error('❌ Error creando días');
+        return;
+      }
+      
+      console.log('✓ Días creados:', defaultDays.length);
+      
+      // 4. Recargar datos
+      console.log('4️⃣ Recargando datos...');
+      await loadDataFromSupabase();
+      console.log('✓ Datos recargados');
+      
+    } catch (e) {
+      console.error('❌ Error en ensureCurrentMonthExists:', e);
+    }
+  } else {
+    console.log('✓ Ya hay meses, no es necesario crear');
+  }
+}
+
+// ── SYNC REST ────────────────────────────────────────────────────────────
+
+async function saveDay(monthId, dayIdx, dayData) {
+  if (!currentUser || !isOnline) {
+    console.log('Guardando en cache local (no online o no user)');
+    saveStateLocal();
+    return;
+  }
+
+  try {
+    // Generar UUID v4 simple
+    const id = dayData.id || 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+      const r = Math.random() * 16 | 0;
+      const v = c === 'x' ? r : (r & 0x3 | 0x8);
+      return v.toString(16);
+    });
+
+    console.log('Guardando día:', dayData);
+    console.log('Month ID:', monthId);
+    const payload = {
+      id: id,
+      month_id: monthId,
+      date: `${dayData.date.getFullYear()}-${String(dayData.date.getMonth()+1).padStart(2,'0')}-${String(dayData.date.getDate()).padStart(2,'0')}`,
+      entrada: dayData.entrada || null,
+      desayunoini: dayData.desayunoIni || null,
+      desayunofin: dayData.desayunoFin || null,
+      comidaini: dayData.comidaIni || null,
+      comidafin: dayData.comidaFin || null,
+      salida: dayData.salida || null,
+      teledia: dayData.teleDia || false,
+      teletarde: dayData.teleTarde || false,
+      notas: dayData.notas || null,
+      tipo: dayData.tipo || 'habil'
+    };
+    console.log('Payload:', payload);
+    
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/days`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': SUPABASE_ANON_KEY,
+        'Authorization': `Bearer ${currentSession.access_token}`,
+        'Prefer': 'resolution=merge-duplicates'
+      },
+      body: JSON.stringify(payload)
+    });
+    
+    console.log('Response status:', res.status);
+    const respText = await res.text();
+    console.log('Response:', respText);
+    
+    if (!res.ok) {
+      console.error('Error guardando día, status:', res.status, 'body:', respText);
+      throw new Error('Error guardando día: ' + res.status);
+    }
+    
+    console.log('✓ Día guardado');
+    saveStateLocal();
+  } catch (e) {
+    console.error('Error saving day:', e);
+    saveStateLocal();
+  }
+}
+
+function _showConfigToast(msg, isError) {
+  let el = document.getElementById('cfg-save-toast');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'cfg-save-toast';
+    el.style.cssText = 'position:fixed;bottom:20px;right:20px;padding:8px 14px;border-radius:8px;font-size:13px;font-weight:600;z-index:9999;transition:opacity 0.4s;pointer-events:none;';
+    document.body.appendChild(el);
+  }
+  el.textContent = msg;
+  el.style.background = isError ? '#e53e3e' : '#2d7d3a';
+  el.style.color = '#fff';
+  el.style.opacity = '1';
+  clearTimeout(el._hideTimer);
+  el._hideTimer = setTimeout(() => { el.style.opacity = '0'; }, 2500);
+}
+
+async function saveConfig() {
+  console.log('saveConfig() llamado — user:', currentUser?.id, 'online:', isOnline);
+  if (!currentUser) {
+    console.warn('saveConfig: no currentUser, guardando solo local');
+    saveStateLocal();
+    return;
+  }
+  if (!isOnline) {
+    console.warn('saveConfig: offline, guardando solo local');
+    saveStateLocal();
+    return;
+  }
+
+  try {
+    const payload = {
+      user_id: currentUser.id,
+      horadayinv: document.getElementById('cfg-hora-day-inv')?.value || null,
+      horadayver: document.getElementById('cfg-hora-day-ver')?.value || null,
+      jiinicio: document.getElementById('cfg-ji-inicio')?.value || null,
+      jifin: document.getElementById('cfg-ji-fin')?.value || null,
+      hourin: document.getElementById('cfg-hour-in')?.value || null,
+      desayuno: document.getElementById('cfg-desayuno')?.value || null,
+      comida: document.getElementById('cfg-comida')?.value || null,
+      salmin: document.getElementById('cfg-sal-min')?.value || null,
+      bolsainicio: document.getElementById('cfg-bolsa-inicio')?.value || null,
+      telet1: document.getElementById('cfg-tele-t1')?.value || null,
+      telet2: document.getElementById('cfg-tele-t2')?.value || null,
+      telet3: document.getElementById('cfg-tele-t3')?.value || null,
+      telet4: document.getElementById('cfg-tele-t4')?.value || null
+    };
+    console.log('saveConfig payload:', JSON.stringify(payload));
+    // Upsert: crea la fila si no existe, la actualiza si ya existe (on_conflict=user_id)
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/config?on_conflict=user_id`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': SUPABASE_ANON_KEY,
+        'Authorization': `Bearer ${currentSession.access_token}`,
+        'Prefer': 'resolution=merge-duplicates'
+      },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) {
+      const errText = await res.text();
+      // Si el token expiró durante la sesión, intentar renovar y reintentar
+      if (res.status === 401) {
+        console.warn('saveConfig: 401, intentando renovar token...');
+        const renewed = await refreshSession();
+        if (renewed) {
+          console.log('Token renovado, reintentando saveConfig...');
+          return saveConfig();
+        } else {
+          showLoginModal();
+          return;
+        }
+      }
+      console.error('Error guardando config, status:', res.status, 'body:', errText);
+      _showConfigToast('Error config: ' + res.status + ' — ' + errText.slice(0, 80), true);
+    } else {
+      console.log('✓ Config guardada');
+      _showConfigToast('✓ Configuración guardada', false);
+    }
+    saveStateLocal();
+  } catch (e) {
+    console.error('Error saving config:', e);
+    _showConfigToast('Error de red: ' + e.message, true);
+    saveStateLocal();
+  }
+}
+
+async function loadDataFromSupabase() {
+  if (!currentUser) return false;
+
+  try {
+    console.log('Cargando datos de Supabase para user:', currentUser.id);
+    
+    // Cargar meses
+    const monthsRes = await fetch(
+      `${SUPABASE_URL}/rest/v1/months?user_id=eq.${currentUser.id}&order=year.asc,month.asc`,
+      {
+        headers: {
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${currentSession.access_token}`
+        }
+      }
+    );
+    console.log('Meses response:', monthsRes.status);
+    const monthsData = await monthsRes.json();
+    console.log('Meses data:', monthsData);
+    if (!monthsRes.ok) throw new Error('Error cargando meses: ' + JSON.stringify(monthsData));
+
+    const monthMap = {};
+    for (const m of monthsData) {
+      monthMap[m.id] = { year: m.year, month: m.month, days: [] };
+    }
+    console.log('Meses cargados:', Object.keys(monthMap).length);
+
+    // Cargar días
+    if (monthsData.length > 0) {
+      const monthIds = monthsData.map(m => m.id).join(',');
+      const daysRes = await fetch(
+        `${SUPABASE_URL}/rest/v1/days?month_id=in.(${monthIds})&order=date.asc`,
+        {
+          headers: {
+            'apikey': SUPABASE_ANON_KEY,
+            'Authorization': `Bearer ${currentSession.access_token}`
+          }
+        }
+      );
+      console.log('Días response:', daysRes.status);
+      const daysData = await daysRes.json();
+      console.log('Días data:', daysData.length, 'registros');
+      if (!daysRes.ok) throw new Error('Error cargando días');
+
+      for (const d of daysData) {
+        if (monthMap[d.month_id]) {
+          monthMap[d.month_id].days.push({
+            id: d.id,
+            date: new Date(String(d.date).slice(0, 10) + 'T00:00:00'),
+            entrada: d.entrada ?? '',
+            desayunoIni: d.desayunoini ?? '',
+            desayunoFin: d.desayunofin ?? '',
+            comidaIni: d.comidaini ?? '',
+            comidaFin: d.comidafin ?? '',
+            salida: d.salida ?? '',
+            teleDia: d.teledia ?? false,
+            teleTarde: d.teletarde ?? false,
+            notas: d.notas ?? '',
+            tipo: d.tipo
+          });
+        }
+      }
+    }
+
+    // Cargar config
+    console.log('Cargando config...');
+    const cfgRes = await fetch(
+      `${SUPABASE_URL}/rest/v1/config?user_id=eq.${currentUser.id}`,
+      {
+        headers: {
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${currentSession.access_token}`
+        }
+      }
+    );
+    console.log('Config response:', cfgRes.status);
+    const cfgData = await cfgRes.json();
+    console.log('Config data:', cfgData);
+    if (cfgRes.ok && cfgData.length > 0) {
+      const cfg = cfgData[0];
+      console.log('Config keys:', Object.keys(cfg));
+      // Solo sobreescribir si el valor de Supabase es no-nulo y no-vacío
+      const set = (id, val) => {
+        const el = document.getElementById(id);
+        if (el && val != null && val !== '') el.value = val;
+      };
+      set('cfg-hora-day-inv', cfg.horadayinv);
+      set('cfg-hora-day-ver', cfg.horadayver);
+      set('cfg-ji-inicio', cfg.jiinicio);
+      set('cfg-ji-fin', cfg.jifin);
+      set('cfg-hour-in', cfg.hourin);
+      set('cfg-desayuno', cfg.desayuno);
+      set('cfg-comida', cfg.comida);
+      set('cfg-sal-min', cfg.salmin);
+      set('cfg-bolsa-inicio', cfg.bolsainicio);
+      set('cfg-tele-t1', cfg.telet1);
+      set('cfg-tele-t2', cfg.telet2);
+      set('cfg-tele-t3', cfg.telet3);
+      set('cfg-tele-t4', cfg.telet4);
+    } else if (cfgRes.ok && cfgData.length === 0) {
+      // Sin fila de config: no sobreescribir con defaults; se creará cuando el usuario cambie un valor
+      console.log('Sin config en Supabase para este usuario (se creará al guardar manualmente).');
+    }
+
+    // Corregir datos existentes guardados con desfase UTC (toISOString en zona UTC+N)
+    for (const data of Object.values(monthMap)) {
+      if (data.days.length === 0) continue;
+      const sorted = [...data.days].sort((a, b) => a.date - b.date);
+      if (sorted[0].date.getMonth() !== (data.month - 1)) {
+        for (const day of data.days) {
+          day.date.setDate(day.date.getDate() + 1);
+        }
+      }
+    }
+
+    months = Object.entries(monthMap).map(([monthId, data]) => ({
+      id: monthId,
+      year: data.year,
+      month: data.month - 1,
+      days: data.days.sort((a, b) => a.date - b.date)
+    }));
+
+    console.log('✓ Datos cargados correctamente, meses:', months.length);
+    saveStateLocal();
+    return true;
+  } catch (e) {
+    console.error('Error loading from Supabase:', e);
+    return false;
+  }
+}
+
+function switchAuthTab(tab) {
+  const form1 = document.getElementById('auth-signin-form');
+  const form2 = document.getElementById('auth-signup-form');
+  const tab1 = document.getElementById('auth-tab-signin');
+  const tab2 = document.getElementById('auth-tab-signup');
+
+  if (tab === 'signin') {
+    form1.style.display = 'flex';
+    form2.style.display = 'none';
+    tab1.style.color = 'var(--accent)';
+    tab1.style.borderBottomColor = 'var(--accent)';
+    tab2.style.color = 'var(--muted)';
+    tab2.style.borderBottomColor = 'transparent';
+  } else {
+    form1.style.display = 'none';
+    form2.style.display = 'flex';
+    tab1.style.color = 'var(--muted)';
+    tab1.style.borderBottomColor = 'transparent';
+    tab2.style.color = 'var(--accent)';
+    tab2.style.borderBottomColor = 'var(--accent)';
   }
 }
 
@@ -2556,105 +3025,126 @@ function hideLoginModal() {
   document.getElementById('signout-btn').style.display = 'block';
 }
 
-function showGitHubModal(required) {
-  loadGitHubSettings();
-  document.getElementById('github-owner').value = githubSettings?.owner || '';
-  document.getElementById('github-repo').value = githubSettings?.repo || '';
-  document.getElementById('github-branch').value = githubSettings?.branch || DEFAULT_GITHUB_BRANCH;
-  document.getElementById('github-path').value = githubSettings?.path || DEFAULT_GITHUB_PATH;
-  document.getElementById('github-token').value = githubSettings?.token || '';
-  document.getElementById('github-cache-btn').style.display = required ? 'none' : 'block';
-  setGitHubFeedback('', false);
+async function handleSignIn() {
+  const email = document.getElementById('signin-email').value;
+  const password = document.getElementById('signin-password').value;
+  const errorDiv = document.getElementById('signin-error');
+
+  if (!email || !password) {
+    errorDiv.textContent = 'Email y contraseña requeridos';
+    errorDiv.style.display = 'block';
+    return;
+  }
+
+  const result = await signIn(email, password);
+  if (!result.success) {
+    errorDiv.textContent = result.error;
+    errorDiv.style.display = 'block';
+  } else {
+    hideLoginModal();
+    location.reload();
+  }
+}
+
+async function handleSignOut() {
+  const token = localStorage.getItem('auth_token');
+  if (token) {
+    try {
+      await fetch(`${SUPABASE_URL}/auth/v1/logout`, {
+        method: 'POST',
+        headers: {
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${token}`
+        }
+      });
+    } catch (e) {
+      console.warn('Error en logout remoto:', e);
+    }
+  }
+  localStorage.removeItem('auth_token');
+  localStorage.removeItem('refresh_token');
+  currentUser = null;
+  currentSession = null;
   showLoginModal();
 }
 
-function setGitHubFeedback(message, isError = true) {
-  const el = document.getElementById('github-error');
-  el.textContent = message;
-  el.style.display = message ? 'block' : 'none';
-  el.style.color = isError ? 'var(--danger)' : 'var(--accent)';
-}
+async function handleSignUp() {
+  const email = document.getElementById('signup-email').value;
+  const password = document.getElementById('signup-password').value;
+  const confirm = document.getElementById('signup-password-confirm').value;
+  const errorDiv = document.getElementById('signup-error');
 
-async function handleGitHubConnect() {
-  const settings = {
-    owner: document.getElementById('github-owner').value,
-    repo: document.getElementById('github-repo').value,
-    branch: document.getElementById('github-branch').value,
-    path: document.getElementById('github-path').value,
-    token: document.getElementById('github-token').value
-  };
-  if (!settings.owner || !settings.repo || !settings.token) {
-    setGitHubFeedback('Owner, repo y token son obligatorios.');
+  if (!email || !password || !confirm) {
+    errorDiv.textContent = 'Todos los campos requeridos';
+    errorDiv.style.display = 'block';
     return;
   }
-  saveGitHubSettings(settings);
-  try {
-    setGitHubFeedback('Conectando...', false);
-    await loadDataFromGitHub();
+
+  if (password !== confirm) {
+    errorDiv.textContent = 'Las contraseñas no coinciden';
+    errorDiv.style.display = 'block';
+    return;
+  }
+
+  if (password.length < 6) {
+    errorDiv.textContent = 'Mínimo 6 caracteres';
+    errorDiv.style.display = 'block';
+    return;
+  }
+
+  const result = await signUp(email, password);
+  if (!result.success) {
+    errorDiv.textContent = result.error;
+    errorDiv.style.display = 'block';
+  } else {
     hideLoginModal();
-    renderTabs();
-    renderTable();
-    renderStats();
-    recalcAll();
-  } catch (e) {
-    clearGitHubSettings();
-    setSyncStatus('error config', 'error');
-    setGitHubFeedback(e.message);
+    location.reload();
   }
 }
 
-function handleSignOut() {
-  clearGitHubSettings();
-  setSyncStatus('local', 'muted');
-  showGitHubModal(false);
-}
-
-function saveConfig() {
-  saveState();
-}
-
-function saveDay() {
-  saveState();
+async function syncChanges() {
+  if (!currentUser || !isOnline) return;
+  const currentMonth = months[currentMonthIdx];
+  if (!currentMonth) return;
+  try {
+    for (const day of currentMonth.days) {
+      await saveDay(currentMonth.id, 0, day);
+    }
+    await saveConfig();
+  } catch (e) {
+    console.error('Sync error:', e);
+  }
 }
 
 async function initApp() {
-  loadGitHubSettings();
-  const hasLocal = loadStateLocal();
-  if (!hasLocal) parseExistingData();
-  await ensureCurrentMonthExists();
+  const hasSession = await initAuth();
+  
+  if (hasSession) {
+    console.log('✓ Sesión restaurada');
+    loadStateLocal(); // Aplicar caché local (config incluida) antes de la llamada a Supabase
+    const hasRemote = await loadDataFromSupabase();
+    // Asegurar que existe mes actual con días predefinidos
+    await ensureCurrentMonthExists();
 
-  const now = new Date();
-  const foundIdx = months.findIndex(m => m.year === now.getFullYear() && m.month === now.getMonth());
-  if (foundIdx !== -1) {
-    currentMonthIdx = foundIdx;
-  } else if (months.length > 0) {
-    currentMonthIdx = 0;
-  }
-
-  initSidebarState();
-  renderTabs();
-  renderTable();
-  renderStats();
-  recalcAll();
-
-  if (isGitHubConfigured()) {
-    try {
-      await loadDataFromGitHub();
-      const remoteIdx = months.findIndex(m => m.year === now.getFullYear() && m.month === now.getMonth());
-      currentMonthIdx = remoteIdx !== -1 ? remoteIdx : Math.min(currentMonthIdx, Math.max(months.length - 1, 0));
-      hideLoginModal();
-      renderTabs();
-      renderTable();
-      renderStats();
-      recalcAll();
-      return;
-    } catch (e) {
-      console.error('Error loading GitHub data:', e);
-      setSyncStatus('error sync', 'error');
-      _showConfigToast('No se pudo cargar GitHub: ' + e.message, true);
+    // Seleccionar por defecto el mes actual si existe, si no el primero disponible
+    const now = new Date();
+    const foundIdx = months.findIndex(m => m.year === now.getFullYear() && m.month === now.getMonth());
+    if (foundIdx !== -1) {
+      currentMonthIdx = foundIdx;
+    } else if (months.length > 0) {
+      currentMonthIdx = 0;
     }
+
+    hideLoginModal();
+    initSidebarState();
+    renderTabs();
+    renderTable();
+    renderStats();
+    recalcAll(); // Recalcular todo con la config definitiva cargada desde Supabase
+  } else {
+    console.log('✓ Sin sesión, mostrando login');
+    showLoginModal();
   }
-  showGitHubModal(!hasLocal);
 }
 
 

@@ -1,6 +1,6 @@
 # Fichajes PWA - Guía Técnica de Desarrollo
 
-Esta aplicación es una PWA (Progressive Web App) diseñada para gestionar el registro de jornada laboral, con soporte offline y sincronización en la nube mediante GitHub Contents API.
+Esta aplicación es una PWA (Progressive Web App) diseñada para gestionar el registro de jornada laboral, con soporte para trabajo offline y sincronización en la nube mediante Supabase.
 
 ## 🚀 Inicio Rápido
 
@@ -10,7 +10,7 @@ Esta aplicación es una PWA (Progressive Web App) diseñada para gestionar el re
     # O con Python:
     python3 -m http.server 8080
     ```
-2.  **Tecnologías**: HTML5, CSS3 (Variables), JavaScript (Vanilla), Service Workers, localStorage y GitHub Contents API.
+2.  **Tecnologías**: HTML5, CSS3 (Variables), JavaScript (Vanilla), Service Workers, y Supabase REST API.
 
 ## 🛠 Estructura del Proyecto
 
@@ -38,23 +38,21 @@ La aplicación implementa las siguientes reglas de cómputo:
 -   Permite marcar "Día completo" o "Tarde".
 -   Muestra una bolsa restante dinámica en la columna de la tabla.
 
-## ☁️ Integración con GitHub
+## ☁️ Integración con Supabase
 
-La aplicación utiliza GitHub como backend gratuito de sincronización mediante un fichero JSON versionado en un repositorio del usuario.
-
--   **API**: `https://api.github.com/repos/{owner}/{repo}/contents/{path}`.
--   **Métodos**:
-    -   `GET`: descarga el estado remoto.
-    -   `PUT`: crea o actualiza el fichero JSON con el estado completo.
--   **Datos sincronizados**: configuración y meses completos.
--   **Credenciales**: se usa un Personal Access Token con permisos mínimos sobre el repositorio elegido.
--   **Limitación de seguridad**: al ser una PWA estática sin servidor, el token se guarda en `localStorage`. Debe usarse un token restringido y revocable.
+La aplicación utiliza la API REST de Supabase para la persistencia. Los endpoints principales son:
+-   **Auth**: Registro e inicio de sesión gestionados en `<https://ruhcjikrtgnwcrbacwcc.supabase.co/auth/v1/>`.
+-   **Tablas**:
+    -   `users`: Perfiles de usuario.
+    -   `months`: Cabeceras de meses por usuario.
+    -   `days`: Registros individuales de fichaje vinculados a un mes.
+    -   `config`: Preferencias personalizadas por usuario.
 
 ## 💾 Persistencia y Sincronización
 
 1.  **Local**: Los datos se guardan en `localStorage` (`fichajes_v2_cache`) en cada cambio.
-2.  **Remoto**: si GitHub está configurado y hay conexión (`navigator.onLine`), los cambios se sincronizan con la Contents API.
-3.  **Conflictos**: GitHub responde `409` si el fichero remoto cambió con otra revisión. La aplicación bloquea la subida automática y muestra estado de conflicto.
+2.  **Remoto**: Si el usuario está autenticado y hay conexión (`navigator.onLine`), los cambios se sincronizan mediante `UPSERT` a Supabase.
+3.  **Conflictos**: Se utiliza la cabecera `Prefer: resolution=merge-duplicates` para asegurar que los datos locales y remotos se mantengan íntegros.
 
 ## 🛠 Mantenimiento
 
@@ -67,4 +65,13 @@ Para forzar a los clientes a descargar una nueva versión del código:
 Se recomienda encarecidamente a los usuarios exportar su copia en formato **JSON** antes de realizar cambios estructurales o limpiezas de caché del navegador.
 
 ---
-*Documentación técnica del proyecto.*
+*Documentación generada por Gemini Code Assist.*
+```
+
+He estructurado el documento para que sirva tanto a un desarrollador que herede el código como a ti mismo para recordar las reglas de cálculo de la "bolsa" y la integración con la base de datos. 
+
+¿Te gustaría que profundizara en alguna sección técnica específica, como la configuración de las tablas en Supabase o el manejo de la caché en el Service Worker?
+
+<!--
+[PROMPT_SUGGESTION]¿Cómo puedo mejorar la seguridad de las claves de Supabase en index.html?[/PROMPT_SUGGESTION]
+[PROMPT_SUGGESTION]Explícame detalladamente cómo funciona el sistema de caché en sw.js[/PROMPT_SUGGESTION]
