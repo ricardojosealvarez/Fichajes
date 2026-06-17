@@ -48,7 +48,8 @@ const createGitHubContext = () => {
   [
     'encodeGitHubPath',
     'encodeBase64Unicode',
-    'decodeBase64Unicode'
+    'decodeBase64Unicode',
+    'getSnapshotDataScore'
   ].forEach(name => vm.runInContext(extractFunction(name), context));
   return context;
 };
@@ -140,4 +141,12 @@ test('codifica y decodifica contenido remoto con unicode', () => {
   const content = JSON.stringify({nota: 'mañana €', lineas: ['uno', 'dos']});
 
   assert.equal(context.decodeBase64Unicode(context.encodeBase64Unicode(content)), content);
+});
+
+test('detecta snapshots con más datos registrados', () => {
+  const context = createGitHubContext();
+  const emptySnapshot = {months: [{days: [{tipo: 'habil', entrada: '', salida: ''}]}]};
+  const filledSnapshot = {months: [{days: [{tipo: 'habil', entrada: '08:00', salida: '15:00'}]}]};
+
+  assert.ok(context.getSnapshotDataScore(filledSnapshot) > context.getSnapshotDataScore(emptySnapshot));
 });

@@ -2179,6 +2179,7 @@ function validateConfigTime(el) {
 
 // ── Persistencia local + sincronización GitHub ──────────────────────────────
 const STORAGE_KEY = 'fichajes_v2_cache';
+const STORAGE_BACKUP_PREFIX = 'fichajes_v2_backup_';
 const GITHUB_SETTINGS_KEY = 'fichajes_github_settings';
 const GITHUB_API_BASE = 'https://api.github.com';
 const DEFAULT_GITHUB_BRANCH = 'main';
@@ -2214,6 +2215,35 @@ function applyStateSnapshot(data) {
     days: (m.days || []).map(d => ({ ...d, date: new Date(d.date) }))
   }));
   applyConfigToDOM(data.config);
+}
+
+function getSnapshotDataScore(data) {
+  if (!data || !Array.isArray(data.months)) return 0;
+  return data.months.reduce((total, month) => {
+    const daysScore = (month.days || []).reduce((dayTotal, day) => {
+      const fields = ['entrada', 'desayunoIni', 'desayunoFin', 'comidaIni', 'comidaFin', 'salida', 'notas'];
+      const filledFields = fields.filter(field => String(day[field] || '').trim()).length;
+      const typeScore = day.tipo && day.tipo !== 'habil' ? 1 : 0;
+      const teleScore = day.teleDia || day.teleTarde ? 1 : 0;
+      return dayTotal + filledFields + typeScore + teleScore;
+    }, 0);
+    return total + 1 + daysScore;
+  }, 0);
+}
+
+function saveStateBackup(reason) {
+  try {
+    const data = buildStateSnapshot();
+    data.backupReason = reason;
+    data.backupCreatedAt = new Date().toISOString();
+    localStorage.setItem(`${STORAGE_BACKUP_PREFIX}${data.backupCreatedAt}`, JSON.stringify(data));
+
+    Object.keys(localStorage)
+      .filter(key => key.startsWith(STORAGE_BACKUP_PREFIX))
+      .sort()
+      .slice(0, -5)
+      .forEach(key => localStorage.removeItem(key));
+  } catch (e) { console.warn('Error saving local backup:', e); }
 }
 
 function saveStateLocal() {
@@ -2344,7 +2374,15 @@ async function loadDataFromGitHub() {
     return true;
   }
   githubRemoteSha = remote.sha;
-  applyStateSnapshot(JSON.parse(decodeBase64Unicode(remote.content)));
+  const remoteSnapshot = JSON.parse(decodeBase64Unicode(remote.content));
+  const localSnapshot = buildStateSnapshot();
+  if (getSnapshotDataScore(localSnapshot) > getSnapshotDataScore(remoteSnapshot)) {
+    githubConflict = true;
+    setSyncStatus('conflicto', 'error');
+    throw new Error('GitHub contiene menos datos que la caché local. No se ha sobrescrito nada.');
+  }
+  saveStateBackup('before-github-load');
+  applyStateSnapshot(remoteSnapshot);
   saveStateLocal();
   setSyncStatus('sincronizado', 'ok');
   githubConflict = false;
