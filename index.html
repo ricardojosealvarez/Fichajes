@@ -725,7 +725,7 @@
       color: var(--muted);
       letter-spacing: 1px;
       text-transform: uppercase;
-    ">v2.6.2</div>
+    ">v2.6.3</div>
     <button id="signout-btn" style="
       padding: 6px 12px;
       background: transparent;
@@ -2207,10 +2207,7 @@ const STORAGE_KEY = 'fichajes_v2_cache';
 function saveStateLocal() {
   try {
     const data = {
-      months: months.map(m => ({
-        ...m,
-        days: m.days.map(d => ({ ...d, date: d.date.toISOString() }))
-      })),
+      months: serializeMonthsForStorage(months),
       config: readConfigFromDOM(),
       syncQueue,
       lastSync: new Date().toISOString()
@@ -2225,18 +2222,53 @@ function loadStateLocal() {
     if (!raw) return false;
     const data = JSON.parse(raw);
     
-    months = (data.months || []).map(m => ({
-      ...m,
-      days: (m.days || []).map(d => ({
-        ...d,
-        date: new Date(d.date)
-      }))
-    }));
+    months = reviveMonthsFromStorage(data.months || []);
     
     if (data.config) applyConfigToDOM(data.config);
     syncQueue = data.syncQueue || [];
     return true;
   } catch (e) { console.warn('Error loading from localStorage:', e); return false; }
+}
+
+function serializeMonthsForStorage(sourceMonths) {
+  return sourceMonths.map(m => ({
+    ...m,
+    days: (m.days || []).map(d => ({
+      ...d,
+      date: d.date instanceof Date ? d.date.toISOString() : new Date(d.date).toISOString()
+    }))
+  }));
+}
+
+function reviveMonthsFromStorage(storedMonths) {
+  return (storedMonths || []).map(m => ({
+    ...m,
+    days: (m.days || []).map(d => ({
+      ...d,
+      date: new Date(d.date)
+    }))
+  }));
+}
+
+function createStateSnapshot() {
+  return {
+    months: serializeMonthsForStorage(months),
+    config: readConfigFromDOM()
+  };
+}
+
+function restoreStateSnapshot(snapshot) {
+  months = reviveMonthsFromStorage(snapshot.months);
+  applyConfigToDOM(snapshot.config);
+  saveStateLocal();
+}
+
+function hasMonthData(snapshot) {
+  return Array.isArray(snapshot?.months) && snapshot.months.length > 0;
+}
+
+function shouldRestoreLocalSnapshot(remoteLoaded, remoteMonths, localSnapshot) {
+  return remoteLoaded && Array.isArray(remoteMonths) && remoteMonths.length === 0 && hasMonthData(localSnapshot);
 }
 
 // Función fallback para compatible con código existente
@@ -2245,19 +2277,58 @@ function saveState() {
   if (currentUser && isOnline) syncChanges();
 }
 
+async function upsertMonthToSupabase(monthData) {
+  if (!currentUser || !isOnline || !monthData) return false;
+
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/months?on_conflict=id`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'apikey': SUPABASE_ANON_KEY,
+      'Authorization': `Bearer ${currentSession.access_token}`,
+      'Prefer': 'resolution=merge-duplicates'
+    },
+    body: JSON.stringify({
+      id: monthData.id,
+      user_id: currentUser.id,
+      year: monthData.year,
+      month: monthData.month + 1
+    })
+  });
+
+  if (!res.ok) {
+    console.error('Error guardando mes en Supabase:', await res.text());
+    return false;
+  }
+
+  return true;
+}
+
+async function syncMonthToSupabase(monthData) {
+  if (!await upsertMonthToSupabase(monthData)) return;
+  for (const day of monthData.days) {
+    await saveDay(monthData.id, 0, day);
+  }
+}
+
+async function syncAllMonthsToSupabase() {
+  if (!currentUser || !isOnline) return;
+  const hasProfile = await ensureUserProfile();
+  if (!hasProfile) return;
+
+  for (const monthData of months) {
+    await syncMonthToSupabase(monthData);
+  }
+  await saveConfig();
+  saveStateLocal();
+}
+
 // Sincronizar cambios a Supabase
 async function syncChanges() {
   if (!currentUser || !isOnline) return;
-  
-  const currentMonth = months[currentMonthIdx];
-  if (!currentMonth) return;
 
   try {
-    // Sincronizar días del mes actual
-    for (const day of currentMonth.days) {
-      await saveDay(currentMonth.id, 0, day);
-    }
-    // Sincronizar configuración
+    await syncMonthToSupabase(months[currentMonthIdx]);
     await saveConfig();
   } catch (e) {
     console.error('Sync error:', e);
@@ -2290,12 +2361,13 @@ async function saveNewMonthToSupabase(monthData) {
   if (!currentUser || !isOnline) return;
   try {
     // 1. Create month record
-    const mRes = await fetch(`${SUPABASE_URL}/rest/v1/months`, {
+    const mRes = await fetch(`${SUPABASE_URL}/rest/v1/months?on_conflict=id`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'apikey': SUPABASE_ANON_KEY,
-        'Authorization': `Bearer ${currentSession.access_token}`
+        'Authorization': `Bearer ${currentSession.access_token}`,
+        'Prefer': 'resolution=merge-duplicates'
       },
       body: JSON.stringify({
         id: monthData.id,
@@ -2378,7 +2450,7 @@ document.querySelectorAll('.config-input, .select-input').forEach(el => {
 
 // ── Service Worker registration ──────────────────────────────────────────────
 if ('serviceWorker' in navigator) {
-  const swVersion = '2.6.2';
+  const swVersion = '2.6.3';
   let swRefreshing = false;
 
   navigator.serviceWorker.addEventListener('controllerchange', () => {
@@ -2429,6 +2501,35 @@ window.addEventListener('offline', () => {
 
 // ── AUTH REST ────────────────────────────────────────────────────────────
 
+async function ensureUserProfile() {
+  if (!currentUser || !currentSession?.access_token) return false;
+
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/users?on_conflict=id`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'apikey': SUPABASE_ANON_KEY,
+      'Authorization': `Bearer ${currentSession.access_token}`,
+      'Prefer': 'resolution=merge-duplicates'
+    },
+    body: JSON.stringify({
+      id: currentUser.id,
+      email: currentUser.email || ''
+    })
+  });
+
+  if (res.status === 401 && await refreshSession()) {
+    return ensureUserProfile();
+  }
+
+  if (!res.ok) {
+    console.error('Error creando perfil de usuario:', await res.text());
+    return false;
+  }
+
+  return true;
+}
+
 async function signUp(email, password) {
   try {
     const res = await fetch(`${SUPABASE_URL}/auth/v1/signup`, {
@@ -2457,18 +2558,9 @@ async function signUp(email, password) {
       if (data.session.refresh_token) localStorage.setItem('refresh_token', data.session.refresh_token);
     }
     
-    // Crear registro en tabla users
     if (data.session?.access_token) {
-      await fetch(`${SUPABASE_URL}/rest/v1/users`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'apikey': SUPABASE_ANON_KEY,
-          'Authorization': `Bearer ${data.session.access_token}`
-        },
-        body: JSON.stringify({ id: data.user.id, email })
-      }).catch(e => console.warn('Error creating user record:', e));
-      
+      await ensureUserProfile();
+
       // Crear configuración por defecto
       await fetch(`${SUPABASE_URL}/rest/v1/config`, {
         method: 'POST',
@@ -2728,6 +2820,7 @@ async function saveDay(monthId, dayIdx, dayData) {
       return v.toString(16);
     });
 
+    dayData.id = id;
     console.log('Guardando día:', dayData);
     console.log('Month ID:', monthId);
     const payload = {
@@ -2747,7 +2840,7 @@ async function saveDay(monthId, dayIdx, dayData) {
     };
     console.log('Payload:', payload);
     
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/days`, {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/days?on_conflict=id`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -3102,29 +3195,21 @@ async function handleSignUp() {
   }
 }
 
-async function syncChanges() {
-  if (!currentUser || !isOnline) return;
-  const currentMonth = months[currentMonthIdx];
-  if (!currentMonth) return;
-  try {
-    for (const day of currentMonth.days) {
-      await saveDay(currentMonth.id, 0, day);
-    }
-    await saveConfig();
-  } catch (e) {
-    console.error('Sync error:', e);
-  }
-}
-
 async function initApp() {
   const hasSession = await initAuth();
   
   if (hasSession) {
     console.log('✓ Sesión restaurada');
-    loadStateLocal(); // Aplicar caché local (config incluida) antes de la llamada a Supabase
+    const hasLocalState = loadStateLocal(); // Aplicar caché local (config incluida) antes de Supabase
+    const localSnapshot = hasLocalState ? createStateSnapshot() : null;
+    await ensureUserProfile();
     const hasRemote = await loadDataFromSupabase();
-    // Asegurar que existe mes actual con días predefinidos
-    await ensureCurrentMonthExists();
+    if (shouldRestoreLocalSnapshot(hasRemote, months, localSnapshot)) {
+      restoreStateSnapshot(localSnapshot);
+      await syncAllMonthsToSupabase();
+    } else {
+      await ensureCurrentMonthExists();
+    }
 
     // Seleccionar por defecto el mes actual si existe, si no el primero disponible
     const now = new Date();

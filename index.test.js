@@ -108,3 +108,16 @@ test('los días no hábiles conservan el límite aplicado en la frontera', () =>
   assert.equal(result.abs, 2 * 60);
   assert.equal(result.suma, null);
 });
+
+test('restaura la caché local cuando Supabase no devuelve meses', () => {
+  const context = vm.createContext({});
+  vm.runInContext(extractFunction('hasMonthData'), context);
+  vm.runInContext(extractFunction('shouldRestoreLocalSnapshot'), context);
+
+  const localSnapshot = { months: [{ year: 2026, month: 6, days: [] }] };
+
+  assert.equal(context.shouldRestoreLocalSnapshot(true, [], localSnapshot), true);
+  assert.equal(context.shouldRestoreLocalSnapshot(false, [], localSnapshot), false);
+  assert.equal(context.shouldRestoreLocalSnapshot(true, [{ id: 'remote-month' }], localSnapshot), false);
+  assert.equal(context.shouldRestoreLocalSnapshot(true, [], { months: [] }), false);
+});
