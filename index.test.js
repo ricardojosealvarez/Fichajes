@@ -122,7 +122,7 @@ test('restaura la caché local cuando Supabase no devuelve meses', () => {
   assert.equal(context.shouldRestoreLocalSnapshot(true, [], { months: [] }), false);
 });
 
-test('el dashboard selecciona el periodo alrededor del mes activo', () => {
+test('el dashboard selecciona el mes, trimestre móvil y año activos', () => {
   const context = vm.createContext({});
   vm.runInContext(extractFunction('getDashboardMonthIndexes'), context);
   const sourceMonths = [
@@ -140,7 +140,7 @@ test('el dashboard selecciona el periodo alrededor del mes activo', () => {
   );
   assert.deepEqual(
     Array.from(context.getDashboardMonthIndexes(sourceMonths, 2, 'quarter')),
-    [1, 2, 3]
+    [0, 1, 2]
   );
   assert.deepEqual(
     Array.from(context.getDashboardMonthIndexes(sourceMonths, 2, 'year')),

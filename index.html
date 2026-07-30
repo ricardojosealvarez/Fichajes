@@ -615,6 +615,7 @@
   }
   .dashboard-kpi {
     min-width: 0;
+    overflow: hidden;
     padding: 15px 16px;
     border: 1px solid var(--border);
     border-radius: 9px;
@@ -633,6 +634,16 @@
     font-weight: 800;
     white-space: nowrap;
   }
+  .dashboard-kpi-time-range {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    align-items: baseline;
+    gap: 4px;
+    font-size: 17px;
+  }
+  .dashboard-kpi-time-range span:first-child { text-align: right; }
+  .dashboard-kpi-time-range span:last-child { text-align: left; }
+  .dashboard-kpi-separator { color: var(--muted); }
   .dashboard-kpi-detail {
     margin-top: 4px;
     color: var(--muted);
@@ -793,6 +804,7 @@
     .dashboard-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .dashboard-kpi { padding: 13px; }
     .dashboard-kpi-value { font-size: 18px; }
+    .dashboard-kpi-time-range { font-size: 16px; }
     .period-switcher { width: 100%; }
     .period-btn { flex: 1; }
     .comparison-row { grid-template-columns: 58px minmax(0, 1fr); }
@@ -998,7 +1010,7 @@
       color: var(--muted);
       letter-spacing: 1px;
       text-transform: uppercase;
-    ">v2.7.0</div>
+    ">v2.7.1</div>
     <button id="signout-btn" style="
       padding: 6px 12px;
       background: transparent;
@@ -1907,12 +1919,14 @@ function setDashboardPeriod(period) {
 function getDashboardMonthIndexes(sourceMonths, focusIdx, period) {
   const focus = sourceMonths[focusIdx];
   if (!focus) return [];
+  const focusSerial = focus.year * 12 + focus.month;
 
   return sourceMonths.reduce((indexes, monthData, idx) => {
-    if (monthData.year !== focus.year) return indexes;
-    if (period === 'month' && monthData.month !== focus.month) return indexes;
+    const monthSerial = monthData.year * 12 + monthData.month;
+    if (period === 'month' && monthSerial !== focusSerial) return indexes;
     if (period === 'quarter' &&
-        Math.floor(monthData.month / 3) !== Math.floor(focus.month / 3)) return indexes;
+        (monthSerial < focusSerial - 2 || monthSerial > focusSerial)) return indexes;
+    if (period === 'year' && monthData.year !== focus.year) return indexes;
     indexes.push(idx);
     return indexes;
   }, []);
@@ -1925,7 +1939,10 @@ function getDashboardPeriodLabel(indexes) {
 
   if (dashboardPeriod === 'month') return `${MONTH_NAMES[first.month]} ${first.year}`;
   if (dashboardPeriod === 'quarter') {
-    return `T${Math.floor(first.month / 3) + 1} · ${first.year}`;
+    if (first.year === last.year) {
+      return `${MONTH_NAMES[first.month]} – ${MONTH_NAMES[last.month]} ${first.year}`;
+    }
+    return `${MONTH_NAMES[first.month]} ${first.year} – ${MONTH_NAMES[last.month]} ${last.year}`;
   }
   return String(first.year === last.year ? first.year : `${first.year}–${last.year}`);
 }
@@ -2046,6 +2063,7 @@ function buildDashboardData() {
     completedDays,
     pendingDays,
     teleConsumed,
+    teleQuarterConsumed: currentQuarterConsumed,
     teleRemaining: currentQuarterAllocation - currentQuarterConsumed,
     teleQuarter: getQuarterForMonth(focusMonth.month) + 1,
     averageEntry: averageDays > 0 ? Math.round(entryTotal / averageDays) : null,
@@ -2174,9 +2192,6 @@ function renderDashboard() {
   const differenceClass = data.difference >= 0 ? 'pos' : 'neg';
   const balanceClass = data.balance >= 0 ? 'pos' : 'neg';
   const teleClass = data.teleRemaining >= 0 ? 'info' : 'neg';
-  const averageText = data.averageEntry === null
-    ? '--:-- / --:--'
-    : `${minsToTime(data.averageEntry)} / ${minsToTime(data.averageExit)}`;
 
   content.innerHTML = `<section class="dashboard">
     <div class="dashboard-header">
@@ -2186,7 +2201,7 @@ function renderDashboard() {
       </div>
       <div class="period-switcher" role="tablist" aria-label="Periodo de estadísticas">
         <button class="period-btn ${dashboardPeriod === 'month' ? 'active' : ''}" role="tab" aria-selected="${dashboardPeriod === 'month'}" onclick="setDashboardPeriod('month')">MES</button>
-        <button class="period-btn ${dashboardPeriod === 'quarter' ? 'active' : ''}" role="tab" aria-selected="${dashboardPeriod === 'quarter'}" onclick="setDashboardPeriod('quarter')">TRIMESTRE</button>
+        <button class="period-btn ${dashboardPeriod === 'quarter' ? 'active' : ''}" role="tab" aria-label="Últimos tres meses" aria-selected="${dashboardPeriod === 'quarter'}" onclick="setDashboardPeriod('quarter')">TRIMESTRE</button>
         <button class="period-btn ${dashboardPeriod === 'year' ? 'active' : ''}" role="tab" aria-selected="${dashboardPeriod === 'year'}" onclick="setDashboardPeriod('year')">AÑO</button>
       </div>
     </div>
@@ -2215,11 +2230,15 @@ function renderDashboard() {
       <div class="dashboard-kpi">
         <div class="dashboard-kpi-label">Tele disponible T${data.teleQuarter}</div>
         <div class="dashboard-kpi-value ${teleClass}">${minsToTime(data.teleRemaining)}</div>
-        <div class="dashboard-kpi-detail">${minsToTime(data.teleConsumed)} usados en el periodo</div>
+        <div class="dashboard-kpi-detail">${minsToTime(data.teleQuarterConsumed)} usados en T${data.teleQuarter}</div>
       </div>
       <div class="dashboard-kpi">
         <div class="dashboard-kpi-label">Entrada / salida media</div>
-        <div class="dashboard-kpi-value">${averageText}</div>
+        <div class="dashboard-kpi-value dashboard-kpi-time-range">
+          <span>${data.averageEntry === null ? '--:--' : minsToTime(data.averageEntry)}</span>
+          <span class="dashboard-kpi-separator">/</span>
+          <span>${data.averageExit === null ? '--:--' : minsToTime(data.averageExit)}</span>
+        </div>
         <div class="dashboard-kpi-detail">Solo fichajes completos</div>
       </div>
     </div>
@@ -3101,7 +3120,7 @@ document.querySelectorAll('.config-input, .select-input').forEach(el => {
 
 // ── Service Worker registration ──────────────────────────────────────────────
 if ('serviceWorker' in navigator) {
-  const swVersion = '2.7.0';
+  const swVersion = '2.7.1';
   let swRefreshing = false;
 
   navigator.serviceWorker.addEventListener('controllerchange', () => {
