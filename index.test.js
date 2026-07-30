@@ -121,3 +121,76 @@ test('restaura la caché local cuando Supabase no devuelve meses', () => {
   assert.equal(context.shouldRestoreLocalSnapshot(true, [{ id: 'remote-month' }], localSnapshot), false);
   assert.equal(context.shouldRestoreLocalSnapshot(true, [], { months: [] }), false);
 });
+
+test('el dashboard selecciona el periodo alrededor del mes activo', () => {
+  const context = vm.createContext({});
+  vm.runInContext(extractFunction('getDashboardMonthIndexes'), context);
+  const sourceMonths = [
+    { year: 2025, month: 11 },
+    { year: 2026, month: 0 },
+    { year: 2026, month: 1 },
+    { year: 2026, month: 2 },
+    { year: 2026, month: 3 },
+    { year: 2026, month: 6 }
+  ];
+
+  assert.deepEqual(
+    Array.from(context.getDashboardMonthIndexes(sourceMonths, 2, 'month')),
+    [2]
+  );
+  assert.deepEqual(
+    Array.from(context.getDashboardMonthIndexes(sourceMonths, 2, 'quarter')),
+    [1, 2, 3]
+  );
+  assert.deepEqual(
+    Array.from(context.getDashboardMonthIndexes(sourceMonths, 2, 'year')),
+    [1, 2, 3, 4, 5]
+  );
+  assert.deepEqual(
+    Array.from(context.getDashboardMonthIndexes(sourceMonths, 99, 'year')),
+    []
+  );
+});
+
+test('el dashboard calcula cobertura y diferencia hasta hoy', () => {
+  const days = [
+    { date: new Date(2020, 0, 2), tipo: 'habil', entrada: '08:00', suma: 480 },
+    { date: new Date(2020, 0, 3), tipo: 'habil', entrada: '', suma: null },
+    { date: new Date(2020, 0, 6), tipo: 'vacaciones', entrada: '', suma: null }
+  ];
+  const context = vm.createContext({
+    months: [{ year: 2020, month: 0, days }],
+    currentMonthIdx: 0,
+    dashboardPeriod: 'month',
+    DAY_TYPES: [
+      { key: 'habil' },
+      { key: 'vacaciones' }
+    ],
+    getDashboardMonthIndexes: () => [0],
+    getConfig: () => ({}),
+    computeBolsaUpTo: () => 0,
+    calculateBolsaDay: (day, abs) => ({
+      abs: day.suma === null ? abs : abs + day.suma - 480,
+      suma: day.suma,
+      salida: '16:00'
+    }),
+    getHoraDay: () => 480,
+    timeToMins: value => value === '08:00' ? 480 : 960,
+    getDashboardDayTeleMinutes: () => 0,
+    getDashboardBucketLabel: () => 'Sem 1',
+    getDashboardPeriodLabel: () => 'Enero 2020',
+    getTeleConsumedUntil: () => 0,
+    getTeleBolsaForQuarter: () => 0,
+    getQuarterForMonth: () => 0
+  });
+  vm.runInContext(extractFunction('buildDashboardData'), context);
+
+  const result = context.buildDashboardData();
+
+  assert.equal(result.worked, 480);
+  assert.equal(result.expected, 960);
+  assert.equal(result.difference, -480);
+  assert.equal(result.completedDays, 1);
+  assert.equal(result.pendingDays, 1);
+  assert.equal(result.typeCounts.vacaciones, 1);
+});

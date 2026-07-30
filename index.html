@@ -54,6 +54,33 @@
     color: var(--accent);
   }
   .logo span { color: var(--text); }
+  .brand-area {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+  }
+  .view-switcher {
+    display: flex;
+    gap: 4px;
+    padding: 3px;
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    background: var(--bg);
+  }
+  .view-btn {
+    border: 0;
+    border-radius: 4px;
+    padding: 5px 10px;
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    font-family: 'Syne', sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.4px;
+  }
+  .view-btn:hover { color: var(--text); }
+  .view-btn.active { background: var(--surface2); color: var(--accent); }
   .tabs-wrap {
     display: flex;
     align-items: center;
@@ -181,6 +208,8 @@
   .stat-value.neg { color: var(--danger); }
   .stat-value.neutral { color: var(--accent2); }
   .content { flex: 1; overflow-y: auto; padding: 24px 32px; }
+  .main.dashboard-mode .sidebar { display: none; }
+  .main.dashboard-mode .content { padding: 28px 36px 48px; }
   table { width: 100%; border-collapse: collapse; }
   thead tr {
     border-bottom: 2px solid var(--accent);
@@ -533,6 +562,244 @@
   .day-edit-tele-btn.active-tarde { background: #0d1a1f; border-color: var(--accent2); color: var(--accent2); }
   #day-edit-modal .modal { width: 480px; max-width: 96vw; gap: 18px; }
 
+  /* Dashboard */
+  .dashboard {
+    width: min(1240px, 100%);
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+  }
+  .dashboard-header {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 20px;
+  }
+  .dashboard-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 26px;
+    font-weight: 800;
+    letter-spacing: -0.6px;
+  }
+  .dashboard-period-label {
+    margin-top: 5px;
+    color: var(--muted);
+    font-size: 12px;
+  }
+  .period-switcher {
+    display: flex;
+    gap: 5px;
+    padding: 4px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface);
+  }
+  .period-btn {
+    padding: 6px 12px;
+    border: 0;
+    border-radius: 5px;
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    font-family: 'Syne', sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+  }
+  .period-btn:hover { color: var(--text); }
+  .period-btn.active { background: var(--accent); color: var(--bg); }
+  .dashboard-kpis {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(130px, 1fr));
+    gap: 10px;
+  }
+  .dashboard-kpi {
+    min-width: 0;
+    padding: 15px 16px;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    background: var(--surface);
+  }
+  .dashboard-kpi-label {
+    color: var(--muted);
+    font-size: 10px;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+  }
+  .dashboard-kpi-value {
+    margin-top: 8px;
+    font-family: 'Syne', sans-serif;
+    font-size: 21px;
+    font-weight: 800;
+    white-space: nowrap;
+  }
+  .dashboard-kpi-detail {
+    margin-top: 4px;
+    color: var(--muted);
+    font-size: 10px;
+  }
+  .dashboard-kpi-value.pos { color: var(--green); }
+  .dashboard-kpi-value.neg { color: var(--danger); }
+  .dashboard-kpi-value.info { color: var(--accent2); }
+  .dashboard-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.7fr) minmax(280px, 1fr);
+    gap: 14px;
+  }
+  .dashboard-panel {
+    min-width: 0;
+    padding: 18px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--surface);
+  }
+  .dashboard-panel-wide { grid-column: 1 / -1; }
+  .dashboard-panel-title {
+    margin-bottom: 16px;
+    font-family: 'Syne', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+  }
+  .dashboard-panel-subtitle {
+    margin-top: -11px;
+    margin-bottom: 15px;
+    color: var(--muted);
+    font-size: 10px;
+  }
+  .dashboard-line-chart {
+    width: 100%;
+    height: auto;
+    min-height: 210px;
+    overflow: visible;
+  }
+  .dashboard-chart-grid { stroke: var(--border); stroke-width: 1; }
+  .dashboard-zero-line { stroke: var(--muted); stroke-width: 1.5; }
+  .dashboard-balance-area { fill: #47c8ff16; }
+  .dashboard-balance-line {
+    fill: none;
+    stroke: var(--accent2);
+    stroke-width: 3;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  .dashboard-balance-point { fill: var(--accent2); }
+  .dashboard-chart-label {
+    fill: var(--muted);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+  }
+  .comparison-list { display: flex; flex-direction: column; gap: 13px; }
+  .comparison-row {
+    display: grid;
+    grid-template-columns: 72px minmax(0, 1fr) 112px;
+    align-items: center;
+    gap: 10px;
+  }
+  .comparison-label { color: var(--muted); font-size: 11px; }
+  .comparison-bars { display: flex; flex-direction: column; gap: 4px; }
+  .comparison-track {
+    height: 6px;
+    overflow: hidden;
+    border-radius: 4px;
+    background: var(--surface2);
+  }
+  .comparison-fill { height: 100%; border-radius: 4px; }
+  .comparison-fill.actual { background: var(--accent2); }
+  .comparison-fill.expected { background: var(--border); }
+  .comparison-values { text-align: right; font-size: 10px; white-space: nowrap; }
+  .comparison-values span:first-child { color: var(--accent2); }
+  .comparison-values span:last-child { color: var(--muted); }
+  .dashboard-legend {
+    display: flex;
+    justify-content: flex-end;
+    gap: 14px;
+    margin-bottom: 12px;
+    color: var(--muted);
+    font-size: 10px;
+  }
+  .dashboard-legend-item { display: flex; align-items: center; gap: 5px; }
+  .dashboard-legend-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 2px;
+  }
+  .dashboard-legend-dot.actual { background: var(--accent2); }
+  .dashboard-legend-dot.expected { background: var(--border); }
+  .type-distribution {
+    display: flex;
+    height: 12px;
+    overflow: hidden;
+    border-radius: 6px;
+    background: var(--surface2);
+  }
+  .type-segment.habil { background: var(--muted); }
+  .type-segment.festivo { background: #ff7c6e; }
+  .type-segment.puente { background: var(--accent2); }
+  .type-segment.propios { background: #f5d76e; }
+  .type-segment.vacaciones { background: #6effa0; }
+  .type-segment.navidad { background: #ffb347; }
+  .type-legend {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px 14px;
+    margin-top: 18px;
+  }
+  .type-legend-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    font-size: 11px;
+  }
+  .type-legend-name {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    color: var(--muted);
+  }
+  .type-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+  .dashboard-alerts { display: flex; flex-direction: column; gap: 8px; }
+  .dashboard-alert {
+    display: flex;
+    align-items: flex-start;
+    gap: 9px;
+    padding: 10px 11px;
+    border-radius: 6px;
+    background: var(--surface2);
+    color: var(--muted);
+    font-size: 11px;
+    line-height: 1.5;
+  }
+  .dashboard-alert.warn { color: #ffb0a8; background: #241414; }
+  .dashboard-alert.ok { color: #8be3a9; background: #122018; }
+  .dashboard-empty {
+    padding: 34px 10px;
+    color: var(--muted);
+    text-align: center;
+    font-size: 12px;
+  }
+
+  @media (max-width: 1100px) {
+    header { padding: 16px 20px; gap: 14px; flex-wrap: wrap; }
+    .dashboard-kpis { grid-template-columns: repeat(3, minmax(140px, 1fr)); }
+    .dashboard-grid { grid-template-columns: 1fr; }
+    .dashboard-panel-wide { grid-column: auto; }
+  }
+  @media (max-width: 700px) {
+    .brand-area { width: 100%; justify-content: space-between; }
+    .tabs-wrap { max-width: calc(100vw - 40px); overflow-x: auto; }
+    .main.dashboard-mode .content { padding: 20px 14px 36px; }
+    .dashboard-header { align-items: flex-start; flex-direction: column; }
+    .dashboard-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .dashboard-kpi { padding: 13px; }
+    .dashboard-kpi-value { font-size: 18px; }
+    .period-switcher { width: 100%; }
+    .period-btn { flex: 1; }
+    .comparison-row { grid-template-columns: 58px minmax(0, 1fr); }
+    .comparison-values { grid-column: 2; }
+    .type-legend { grid-template-columns: 1fr; }
+  }
+
 </style>
 </head>
 <body>
@@ -707,14 +974,20 @@
 </div>
 
 <header>
-  <div class="logo">FICH<span>AJES</span></div>
-  <div style="display: flex; align-items: center; gap: 12px;">
+  <div class="brand-area">
+    <div class="logo">FICH<span>AJES</span></div>
+    <div class="view-switcher" role="tablist" aria-label="Vista principal">
+      <button class="view-btn active" id="view-records" role="tab" aria-selected="true" onclick="switchAppView('records')">FICHAJES</button>
+      <button class="view-btn" id="view-dashboard" role="tab" aria-selected="false" onclick="switchAppView('dashboard')">ESTADÍSTICAS</button>
+    </div>
+  </div>
+  <div id="month-actions" style="display: flex; align-items: center; gap: 12px;">
     <div class="tabs-wrap" id="tabs-wrap">
       <button class="tabs-nav-btn" id="tabs-prev" onclick="tabsScroll(-1)" title="Anterior" disabled>&lt;</button>
       <div class="tabs" id="tabs"></div>
       <button class="tabs-nav-btn" id="tabs-next" onclick="tabsScroll(1)" title="Siguiente" disabled>&gt;</button>
     </div>
-    <button class="add-month-btn" onclick="showAddMonthModal()">+ Mes</button>
+    <button class="add-month-btn" id="btn-add-month" onclick="showAddMonthModal()">+ Mes</button>
     <button class="add-month-btn" onclick="openDayEditGeneral()" id="btn-add-fichaje">+ Fichaje</button>
   </div>
   <div style="display: flex; align-items: center; gap: 16px;">
@@ -725,7 +998,7 @@
       color: var(--muted);
       letter-spacing: 1px;
       text-transform: uppercase;
-    ">v2.6.3</div>
+    ">v2.7.0</div>
     <button id="signout-btn" style="
       padding: 6px 12px;
       background: transparent;
@@ -741,7 +1014,7 @@
   </div>
 </header>
 
-<div class="main">
+<div class="main" id="app-main">
   <div class="sidebar scrollbar-thin" id="sidebar">
     <div id="sidebar-toggle-wrap">
       <button id="sidebar-toggle-btn" onclick="toggleSidebar()" title="Ocultar panel">‹</button>
@@ -935,6 +1208,8 @@ let months = [];
 let currentMonthIdx = 0;
 let tabsOffset = 0;
 let openMenuIdx = null;
+let currentAppView = 'records';
+let dashboardPeriod = 'month';
 
 function timeToMins(t) {
   if (!t || t === '') return null;
@@ -1208,8 +1483,7 @@ function tabsScroll(dir) {
 function switchMonth(idx) {
   currentMonthIdx = idx;
   renderTabs();
-  renderTable();
-  renderStats();
+  renderActiveView();
 }
 
 // ── Bolsa cap rules ──────────────────────────────────────────────────────────
@@ -1437,8 +1711,7 @@ function computeTeleBolsaPerDay() {
 function getPrevMonthEndTele() { return 0; }
 
 function recalcAll() {
-  renderTable();
-  renderStats();
+  renderActiveView();
 }
 
 function renderTable() {
@@ -1595,6 +1868,384 @@ function renderStats() {
   document.getElementById('stats').innerHTML = stats.map(s =>
     `<div class="stat-card"><span class="stat-label">${s.label}</span><span class="stat-value ${s.cls}">${s.val}</span></div>`
   ).join('');
+}
+
+function renderActiveView() {
+  if (currentAppView === 'dashboard') {
+    renderDashboard();
+    return;
+  }
+  renderTable();
+  renderStats();
+}
+
+function switchAppView(view) {
+  if (view !== 'records' && view !== 'dashboard') return;
+  currentAppView = view;
+
+  const isDashboard = view === 'dashboard';
+  document.getElementById('app-main')?.classList.toggle('dashboard-mode', isDashboard);
+  document.getElementById('btn-add-month').style.display = isDashboard ? 'none' : '';
+  document.getElementById('btn-add-fichaje').style.display = isDashboard ? 'none' : '';
+
+  const recordsBtn = document.getElementById('view-records');
+  const dashboardBtn = document.getElementById('view-dashboard');
+  recordsBtn.classList.toggle('active', !isDashboard);
+  dashboardBtn.classList.toggle('active', isDashboard);
+  recordsBtn.setAttribute('aria-selected', String(!isDashboard));
+  dashboardBtn.setAttribute('aria-selected', String(isDashboard));
+
+  renderActiveView();
+}
+
+function setDashboardPeriod(period) {
+  if (!['month', 'quarter', 'year'].includes(period)) return;
+  dashboardPeriod = period;
+  renderDashboard();
+}
+
+function getDashboardMonthIndexes(sourceMonths, focusIdx, period) {
+  const focus = sourceMonths[focusIdx];
+  if (!focus) return [];
+
+  return sourceMonths.reduce((indexes, monthData, idx) => {
+    if (monthData.year !== focus.year) return indexes;
+    if (period === 'month' && monthData.month !== focus.month) return indexes;
+    if (period === 'quarter' &&
+        Math.floor(monthData.month / 3) !== Math.floor(focus.month / 3)) return indexes;
+    indexes.push(idx);
+    return indexes;
+  }, []);
+}
+
+function getDashboardPeriodLabel(indexes) {
+  if (indexes.length === 0) return 'Sin datos';
+  const first = months[indexes[0]];
+  const last = months[indexes[indexes.length - 1]];
+
+  if (dashboardPeriod === 'month') return `${MONTH_NAMES[first.month]} ${first.year}`;
+  if (dashboardPeriod === 'quarter') {
+    return `T${Math.floor(first.month / 3) + 1} · ${first.year}`;
+  }
+  return String(first.year === last.year ? first.year : `${first.year}–${last.year}`);
+}
+
+function getDashboardDayTeleMinutes(day, cfg) {
+  if (day.tipo !== 'habil' || !day.entrada) return 0;
+  const suma = calcSuma(day, cfg);
+  if (suma === null) return 0;
+  if (day.teleDia) return suma;
+  if (day.teleTarde) return calcTeleTardeConsumed(day, cfg);
+  return 0;
+}
+
+function getTeleConsumedUntil(focusMonth, endDate, cfg) {
+  const quarter = getQuarterForMonth(focusMonth.month);
+  let consumed = 0;
+
+  for (const monthData of months) {
+    if (monthData.year !== focusMonth.year ||
+        getQuarterForMonth(monthData.month) !== quarter) continue;
+    for (const day of monthData.days) {
+      if (day.date <= endDate) consumed += getDashboardDayTeleMinutes(day, cfg);
+    }
+  }
+  return consumed;
+}
+
+function getDashboardBucketLabel(date, period) {
+  if (period === 'month') return `Sem ${getWeekNum(date)}`;
+  return MONTH_NAMES[date.getMonth()].slice(0, 3);
+}
+
+function buildDashboardData() {
+  const indexes = getDashboardMonthIndexes(months, currentMonthIdx, dashboardPeriod);
+  if (indexes.length === 0) return null;
+
+  const cfg = getConfig();
+  const now = new Date();
+  now.setHours(23, 59, 59, 999);
+
+  let absRunning = computeBolsaUpTo(indexes[0]);
+  let worked = 0;
+  let expected = 0;
+  let completedDays = 0;
+  let pendingDays = 0;
+  let teleConsumed = 0;
+  let entryTotal = 0;
+  let exitTotal = 0;
+  let averageDays = 0;
+  const balancePoints = [];
+  const buckets = new Map();
+  const typeCounts = Object.fromEntries(DAY_TYPES.map(type => [type.key, 0]));
+
+  for (const monthIdx of indexes) {
+    const monthData = months[monthIdx];
+    for (const day of monthData.days) {
+      if (day.date > now) continue;
+
+      const bolsaDay = calculateBolsaDay(day, absRunning, cfg);
+      absRunning = bolsaDay.abs;
+      typeCounts[day.tipo] = (typeCounts[day.tipo] || 0) + 1;
+
+      const isHabil = day.tipo === 'habil';
+      const dayExpected = isHabil ? getHoraDay(day.date) : 0;
+      const isComplete = isHabil && Boolean(day.entrada) && bolsaDay.suma !== null;
+      const dayWorked = isComplete ? bolsaDay.suma : 0;
+
+      if (isHabil) {
+        expected += dayExpected;
+        if (isComplete) {
+          worked += dayWorked;
+          completedDays++;
+          const entry = timeToMins(day.entrada);
+          const exit = timeToMins(bolsaDay.salida);
+          if (entry !== null && exit !== null) {
+            entryTotal += entry;
+            exitTotal += exit;
+            averageDays++;
+          }
+        } else {
+          pendingDays++;
+        }
+      }
+
+      teleConsumed += getDashboardDayTeleMinutes(day, cfg);
+      balancePoints.push({date: day.date, value: absRunning});
+
+      const bucketLabel = getDashboardBucketLabel(day.date, dashboardPeriod);
+      const bucket = buckets.get(bucketLabel) || {label: bucketLabel, worked: 0, expected: 0};
+      bucket.worked += dayWorked;
+      bucket.expected += dayExpected;
+      buckets.set(bucketLabel, bucket);
+    }
+  }
+
+  const focusMonth = months[currentMonthIdx];
+  const selectedLastMonth = months[indexes[indexes.length - 1]];
+  const selectedEnd = new Date(
+    selectedLastMonth.year,
+    selectedLastMonth.month + 1,
+    0,
+    23,
+    59,
+    59,
+    999
+  );
+  const teleEnd = selectedEnd < now ? selectedEnd : now;
+  const currentQuarterConsumed = getTeleConsumedUntil(focusMonth, teleEnd, cfg);
+  const currentQuarterAllocation = getTeleBolsaForQuarter(focusMonth.month);
+
+  return {
+    indexes,
+    periodLabel: getDashboardPeriodLabel(indexes),
+    worked,
+    expected,
+    difference: worked - expected,
+    balance: absRunning,
+    completedDays,
+    pendingDays,
+    teleConsumed,
+    teleRemaining: currentQuarterAllocation - currentQuarterConsumed,
+    teleQuarter: getQuarterForMonth(focusMonth.month) + 1,
+    averageEntry: averageDays > 0 ? Math.round(entryTotal / averageDays) : null,
+    averageExit: averageDays > 0 ? Math.round(exitTotal / averageDays) : null,
+    balancePoints,
+    buckets: Array.from(buckets.values()),
+    typeCounts
+  };
+}
+
+function renderDashboardLineChart(points) {
+  if (points.length === 0) {
+    return '<div class="dashboard-empty">Todavía no hay días transcurridos en este periodo.</div>';
+  }
+
+  const width = 900;
+  const height = 240;
+  const padding = {top: 16, right: 18, bottom: 30, left: 58};
+  const plotWidth = width - padding.left - padding.right;
+  const plotHeight = height - padding.top - padding.bottom;
+  const values = points.map(point => point.value);
+  let minValue = Math.min(0, ...values);
+  let maxValue = Math.max(0, ...values);
+  if (minValue === maxValue) {
+    minValue -= 60;
+    maxValue += 60;
+  }
+  const range = maxValue - minValue;
+  const xFor = idx => padding.left + (points.length === 1 ? plotWidth / 2 : idx * plotWidth / (points.length - 1));
+  const yFor = value => padding.top + ((maxValue - value) / range) * plotHeight;
+  const path = points.map((point, idx) =>
+    `${idx === 0 ? 'M' : 'L'} ${xFor(idx).toFixed(1)} ${yFor(point.value).toFixed(1)}`
+  ).join(' ');
+  const areaPath = `${path} L ${xFor(points.length - 1).toFixed(1)} ${padding.top + plotHeight} ` +
+    `L ${xFor(0).toFixed(1)} ${padding.top + plotHeight} Z`;
+
+  const grid = [0, 1, 2, 3, 4].map(step => {
+    const value = maxValue - range * step / 4;
+    const y = yFor(value);
+    return `<line class="dashboard-chart-grid" x1="${padding.left}" y1="${y}" x2="${width - padding.right}" y2="${y}"></line>
+      <text class="dashboard-chart-label" x="${padding.left - 9}" y="${y + 4}" text-anchor="end">${minsToTime(value)}</text>`;
+  }).join('');
+  const zeroY = yFor(0);
+  const firstLabel = points[0].date.toLocaleDateString('es-ES', {day: '2-digit', month: '2-digit'});
+  const lastLabel = points[points.length - 1].date.toLocaleDateString('es-ES', {day: '2-digit', month: '2-digit'});
+  const lastPoint = points[points.length - 1];
+
+  return `<svg class="dashboard-line-chart" viewBox="0 0 ${width} ${height}" role="img" aria-label="Evolución del saldo acumulado">
+    ${grid}
+    <line class="dashboard-zero-line" x1="${padding.left}" y1="${zeroY}" x2="${width - padding.right}" y2="${zeroY}"></line>
+    <path class="dashboard-balance-area" d="${areaPath}"></path>
+    <path class="dashboard-balance-line" d="${path}"></path>
+    <circle class="dashboard-balance-point" cx="${xFor(points.length - 1)}" cy="${yFor(lastPoint.value)}" r="4"></circle>
+    <text class="dashboard-chart-label" x="${padding.left}" y="${height - 7}">${firstLabel}</text>
+    <text class="dashboard-chart-label" x="${width - padding.right}" y="${height - 7}" text-anchor="end">${lastLabel}</text>
+  </svg>`;
+}
+
+function renderDashboardComparison(buckets) {
+  if (buckets.length === 0) {
+    return '<div class="dashboard-empty">No hay datos comparables.</div>';
+  }
+
+  const maxValue = Math.max(1, ...buckets.flatMap(bucket => [bucket.worked, bucket.expected]));
+  return `<div class="dashboard-legend">
+    <span class="dashboard-legend-item"><span class="dashboard-legend-dot actual"></span>Trabajadas</span>
+    <span class="dashboard-legend-item"><span class="dashboard-legend-dot expected"></span>Esperadas</span>
+  </div>
+  <div class="comparison-list">${buckets.map(bucket => {
+    const actualWidth = Math.max(0, bucket.worked / maxValue * 100);
+    const expectedWidth = Math.max(0, bucket.expected / maxValue * 100);
+    return `<div class="comparison-row">
+      <span class="comparison-label">${bucket.label}</span>
+      <div class="comparison-bars">
+        <div class="comparison-track"><div class="comparison-fill actual" style="width:${actualWidth.toFixed(2)}%"></div></div>
+        <div class="comparison-track"><div class="comparison-fill expected" style="width:${expectedWidth.toFixed(2)}%"></div></div>
+      </div>
+      <div class="comparison-values"><span>${minsToTime(bucket.worked)}</span> / <span>${minsToTime(bucket.expected)}</span></div>
+    </div>`;
+  }).join('')}</div>`;
+}
+
+function renderDashboardTypes(typeCounts) {
+  const total = Object.values(typeCounts).reduce((sum, value) => sum + value, 0);
+  if (total === 0) return '<div class="dashboard-empty">No hay días en el periodo.</div>';
+
+  const segments = DAY_TYPES.filter(type => typeCounts[type.key] > 0).map(type =>
+    `<span class="type-segment ${type.key}" style="width:${(typeCounts[type.key] / total * 100).toFixed(2)}%" title="${type.label}: ${typeCounts[type.key]}"></span>`
+  ).join('');
+  const legend = DAY_TYPES.map(type =>
+    `<div class="type-legend-row">
+      <span class="type-legend-name"><span class="type-dot type-segment ${type.key}"></span>${type.label}</span>
+      <strong>${typeCounts[type.key] || 0}</strong>
+    </div>`
+  ).join('');
+
+  return `<div class="type-distribution" aria-label="Distribución de tipos de día">${segments}</div>
+    <div class="type-legend">${legend}</div>`;
+}
+
+function renderDashboardAlerts(data) {
+  const alerts = [];
+  if (data.pendingDays > 0) {
+    alerts.push(`<div class="dashboard-alert warn"><span>!</span><span>${data.pendingDays} ${data.pendingDays === 1 ? 'día hábil pendiente' : 'días hábiles pendientes'} de completar.</span></div>`);
+  }
+  if (data.balance < 0) {
+    alerts.push(`<div class="dashboard-alert warn"><span>!</span><span>La bolsa de horas está en ${minsToTime(data.balance)}.</span></div>`);
+  }
+  if (data.teleRemaining < 0) {
+    alerts.push(`<div class="dashboard-alert warn"><span>!</span><span>La bolsa de teletrabajo del T${data.teleQuarter} se supera en ${minsToTime(-data.teleRemaining)}.</span></div>`);
+  }
+  if (alerts.length === 0) {
+    alerts.push('<div class="dashboard-alert ok"><span>✓</span><span>Sin incidencias en el periodo seleccionado.</span></div>');
+  }
+  return alerts.join('');
+}
+
+function renderDashboard() {
+  const content = document.getElementById('content');
+  const data = buildDashboardData();
+  if (!data) {
+    content.innerHTML = '<div class="dashboard-empty">No hay meses disponibles.</div>';
+    return;
+  }
+
+  const differenceClass = data.difference >= 0 ? 'pos' : 'neg';
+  const balanceClass = data.balance >= 0 ? 'pos' : 'neg';
+  const teleClass = data.teleRemaining >= 0 ? 'info' : 'neg';
+  const averageText = data.averageEntry === null
+    ? '--:-- / --:--'
+    : `${minsToTime(data.averageEntry)} / ${minsToTime(data.averageExit)}`;
+
+  content.innerHTML = `<section class="dashboard">
+    <div class="dashboard-header">
+      <div>
+        <h1 class="dashboard-title">Estadísticas</h1>
+        <div class="dashboard-period-label">${data.periodLabel}</div>
+      </div>
+      <div class="period-switcher" role="tablist" aria-label="Periodo de estadísticas">
+        <button class="period-btn ${dashboardPeriod === 'month' ? 'active' : ''}" role="tab" aria-selected="${dashboardPeriod === 'month'}" onclick="setDashboardPeriod('month')">MES</button>
+        <button class="period-btn ${dashboardPeriod === 'quarter' ? 'active' : ''}" role="tab" aria-selected="${dashboardPeriod === 'quarter'}" onclick="setDashboardPeriod('quarter')">TRIMESTRE</button>
+        <button class="period-btn ${dashboardPeriod === 'year' ? 'active' : ''}" role="tab" aria-selected="${dashboardPeriod === 'year'}" onclick="setDashboardPeriod('year')">AÑO</button>
+      </div>
+    </div>
+
+    <div class="dashboard-kpis">
+      <div class="dashboard-kpi">
+        <div class="dashboard-kpi-label">Horas trabajadas</div>
+        <div class="dashboard-kpi-value info">${minsToTime(data.worked)}</div>
+        <div class="dashboard-kpi-detail">${data.completedDays} días completos</div>
+      </div>
+      <div class="dashboard-kpi">
+        <div class="dashboard-kpi-label">Horas esperadas</div>
+        <div class="dashboard-kpi-value">${minsToTime(data.expected)}</div>
+        <div class="dashboard-kpi-detail">Hasta hoy</div>
+      </div>
+      <div class="dashboard-kpi">
+        <div class="dashboard-kpi-label">Diferencia</div>
+        <div class="dashboard-kpi-value ${differenceClass}">${minsToTime(data.difference)}</div>
+        <div class="dashboard-kpi-detail">Real frente a objetivo</div>
+      </div>
+      <div class="dashboard-kpi">
+        <div class="dashboard-kpi-label">Bolsa actual</div>
+        <div class="dashboard-kpi-value ${balanceClass}">${minsToTime(data.balance)}</div>
+        <div class="dashboard-kpi-detail">Saldo acumulado</div>
+      </div>
+      <div class="dashboard-kpi">
+        <div class="dashboard-kpi-label">Tele disponible T${data.teleQuarter}</div>
+        <div class="dashboard-kpi-value ${teleClass}">${minsToTime(data.teleRemaining)}</div>
+        <div class="dashboard-kpi-detail">${minsToTime(data.teleConsumed)} usados en el periodo</div>
+      </div>
+      <div class="dashboard-kpi">
+        <div class="dashboard-kpi-label">Entrada / salida media</div>
+        <div class="dashboard-kpi-value">${averageText}</div>
+        <div class="dashboard-kpi-detail">Solo fichajes completos</div>
+      </div>
+    </div>
+
+    <div class="dashboard-grid">
+      <div class="dashboard-panel dashboard-panel-wide">
+        <div class="dashboard-panel-title">Evolución de la bolsa</div>
+        <div class="dashboard-panel-subtitle">Saldo acumulado hasta cada día transcurrido</div>
+        ${renderDashboardLineChart(data.balancePoints)}
+      </div>
+      <div class="dashboard-panel">
+        <div class="dashboard-panel-title">Horas trabajadas frente a esperadas</div>
+        <div class="dashboard-panel-subtitle">${dashboardPeriod === 'month' ? 'Agrupación semanal' : 'Agrupación mensual'}</div>
+        ${renderDashboardComparison(data.buckets)}
+      </div>
+      <div class="dashboard-panel">
+        <div class="dashboard-panel-title">Distribución de días</div>
+        <div class="dashboard-panel-subtitle">Días transcurridos por tipo</div>
+        ${renderDashboardTypes(data.typeCounts)}
+      </div>
+      <div class="dashboard-panel dashboard-panel-wide">
+        <div class="dashboard-panel-title">Incidencias</div>
+        ${renderDashboardAlerts(data)}
+      </div>
+    </div>
+  </section>`;
 }
 
 function updateDay(idx, field, value) {
@@ -2450,7 +3101,7 @@ document.querySelectorAll('.config-input, .select-input').forEach(el => {
 
 // ── Service Worker registration ──────────────────────────────────────────────
 if ('serviceWorker' in navigator) {
-  const swVersion = '2.6.3';
+  const swVersion = '2.7.0';
   let swRefreshing = false;
 
   navigator.serviceWorker.addEventListener('controllerchange', () => {
