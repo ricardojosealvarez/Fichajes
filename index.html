@@ -673,6 +673,77 @@
   }
   .tele-warning-banner.show { display: block; }
 
+  /* Configurable holidays */
+  .holiday-summary {
+    margin-bottom: 9px;
+    color: var(--muted);
+    font-size: 10px;
+    line-height: 1.5;
+  }
+  .holiday-manage-btn { width: 100%; }
+  #holidays-modal .modal { width: min(640px, calc(100vw - 32px)); }
+  .holiday-toolbar {
+    display: grid;
+    grid-template-columns: minmax(120px, 160px) auto;
+    align-items: end;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  .holiday-form {
+    display: grid;
+    grid-template-columns: minmax(145px, 180px) minmax(180px, 1fr) auto;
+    align-items: end;
+    gap: 10px;
+  }
+  .holiday-list {
+    max-height: min(340px, 44dvh);
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    overflow-y: auto;
+  }
+  .holiday-item {
+    display: grid;
+    grid-template-columns: 92px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 10px;
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    background: var(--surface2);
+  }
+  .holiday-item-date { color: var(--accent); font-size: 11px; }
+  .holiday-item-name {
+    min-width: 0;
+    overflow-wrap: anywhere;
+    color: var(--text);
+    font-size: 11px;
+  }
+  .holiday-remove-btn {
+    width: 28px;
+    height: 28px;
+    border: 1px solid #ff554766;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--danger);
+    cursor: pointer;
+  }
+  .holiday-empty {
+    padding: 22px 12px;
+    border: 1px dashed var(--border);
+    border-radius: 7px;
+    color: var(--muted);
+    text-align: center;
+    font-size: 11px;
+  }
+  .holiday-feedback {
+    min-height: 16px;
+    color: var(--muted);
+    font-size: 10px;
+  }
+  .holiday-feedback.error { color: var(--danger); }
+  .holiday-feedback.ok { color: var(--green); }
+
   /* Day edit modal */
   .day-edit-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
   .day-edit-row { display: flex; flex-direction: column; gap: 4px; }
@@ -1186,6 +1257,7 @@
       padding: 22px 18px;
       border-radius: 14px 14px 0 0;
     }
+    #holidays-modal .modal { width: 100%; max-width: none; }
     .modal-actions {
       position: sticky;
       bottom: -22px;
@@ -1213,6 +1285,9 @@
     .pending-indicator,
     .mobile-panel-btn { padding-inline: 7px; }
     #btn-add-month { display: none; }
+    .holiday-toolbar,
+    .holiday-form { grid-template-columns: 1fr; }
+    .holiday-item { grid-template-columns: 78px minmax(0, 1fr) auto; }
   }
 
   @media (max-width: 360px) {
@@ -1428,7 +1503,7 @@
       color: var(--muted);
       letter-spacing: 1px;
       text-transform: uppercase;
-    ">v2.10.1</div>
+    ">v2.11.0</div>
     <button id="signout-btn" style="
       padding: 6px 12px;
       background: transparent;
@@ -1523,6 +1598,12 @@
     </div>
 
     <div>
+      <div class="section-title">Festivos</div>
+      <div class="holiday-summary" id="holiday-summary">Calendario predeterminado</div>
+      <button class="btn btn-secondary holiday-manage-btn" onclick="openHolidaysModal()">Gestionar festivos</button>
+    </div>
+
+    <div>
       <div class="section-title">Resumen del mes</div>
       <div class="stats-grid" id="stats"></div>
     </div>
@@ -1606,6 +1687,39 @@
   </div>
 </div>
 
+<!-- Configurable Holidays Modal -->
+<div class="modal-overlay" id="holidays-modal">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="holidays-modal-title">
+    <div class="modal-title" id="holidays-modal-title">Festivos configurables</div>
+    <p style="font-size:12px;color:var(--muted);line-height:1.6">
+      Personaliza los festivos por año. Los cambios se aplican también a los meses ya creados.
+    </p>
+    <div class="holiday-toolbar">
+      <div class="config-row">
+        <label class="config-label" for="holiday-year">Año</label>
+        <input class="config-input" id="holiday-year" type="number" min="2020" max="2099" data-manual-save="true" onchange="renderHolidayManager()">
+      </div>
+      <button class="btn btn-secondary" onclick="restoreDefaultHolidays()">Restaurar predeterminados</button>
+    </div>
+    <div class="holiday-form">
+      <div class="config-row">
+        <label class="config-label" for="holiday-date">Fecha</label>
+        <input class="config-input" id="holiday-date" type="date" data-manual-save="true">
+      </div>
+      <div class="config-row">
+        <label class="config-label" for="holiday-name">Nombre</label>
+        <input class="config-input" id="holiday-name" type="text" maxlength="80" data-manual-save="true" placeholder="Nombre del festivo">
+      </div>
+      <button class="btn btn-primary" onclick="addOrUpdateHoliday()">Añadir</button>
+    </div>
+    <div class="holiday-feedback" id="holiday-feedback" role="status" aria-live="polite"></div>
+    <div class="holiday-list scrollbar-thin" id="holiday-list"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('holidays-modal')">Cerrar</button>
+    </div>
+  </div>
+</div>
+
 <!-- Add Month Modal -->
 <div class="modal-overlay" id="add-month-modal">
   <div class="modal">
@@ -1648,6 +1762,8 @@ let currentMonthIdx = 0;
 let openMenuIdx = null;
 let currentAppView = 'records';
 let dashboardPeriod = 'month';
+let holidayCalendars = {};
+let holidaySaveInProgress = false;
 
 function timeToMins(t) {
   if (!t || t === '') return null;
@@ -1760,9 +1876,8 @@ function calcFridaySalida(day, absPrev, cfg) {
   return Math.max(salida, cfg.horaMinsalida);
 }
 
-// ── Festivos Comunidad Autónoma de Andalucía 2026 ────────────────────────────
-// Mapa año → lista de fechas ISO festivas con su nombre
-const FESTIVOS_ANDALUCIA = {
+// ── Festivos configurables ───────────────────────────────────────────────────
+const DEFAULT_HOLIDAYS = {
   2026: [
     { iso: '2026-01-01', nota: 'Año Nuevo' },
     { iso: '2026-01-06', nota: 'Epifanía del Señor' },
@@ -1779,18 +1894,356 @@ const FESTIVOS_ANDALUCIA = {
   ]
 };
 
-function applyFestivosAndalucia(monthData) {
-  const festivos = FESTIVOS_ANDALUCIA[monthData.year] || [];
+function toLocalIsoDate(date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
+function isValidHolidayIso(iso, expectedYear = null) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso || ''));
+  if (!match) return false;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const date = new Date(year, month - 1, day);
+  return date.getFullYear() === year
+    && date.getMonth() === month - 1
+    && date.getDate() === day
+    && (expectedYear === null || year === Number(expectedYear));
+}
+
+function normalizeHolidayList(source, year) {
+  if (!Array.isArray(source)) return [];
+  const unique = new Map();
+  for (const item of source) {
+    const iso = String(item?.iso || '').trim();
+    if (!isValidHolidayIso(iso, year)) continue;
+    const nota = String(item?.nota || item?.name || 'Festivo').trim().slice(0, 80) || 'Festivo';
+    const holiday = {iso, nota};
+    if (typeof item?.managed === 'boolean') holiday.managed = item.managed;
+    unique.set(iso, holiday);
+  }
+  return [...unique.values()].sort((a, b) => a.iso.localeCompare(b.iso));
+}
+
+function normalizeHolidayCalendars(source) {
+  let parsed = source;
+  if (typeof source === 'string') {
+    try { parsed = JSON.parse(source); } catch { return {}; }
+  }
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {};
+
+  const normalized = {};
+  for (const [year, holidays] of Object.entries(parsed)) {
+    const numericYear = Number(year);
+    if (!Number.isInteger(numericYear) || numericYear < 2020 || numericYear > 2099) continue;
+    normalized[String(numericYear)] = normalizeHolidayList(holidays, numericYear);
+  }
+  return normalized;
+}
+
+function getDefaultHolidaysForYear(year) {
+  return normalizeHolidayList(DEFAULT_HOLIDAYS[year] || [], year)
+    .map(holiday => ({...holiday, managed: true}));
+}
+
+function getConfiguredHolidaysForYear(year) {
+  const key = String(year);
+  const source = Object.prototype.hasOwnProperty.call(holidayCalendars, key)
+    ? holidayCalendars[key]
+    : getDefaultHolidaysForYear(year);
+  return normalizeHolidayList(source, year);
+}
+
+function setHolidayCalendarOverride(year, holidays) {
+  const key = String(year);
+  const normalized = normalizeHolidayList(holidays, year);
+  const defaults = getDefaultHolidaysForYear(year);
+  if (JSON.stringify(normalized) === JSON.stringify(defaults)) delete holidayCalendars[key];
+  else holidayCalendars[key] = normalized;
+}
+
+function applyConfiguredHolidays(monthData) {
+  const holidays = getConfiguredHolidaysForYear(monthData.year);
+  const holidayMap = new Map(holidays.map(holiday => [holiday.iso, holiday]));
   for (const day of monthData.days) {
-    const d = day.date;
-    const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-    const festivo = festivos.find(f => f.iso === iso);
-    if (festivo && day.tipo === 'habil') {
+    const festivo = holidayMap.get(toLocalIsoDate(day.date));
+    if (festivo?.managed === true && day.tipo === 'habil') {
       day.tipo  = 'festivo';
       day.notas = festivo.nota;
     }
   }
   return monthData;
+}
+
+const HOLIDAY_TIME_FIELDS = [
+  'entrada',
+  'desayunoIni',
+  'desayunoFin',
+  'comidaIni',
+  'comidaFin',
+  'salida'
+];
+
+function findHolidayDayRefs(sourceMonths, iso) {
+  const refs = [];
+  sourceMonths.forEach(monthData => {
+    (monthData.days || []).forEach((day, dayIdx) => {
+      if (toLocalIsoDate(day.date) === iso) refs.push({monthData, day, dayIdx});
+    });
+  });
+  return refs;
+}
+
+function markDayAsConfiguredHoliday(day, note) {
+  day.tipo = 'festivo';
+  day.notas = note;
+  HOLIDAY_TIME_FIELDS.forEach(field => { day[field] = ''; });
+  day.teleDia = false;
+  day.teleTarde = false;
+}
+
+function restoreConfiguredHolidayAsWorkday(day, previousNote) {
+  if (day.tipo !== 'festivo' || day.notas !== previousNote) return false;
+  day.tipo = 'habil';
+  day.notas = '';
+  return true;
+}
+
+function reconcileHolidayCalendar(sourceMonths, year, previousHolidays, nextHolidays) {
+  const previousMap = new Map(normalizeHolidayList(previousHolidays, year).map(item => [item.iso, item]));
+  const nextMap = new Map(normalizeHolidayList(nextHolidays, year).map(item => [item.iso, item]));
+  const dates = new Set([...previousMap.keys(), ...nextMap.keys()]);
+  const changed = [];
+
+  for (const iso of dates) {
+    const previous = previousMap.get(iso);
+    const next = nextMap.get(iso);
+    const previousManaged = previous?.managed === true;
+    const nextManaged = next?.managed === true;
+    if (previous?.nota === next?.nota && previousManaged === nextManaged) continue;
+
+    for (const ref of findHolidayDayRefs(sourceMonths, iso)) {
+      if (!previous && next && nextManaged && ref.day.tipo === 'habil') {
+        markDayAsConfiguredHoliday(ref.day, next.nota);
+        changed.push(ref);
+      } else if (previous && !next && previousManaged && restoreConfiguredHolidayAsWorkday(ref.day, previous.nota)) {
+        changed.push(ref);
+      } else if (
+        previous
+        && next
+        && previousManaged
+        && nextManaged
+        && ref.day.tipo === 'festivo'
+        && ref.day.notas === previous.nota
+      ) {
+        ref.day.notas = next.nota;
+        changed.push(ref);
+      }
+    }
+  }
+
+  return changed;
+}
+
+function holidayChangesClearRecordedTimes(sourceMonths, year, previousHolidays, nextHolidays) {
+  const previousDates = new Set(normalizeHolidayList(previousHolidays, year).map(item => item.iso));
+  return normalizeHolidayList(nextHolidays, year).some(item => {
+    if (previousDates.has(item.iso)) return false;
+    return findHolidayDayRefs(sourceMonths, item.iso).some(ref =>
+      ref.day.tipo === 'habil' && (
+        HOLIDAY_TIME_FIELDS.some(field => Boolean(ref.day[field]))
+        || Boolean(ref.day.notas)
+        || ref.day.teleDia
+        || ref.day.teleTarde
+      )
+    );
+  });
+}
+
+function getHolidayManagerYear() {
+  const input = document.getElementById('holiday-year');
+  const fallback = months[currentMonthIdx]?.year || new Date().getFullYear();
+  const year = Number(input?.value || fallback);
+  return Number.isInteger(year) && year >= 2020 && year <= 2099 ? year : fallback;
+}
+
+function setHolidayFeedback(message, type = '') {
+  const feedback = document.getElementById('holiday-feedback');
+  if (!feedback) return;
+  feedback.textContent = message;
+  feedback.className = `holiday-feedback${type ? ` ${type}` : ''}`;
+}
+
+function setHolidayManagerBusy(isBusy) {
+  document.querySelectorAll(
+    '#holiday-year, #holiday-date, #holiday-name, '
+    + '#holidays-modal .holiday-toolbar button, #holidays-modal .holiday-form button, '
+    + '#holidays-modal .holiday-remove-btn'
+  ).forEach(element => { element.disabled = isBusy; });
+}
+
+function renderHolidaySummary() {
+  const summary = document.getElementById('holiday-summary');
+  if (!summary) return;
+  const year = months[currentMonthIdx]?.year || new Date().getFullYear();
+  const total = getConfiguredHolidaysForYear(year).length;
+  const customized = Object.prototype.hasOwnProperty.call(holidayCalendars, String(year));
+  summary.textContent = `${total} ${total === 1 ? 'festivo' : 'festivos'} · ${year}${customized ? ' · personalizado' : ''}`;
+}
+
+function renderHolidayManager() {
+  const yearInput = document.getElementById('holiday-year');
+  const dateInput = document.getElementById('holiday-date');
+  const list = document.getElementById('holiday-list');
+  if (!yearInput || !dateInput || !list) return;
+
+  const year = getHolidayManagerYear();
+  yearInput.value = String(year);
+  dateInput.min = `${year}-01-01`;
+  dateInput.max = `${year}-12-31`;
+  if (dateInput.value && !dateInput.value.startsWith(`${year}-`)) dateInput.value = '';
+
+  list.replaceChildren();
+  const holidays = getConfiguredHolidaysForYear(year);
+  if (holidays.length === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'holiday-empty';
+    empty.textContent = 'No hay festivos configurados para este año.';
+    list.appendChild(empty);
+    return;
+  }
+
+  holidays.forEach(holiday => {
+    const [, month, day] = holiday.iso.split('-').map(Number);
+    const row = document.createElement('div');
+    row.className = 'holiday-item';
+
+    const date = document.createElement('span');
+    date.className = 'holiday-item-date';
+    date.textContent = new Date(year, month - 1, day).toLocaleDateString('es-ES', {
+      day: '2-digit',
+      month: 'short'
+    });
+
+    const name = document.createElement('span');
+    name.className = 'holiday-item-name';
+    name.textContent = holiday.nota;
+
+    const remove = document.createElement('button');
+    remove.className = 'holiday-remove-btn';
+    remove.type = 'button';
+    remove.textContent = '×';
+    remove.title = `Eliminar ${holiday.nota}`;
+    remove.setAttribute('aria-label', `Eliminar ${holiday.nota}`);
+    remove.addEventListener('click', () => removeHoliday(holiday.iso));
+
+    row.append(date, name, remove);
+    list.appendChild(row);
+  });
+}
+
+function openHolidaysModal() {
+  setMobileSidebarOpen(false);
+  const year = months[currentMonthIdx]?.year || new Date().getFullYear();
+  document.getElementById('holiday-year').value = String(year);
+  document.getElementById('holiday-date').value = '';
+  document.getElementById('holiday-name').value = '';
+  setHolidayFeedback('');
+  renderHolidayManager();
+  document.getElementById('holidays-modal').classList.add('show');
+  document.getElementById('holiday-year').focus();
+}
+
+async function persistHolidayCalendar(year, nextHolidays, successMessage) {
+  if (holidaySaveInProgress) {
+    setHolidayFeedback('Espera a que termine el guardado actual.');
+    return false;
+  }
+
+  const previous = getConfiguredHolidaysForYear(year);
+  const normalizedNext = normalizeHolidayList(nextHolidays, year);
+  if (holidayChangesClearRecordedTimes(months, year, previous, normalizedNext)) {
+    const confirmed = confirm('Alguna fecha seleccionada contiene horas, notas o teletrabajo. Al convertirla en festivo se borrarán esos datos. ¿Continuar?');
+    if (!confirmed) return false;
+  }
+
+  holidaySaveInProgress = true;
+  try {
+    const changedDays = reconcileHolidayCalendar(months, year, previous, normalizedNext);
+    setHolidayCalendarOverride(year, normalizedNext);
+
+    if (currentUser) {
+      queueSyncChange('config');
+      changedDays.forEach(ref => {
+        ensureDayId(ref.day);
+        queueSyncChange(getDaySyncKey(ref.monthData.id, ref.day));
+      });
+    }
+    saveStateLocal();
+    renderHolidaySummary();
+    renderHolidayManager();
+    renderActiveView();
+    setHolidayManagerBusy(true);
+
+    let synced = true;
+    if (currentUser) {
+      setHolidayFeedback('Guardando…');
+      const configSaved = await saveConfig();
+      synced = configSaved;
+      if (configSaved) {
+        for (const ref of changedDays) {
+          synced = await saveDay(ref.monthData.id, ref.dayIdx, ref.day) && synced;
+        }
+      }
+    }
+
+    if (synced) setHolidayFeedback(successMessage, 'ok');
+    else setHolidayFeedback('Guardado localmente. Sincronización pendiente.', 'error');
+    return true;
+  } finally {
+    holidaySaveInProgress = false;
+    setHolidayManagerBusy(false);
+  }
+}
+
+async function addOrUpdateHoliday() {
+  const year = getHolidayManagerYear();
+  const iso = document.getElementById('holiday-date').value;
+  const note = document.getElementById('holiday-name').value.trim().slice(0, 80);
+  if (!isValidHolidayIso(iso, year)) {
+    setHolidayFeedback('Selecciona una fecha válida del año indicado.', 'error');
+    return;
+  }
+  if (!note) {
+    setHolidayFeedback('Escribe el nombre del festivo.', 'error');
+    return;
+  }
+
+  const holidays = getConfiguredHolidaysForYear(year);
+  const existing = holidays.find(item => item.iso === iso);
+  const refs = findHolidayDayRefs(months, iso);
+  const managed = existing
+    ? existing.managed === true
+    : (refs.length === 0 || refs.some(ref => ref.day.tipo === 'habil'));
+  const next = holidays.filter(item => item.iso !== iso);
+  next.push({iso, nota: note, managed});
+  const saved = await persistHolidayCalendar(year, next, 'Festivo guardado.');
+  if (saved) {
+    document.getElementById('holiday-date').value = '';
+    document.getElementById('holiday-name').value = '';
+  }
+}
+
+async function removeHoliday(iso) {
+  const year = getHolidayManagerYear();
+  const next = getConfiguredHolidaysForYear(year).filter(item => item.iso !== iso);
+  await persistHolidayCalendar(year, next, 'Festivo eliminado.');
+}
+
+async function restoreDefaultHolidays() {
+  const year = getHolidayManagerYear();
+  const defaults = getDefaultHolidaysForYear(year);
+  await persistHolidayCalendar(year, defaults, 'Calendario predeterminado restaurado.');
 }
 
 function getWorkdays(year, month) {
@@ -1824,7 +2277,7 @@ function createMonthData(year, month, id) {
       teleDia: false, teleTarde: false, notas: '', tipo: 'habil'
     }))
   };
-  return applyFestivosAndalucia(m);
+  return applyConfiguredHolidays(m);
 }
 
 function parseExistingData() {
@@ -1864,9 +2317,9 @@ function parseExistingData() {
     teleDia: r.tele || false, teleTarde: false, notas: r.n, tipo: r.tipo || 'habil'
   }));
 
-  applyFestivosAndalucia(enero);
-  applyFestivosAndalucia(febrero);
-  applyFestivosAndalucia(marzo);
+  applyConfiguredHolidays(enero);
+  applyConfiguredHolidays(febrero);
+  applyConfiguredHolidays(marzo);
   months = [enero, febrero, marzo];
 }
 
@@ -1876,6 +2329,7 @@ function renderTabs() {
     return `<button class="tab ${index === currentMonthIdx ? 'active' : ''}" onclick="switchMonth(${index})">${MONTH_NAMES[month.month]} ${month.year}</button>`;
   }).join('');
   tabs.onscroll = () => syncTabsViewport();
+  renderHolidaySummary();
   requestAnimationFrame(() => syncTabsViewport(true));
 }
 
@@ -2221,7 +2675,7 @@ function renderTable() {
         <button class="tele-btn ${day.teleTarde ? 'active-tarde' : ''}" onclick="setTele(${i},'tarde')" ${(day.tipo !== 'habil' || day.teleDia) ? 'disabled' : ''} title="Tarde en teletrabajo">TARDE</button>
         <span class="tele-bolsa ${teleCls}">${teleStr}</span>
       </td>
-      <td class="notes-cell" data-label="Notas"><input class="notes-input" type="text" value="${day.notas}" oninput="updateDayField(${i},'notas',this.value)" onblur="persistDayChange(${i})" data-field="notas" placeholder="—"></td>
+      <td class="notes-cell" data-label="Notas"><input class="notes-input" type="text" value="${escapeHtmlAttribute(day.notas)}" oninput="updateDayField(${i},'notas',this.value)" onblur="persistDayChange(${i})" data-field="notas" placeholder="—"></td>
       <td class="type-cell" data-label="Tipo">
         <div class="type-dropdown-wrap">
           <div class="type-pill ${day.tipo}" onclick="toggleTypeMenu(event,${i})" title="Cambiar tipo de día">
@@ -2772,6 +3226,16 @@ function renderTimeDisplay(value, extraClass = '') {
   return `<span class="time-display${extraClass ? ' ' + extraClass : ''}${emptyClass}">${displayValue}</span>`;
 }
 
+function escapeHtmlAttribute(value) {
+  return String(value ?? '').replace(/[&<>"']/g, character => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;'
+  })[character]);
+}
+
 // Updates state without re-rendering (for fields edited inline like notas)
 function updateDayField(idx, field, value) {
   months[currentMonthIdx].days[idx][field] = value;
@@ -2815,7 +3279,8 @@ function setDayType(idx, tipo) {
     months[currentMonthIdx].days[idx].comidaIni = '';
     months[currentMonthIdx].days[idx].comidaFin = '';
     months[currentMonthIdx].days[idx].salida = '';
-    months[currentMonthIdx].days[idx].teletrabajo = false;
+    months[currentMonthIdx].days[idx].teleDia = false;
+    months[currentMonthIdx].days[idx].teleTarde = false;
   }
   openMenuIdx = null;
   renderTable();
@@ -2941,6 +3406,7 @@ function readConfigFromDOM() {
     teleT2:      g('cfg-tele-t2'),
     teleT3:      g('cfg-tele-t3'),
     teleT4:      g('cfg-tele-t4'),
+    festivos:    normalizeHolidayCalendars(holidayCalendars),
   };
 }
 
@@ -2960,6 +3426,8 @@ function applyConfigToDOM(cfg) {
   s('cfg-tele-t2',      cfg.teleT2);
   s('cfg-tele-t3',      cfg.teleT3);
   s('cfg-tele-t4',      cfg.teleT4);
+  holidayCalendars = normalizeHolidayCalendars(cfg.festivos ?? cfg.holidays ?? {});
+  renderHolidaySummary();
 }
 
 // ── Import modal ─────────────────────────────────────────────────────────────
@@ -3640,13 +4108,13 @@ const _origConfirmDelete = confirmDeleteMonth;
 confirmDeleteMonth = function(...args) { _origConfirmDelete(...args); saveState(); };
 
 // Also save on config changes (only on change/blur, not on every keystroke)
-document.querySelectorAll('.config-input, .select-input').forEach(el => {
+document.querySelectorAll('.config-input:not([data-manual-save]), .select-input:not([data-manual-save])').forEach(el => {
   el.addEventListener('change', () => { saveStateLocal(); saveConfig(); });
 });
 
 // ── Service Worker registration ──────────────────────────────────────────────
 if ('serviceWorker' in navigator) {
-  const swVersion = '2.10.1';
+  const swVersion = '2.11.0';
   let swRefreshing = false;
 
   navigator.serviceWorker.addEventListener('controllerchange', () => {
@@ -3687,6 +4155,9 @@ let syncQueue = [];
 let lastSuccessfulSync = null;
 let activeSyncOperations = 0;
 let syncErrorMessage = '';
+let configSavePromise = null;
+let configSaveRequested = false;
+const daySaveStates = new Map();
 
 function queueSyncChange(key) {
   if (!key || syncQueue.includes(key)) return;
@@ -3763,12 +4234,16 @@ async function retrySync() {
 
   syncErrorMessage = '';
   if (syncQueue.length === 0) queueSyncChange('full');
-  const queuedChanges = [...syncQueue];
+  const queuedChanges = syncQueue.includes('config')
+    ? ['config', ...syncQueue.filter(key => key !== 'config')]
+    : [...syncQueue];
   let success = true;
 
   for (const key of queuedChanges) {
     if (key === 'config') {
-      success = await saveConfig() && success;
+      const configSaved = await saveConfig();
+      success = configSaved && success;
+      if (!configSaved) break;
       continue;
     }
     if (key === 'full') {
@@ -4049,9 +4524,11 @@ async function ensureCurrentMonthExists() {
       const daysInMonth = new Date(year, monthNum, 0).getDate();
       console.log('2️⃣ Generando', daysInMonth, 'días...');
       const defaultDays = [];
-      const _festivosYear = FESTIVOS_ANDALUCIA[year] || [];
+      const _festivosYear = getConfiguredHolidaysForYear(year);
       const _festivosMap = {};
-      for (const f of _festivosYear) _festivosMap[f.iso] = f.nota;
+      for (const f of _festivosYear) {
+        if (f.managed === true) _festivosMap[f.iso] = f.nota;
+      }
 
       for (let i = 1; i <= daysInMonth; i++) {
         const dayDate = new Date(year, monthIdx, i);
@@ -4124,13 +4601,18 @@ async function ensureCurrentMonthExists() {
 
 // ── SYNC REST ────────────────────────────────────────────────────────────
 
-async function saveDay(monthId, dayIdx, dayData) {
-  const id = dayData.id || 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+function ensureDayId(dayData) {
+  if (dayData.id) return dayData.id;
+  dayData.id = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
     const r = Math.random() * 16 | 0;
     const v = c === 'x' ? r : (r & 0x3 | 0x8);
     return v.toString(16);
   });
-  dayData.id = id;
+  return dayData.id;
+}
+
+async function performSaveDay(monthId, dayIdx, dayData) {
+  const id = ensureDayId(dayData);
   const syncKey = getDaySyncKey(monthId, dayData);
   queueSyncChange(syncKey);
 
@@ -4192,6 +4674,49 @@ async function saveDay(monthId, dayIdx, dayData) {
   }
 }
 
+function saveDay(monthId, dayIdx, dayData) {
+  ensureDayId(dayData);
+  const syncKey = getDaySyncKey(monthId, dayData);
+  let state = daySaveStates.get(syncKey);
+  if (!state) {
+    state = {
+      promise: null,
+      requested: false,
+      monthId,
+      dayIdx,
+      dayData
+    };
+    daySaveStates.set(syncKey, state);
+  }
+
+  state.requested = true;
+  state.monthId = monthId;
+  state.dayIdx = dayIdx;
+  state.dayData = dayData;
+  queueSyncChange(syncKey);
+  saveStateLocal();
+  if (state.promise) return state.promise;
+
+  state.promise = (async () => {
+    let success = true;
+    do {
+      state.requested = false;
+      const saved = await performSaveDay(state.monthId, state.dayIdx, state.dayData);
+      success = saved && success;
+      if (!saved) break;
+      if (state.requested) {
+        queueSyncChange(syncKey);
+        saveStateLocal();
+      }
+    } while (state.requested);
+    return success;
+  })().finally(() => {
+    daySaveStates.delete(syncKey);
+  });
+
+  return state.promise;
+}
+
 function _showConfigToast(msg, isError) {
   let el = document.getElementById('cfg-save-toast');
   if (!el) {
@@ -4208,7 +4733,7 @@ function _showConfigToast(msg, isError) {
   el._hideTimer = setTimeout(() => { el.style.opacity = '0'; }, 2500);
 }
 
-async function saveConfig() {
+async function performSaveConfig() {
   console.log('saveConfig() llamado — user:', currentUser?.id, 'online:', isOnline);
   const syncKey = 'config';
   queueSyncChange(syncKey);
@@ -4241,7 +4766,8 @@ async function saveConfig() {
       telet1: document.getElementById('cfg-tele-t1')?.value || null,
       telet2: document.getElementById('cfg-tele-t2')?.value || null,
       telet3: document.getElementById('cfg-tele-t3')?.value || null,
-      telet4: document.getElementById('cfg-tele-t4')?.value || null
+      telet4: document.getElementById('cfg-tele-t4')?.value || null,
+      festivos: normalizeHolidayCalendars(holidayCalendars)
     };
     console.log('saveConfig payload:', JSON.stringify(payload));
     // Upsert: crea la fila si no existe, la actualiza si ya existe (on_conflict=user_id)
@@ -4264,7 +4790,7 @@ async function saveConfig() {
         if (renewed) {
           console.log('Token renovado, reintentando saveConfig...');
           activeSyncOperations = Math.max(0, activeSyncOperations - 1);
-          return saveConfig();
+          return performSaveConfig();
         } else {
           finishSyncOperation(syncKey, false, 'Sesión caducada');
           showLoginModal();
@@ -4279,6 +4805,10 @@ async function saveConfig() {
       console.log('✓ Config guardada');
       _showConfigToast('✓ Configuración guardada', false);
       finishSyncOperation(syncKey, true);
+      if (configSaveRequested) {
+        queueSyncChange(syncKey);
+        saveStateLocal();
+      }
       return true;
     }
   } catch (e) {
@@ -4287,6 +4817,28 @@ async function saveConfig() {
     finishSyncOperation(syncKey, false, e.message);
     return false;
   }
+}
+
+function saveConfig() {
+  configSaveRequested = true;
+  queueSyncChange('config');
+  saveStateLocal();
+  if (configSavePromise) return configSavePromise;
+
+  configSavePromise = (async () => {
+    let success = true;
+    do {
+      configSaveRequested = false;
+      const saved = await performSaveConfig();
+      success = saved && success;
+      if (!saved) break;
+    } while (configSaveRequested);
+    return success;
+  })().finally(() => {
+    configSavePromise = null;
+  });
+
+  return configSavePromise;
 }
 
 async function loadDataFromSupabase() {
@@ -4388,6 +4940,7 @@ async function loadDataFromSupabase() {
       set('cfg-tele-t2', cfg.telet2);
       set('cfg-tele-t3', cfg.telet3);
       set('cfg-tele-t4', cfg.telet4);
+      holidayCalendars = normalizeHolidayCalendars(cfg.festivos ?? {});
     } else if (cfgRes.ok && cfgData.length === 0) {
       // Sin fila de config: no sobreescribir con defaults; se creará cuando el usuario cambie un valor
       console.log('Sin config en Supabase para este usuario (se creará al guardar manualmente).');
