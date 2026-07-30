@@ -4,6 +4,7 @@ const test = require('node:test');
 const vm = require('node:vm');
 
 const html = fs.readFileSync(new URL('./index.html', `file://${__filename}`), 'utf8');
+const serviceWorker = fs.readFileSync(new URL('./sw.js', `file://${__filename}`), 'utf8');
 
 const extractFunction = name => {
   const functionStart = html.indexOf(`function ${name}(`);
@@ -418,6 +419,196 @@ test('el panel Hoy programa su actualización al siguiente día', () => {
 
   assert.deepEqual(calls, ['clear:7', 'delay:60100']);
   assert.equal(context.todayPanelRefreshTimer, 8);
+});
+
+test('ordena las notas por fecha y versión descendentes', () => {
+  const context = vm.createContext({});
+  vm.runInContext(extractFunction('compareVersionsDescending'), context);
+  vm.runInContext(extractFunction('getSortedReleaseNotes'), context);
+
+  const sorted = context.getSortedReleaseNotes([
+    {version: '2.9.0', date: '2026-07-30'},
+    {version: '2.11.0', date: '2026-07-30'},
+    {version: '3.0.0', date: '2026-06-01'},
+    {version: '2.10.0', date: '2026-07-30'}
+  ]);
+
+  assert.deepEqual(
+    Array.from(sorted, release => release.version),
+    ['2.11.0', '2.10.0', '2.9.0', '3.0.0']
+  );
+});
+
+test('renderiza las notas de versión sin interpretar HTML', () => {
+  const context = vm.createContext({});
+  [
+    'escapeHtmlAttribute',
+    'compareVersionsDescending',
+    'getSortedReleaseNotes',
+    'formatReleaseDate',
+    'renderReleaseNotesMarkup'
+  ].forEach(name => vm.runInContext(extractFunction(name), context));
+
+  const markup = context.renderReleaseNotesMarkup([{
+    version: '2.14.0<script>',
+    date: '2026-07-30',
+    title: '<img src=x onerror=alert(1)>',
+    changes: ['Mejora <b>importante</b>']
+  }]);
+
+  assert.doesNotMatch(markup, /<script>|<img|<b>/);
+  assert.match(markup, /2\.14\.0&lt;script&gt;/);
+  assert.match(markup, /&lt;img src=x onerror=alert\(1\)&gt;/);
+  assert.match(markup, /Mejora &lt;b&gt;importante&lt;\/b&gt;/);
+  assert.match(markup, /datetime="2026-07-30"/);
+  assert.equal((markup.match(/class="release-note latest"/g) || []).length, 1);
+  assert.match(context.renderReleaseNotesMarkup([]), /No hay notas de versión disponibles/);
+});
+
+test('abre y cierra las notas restaurando el foco', () => {
+  const values = new Set();
+  const calls = [];
+  const documentMock = {
+    activeElement: null,
+    querySelector: selector => elements[selector] || null
+  };
+  const trigger = {
+    focus: () => {
+      calls.push('trigger-focus');
+      documentMock.activeElement = trigger;
+    }
+  };
+  const closeButton = {
+    focus: () => {
+      calls.push('close-focus');
+      documentMock.activeElement = closeButton;
+    }
+  };
+  const list = {
+    innerHTML: '',
+    focus: () => {
+      calls.push('list-focus');
+      documentMock.activeElement = list;
+    }
+  };
+  const modal = {
+    classList: {
+      add: value => values.add(value),
+      remove: value => values.delete(value),
+      contains: value => values.has(value)
+    },
+    contains: element => element === list || element === closeButton,
+    querySelectorAll: () => [list, closeButton]
+  };
+  const elements = {
+    '#release-notes-modal': modal,
+    '#release-notes-list': list,
+    '#release-notes-close': closeButton,
+    '#release-notes-trigger': trigger
+  };
+  documentMock.activeElement = trigger;
+  const context = vm.createContext({
+    document: documentMock,
+    releaseNotesReturnFocus: null,
+    setMobileSidebarOpen: open => calls.push(`sidebar:${open}`)
+  });
+  vm.runInContext(extractConstArray('RELEASE_NOTES'), context);
+  [
+    'escapeHtmlAttribute',
+    'compareVersionsDescending',
+    'getSortedReleaseNotes',
+    'formatReleaseDate',
+    'renderReleaseNotesMarkup',
+    'openReleaseNotesModal',
+    'closeReleaseNotesModal',
+    'handleReleaseNotesBackdrop',
+    'handleReleaseNotesKeydown'
+  ].forEach(name => vm.runInContext(extractFunction(name), context));
+
+  context.openReleaseNotesModal();
+  assert.equal(values.has('show'), true);
+  assert.match(list.innerHTML, /v2\.14\.0/);
+  assert.deepEqual(calls, ['sidebar:false', 'list-focus']);
+
+  let prevented = 0;
+  documentMock.activeElement = closeButton;
+  context.handleReleaseNotesKeydown({
+    key: 'Tab',
+    shiftKey: false,
+    preventDefault: () => { prevented++; }
+  });
+  assert.equal(documentMock.activeElement, list);
+
+  context.handleReleaseNotesKeydown({
+    key: 'Tab',
+    shiftKey: true,
+    preventDefault: () => { prevented++; }
+  });
+  assert.equal(documentMock.activeElement, closeButton);
+
+  documentMock.activeElement = trigger;
+  context.handleReleaseNotesKeydown({
+    key: 'Tab',
+    shiftKey: false,
+    preventDefault: () => { prevented++; }
+  });
+  assert.equal(documentMock.activeElement, list);
+
+  context.handleReleaseNotesKeydown({
+    key: 'Escape',
+    shiftKey: false,
+    preventDefault: () => { prevented++; }
+  });
+  assert.equal(values.has('show'), false);
+  assert.equal(documentMock.activeElement, trigger);
+  assert.equal(prevented, 4);
+
+  context.openReleaseNotesModal();
+  context.handleReleaseNotesBackdrop({target: {}, currentTarget: modal});
+  assert.equal(values.has('show'), true);
+  context.handleReleaseNotesBackdrop({target: modal, currentTarget: modal});
+  assert.equal(values.has('show'), false);
+});
+
+test('mantiene coherentes la versión visible, las notas y la caché', () => {
+  const context = vm.createContext({});
+  vm.runInContext(extractConstArray('RELEASE_NOTES'), context);
+  vm.runInContext(extractFunction('compareVersionsDescending'), context);
+  vm.runInContext(extractFunction('getSortedReleaseNotes'), context);
+  const releaseNotes = vm.runInContext('RELEASE_NOTES', context);
+  const sortedNotes = context.getSortedReleaseNotes(releaseNotes);
+
+  assert.equal(releaseNotes[0].version, '2.14.0');
+  assert.equal(releaseNotes.at(-1).version, '2.3.17');
+  assert.deepEqual(
+    Array.from(releaseNotes, release => release.version),
+    Array.from(sortedNotes, release => release.version)
+  );
+  assert.equal(new Set(Array.from(releaseNotes, release => release.version)).size, releaseNotes.length);
+  assert.ok(releaseNotes.every(release =>
+    /^\d+\.\d+\.\d+$/.test(release.version)
+    && /^\d{4}-\d{2}-\d{2}$/.test(release.date)
+    && !Number.isNaN(Date.parse(`${release.date}T00:00:00Z`))
+    && typeof release.title === 'string'
+    && release.title.length > 0
+    && Array.isArray(release.changes)
+    && release.changes.length > 0
+  ));
+  assert.match(html, /id="app-version">v2\.14\.0</);
+  assert.match(html, /const APP_VERSION = RELEASE_NOTES\[0\]\.version;/);
+  assert.match(html, /const swVersion = APP_VERSION;/);
+  assert.match(serviceWorker, /const APP_VERSION = '2\.14\.0';/);
+});
+
+test('expone el modal de versiones con estructura accesible', () => {
+  assert.match(html, /id="release-notes-trigger"[\s\S]*?aria-haspopup="dialog"[\s\S]*?aria-controls="release-notes-modal"/);
+  assert.match(html, /id="release-notes-modal"/);
+  assert.match(html, /role="dialog"\s+aria-modal="true"\s+aria-labelledby="release-notes-modal-title"/);
+  assert.match(html, /id="release-notes-modal-title">Cambios y mejoras</);
+  assert.match(html, /id="release-notes-list"[^>]+tabindex="0"[^>]+aria-label="Historial de versiones"/);
+  assert.match(html, /id="release-notes-close"[^>]+onclick="closeReleaseNotesModal\(\)"/);
+  assert.match(html, /document\.addEventListener\('keydown', handleReleaseNotesKeydown\)/);
+  assert.match(html, /#release-notes-modal \.modal[\s\S]*?max-height:/);
 });
 
 test('prioriza los estados de sincronización activos y recuperables', () => {

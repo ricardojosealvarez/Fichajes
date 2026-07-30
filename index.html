@@ -96,6 +96,28 @@
     align-items: center;
     gap: 8px;
   }
+  .version-trigger {
+    display: inline-flex;
+    align-items: center;
+    min-height: 30px;
+    padding: 4px 6px;
+    border: 0;
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    font-family: 'Syne', sans-serif;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+  .version-trigger:hover { color: var(--accent); }
+  .version-trigger:focus-visible {
+    border-radius: 4px;
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
   .sync-indicator,
   .pending-indicator {
     display: inline-flex;
@@ -836,6 +858,99 @@
   .holiday-feedback.error { color: var(--danger); }
   .holiday-feedback.ok { color: var(--green); }
 
+  /* Release notes */
+  #release-notes-modal .modal {
+    width: min(680px, calc(100vw - 32px));
+    max-height: min(760px, calc(100dvh - 32px));
+    padding: 0;
+    gap: 0;
+    overflow: hidden;
+  }
+  .release-notes-header {
+    padding: 26px 28px 18px;
+    border-bottom: 1px solid var(--border);
+  }
+  .release-notes-intro {
+    margin-top: 7px;
+    color: var(--muted);
+    font-size: 11px;
+    line-height: 1.6;
+  }
+  .release-notes-list {
+    display: flex;
+    min-height: 0;
+    flex: 1;
+    flex-direction: column;
+    gap: 12px;
+    padding: 18px 28px;
+    overflow-y: auto;
+  }
+  .release-notes-list:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: -3px;
+  }
+  .release-note {
+    padding: 15px 16px;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    background: var(--surface2);
+  }
+  .release-note.latest {
+    border-color: #e8ff4766;
+    background: linear-gradient(125deg, #1d2116, var(--surface2));
+  }
+  .release-note-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .release-note-version {
+    display: inline-flex;
+    align-items: center;
+    min-height: 24px;
+    padding: 3px 8px;
+    border-radius: 5px;
+    background: var(--accent);
+    color: var(--bg);
+    font-family: 'Syne', sans-serif;
+    font-size: 11px;
+    font-weight: 800;
+  }
+  .release-note-date {
+    color: var(--muted);
+    font-size: 10px;
+    white-space: nowrap;
+  }
+  .release-note-title {
+    margin-top: 11px;
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+  }
+  .release-note-changes {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 9px;
+    padding-left: 17px;
+    color: var(--muted);
+    font-size: 11px;
+    line-height: 1.55;
+  }
+  .release-note-changes li { overflow-wrap: anywhere; }
+  .release-notes-empty {
+    padding: 28px 16px;
+    color: var(--muted);
+    text-align: center;
+    font-size: 11px;
+  }
+  #release-notes-modal .modal-actions {
+    padding: 15px 28px 20px;
+    border-top: 1px solid var(--border);
+  }
+
   /* Day edit modal */
   .day-edit-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
   .day-edit-row { display: flex; flex-direction: column; gap: 4px; }
@@ -1359,11 +1474,21 @@
       border-radius: 14px 14px 0 0;
     }
     #holidays-modal .modal { width: 100%; max-width: none; }
+    #release-notes-modal .modal {
+      width: 100%;
+      max-width: none;
+      max-height: 92dvh;
+      border-radius: 14px 14px 0 0;
+    }
     .modal-actions {
       position: sticky;
       bottom: -22px;
       padding: 12px 0 4px;
       background: var(--surface);
+    }
+    #release-notes-modal .modal-actions {
+      bottom: 0;
+      padding: 14px 18px 18px;
     }
   }
 
@@ -1386,6 +1511,11 @@
     }
     .today-panel-message { grid-column: auto; grid-row: auto; }
     .today-panel-actions { width: 100%; }
+    .release-notes-header { padding: 22px 18px 16px; }
+    .release-notes-list { padding: 14px 18px; }
+    .release-note { padding: 13px 14px; }
+    .release-note-header { align-items: flex-start; }
+    .release-note-date { line-height: 1.4; text-align: right; white-space: normal; }
   }
 
   @media (max-width: 430px) {
@@ -1609,14 +1739,15 @@
       <span class="pending-label">Pendientes</span>
       <span class="pending-count" id="pending-header-count">0</span>
     </button>
-    <div style="
-      font-family: 'Syne', sans-serif;
-      font-size: 11px;
-      font-weight: 600;
-      color: var(--muted);
-      letter-spacing: 1px;
-      text-transform: uppercase;
-    ">v2.13.0</div>
+    <button
+      class="version-trigger"
+      id="release-notes-trigger"
+      type="button"
+      aria-label="Ver notas de la versión 2.14.0"
+      aria-haspopup="dialog"
+      aria-controls="release-notes-modal"
+      onclick="openReleaseNotesModal()"
+    ><span id="app-version">v2.14.0</span></button>
     <button id="signout-btn" style="
       padding: 6px 12px;
       background: transparent;
@@ -1833,6 +1964,20 @@
   </div>
 </div>
 
+<!-- Release Notes Modal -->
+<div class="modal-overlay" id="release-notes-modal" onclick="handleReleaseNotesBackdrop(event)">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="release-notes-modal-title">
+    <div class="release-notes-header">
+      <h2 class="modal-title" id="release-notes-modal-title">Cambios y mejoras</h2>
+      <p class="release-notes-intro">Historial documentado desde la v2.3.17, de la versión más reciente a la más antigua.</p>
+    </div>
+    <div class="release-notes-list scrollbar-thin" id="release-notes-list" tabindex="0" aria-label="Historial de versiones"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" id="release-notes-close" type="button" onclick="closeReleaseNotesModal()">Cerrar</button>
+    </div>
+  </div>
+</div>
+
 <!-- Add Month Modal -->
 <div class="modal-overlay" id="add-month-modal">
   <div class="modal">
@@ -1870,6 +2015,245 @@ const DAY_TYPES = [
   { key: 'vacaciones', label: 'Vacaciones',       color: '#6effa0' },
   { key: 'navidad',    label: 'Turno de navidad', color: '#ffb347' },
 ];
+const RELEASE_NOTES = [
+  {
+    version: '2.14.0',
+    date: '2026-07-30',
+    title: 'Historial de cambios y mejoras',
+    changes: [
+      'Nuevo modal accesible con las notas de todas las versiones documentadas.',
+      'Las versiones se muestran por fecha y número, con la más reciente primero.'
+    ]
+  },
+  {
+    version: '2.13.0',
+    date: '2026-07-30',
+    title: 'Panel rápido «Hoy»',
+    changes: [
+      'Resumen inmediato del fichaje, diferencia diaria y saldo de bolsa.',
+      'Acceso directo al día actual y actualización automática al cambiar de fecha.'
+    ]
+  },
+  {
+    version: '2.12.0',
+    date: '2026-07-30',
+    title: 'Festivos automáticos de Andalucía',
+    changes: [
+      'Generación anual de festivos nacionales y autonómicos de Andalucía.',
+      'Cálculo de Jueves y Viernes Santo y traslado al lunes cuando un festivo fijo cae en domingo.',
+      'Aplicación segura a meses existentes, respetando los calendarios personalizados.'
+    ]
+  },
+  {
+    version: '2.11.0',
+    date: '2026-07-30',
+    title: 'Festivos configurables',
+    changes: [
+      'Gestión por año con altas, modificaciones, eliminaciones y restauración de predeterminados.',
+      'Los cambios se aplican a meses ya creados y solicitan confirmación antes de limpiar datos existentes.'
+    ]
+  },
+  {
+    version: '2.10.1',
+    date: '2026-07-30',
+    title: 'Corrección de controles del encabezado',
+    changes: [
+      'Eliminado el solapamiento entre meses, sincronización, pendientes y cierre de sesión.'
+    ]
+  },
+  {
+    version: '2.10.0',
+    date: '2026-07-30',
+    title: 'Diseño fluido',
+    changes: [
+      'La interfaz se adapta dinámicamente al ancho y alto disponibles.',
+      'Mejor aprovechamiento de pantallas intermedias y de escritorio.'
+    ]
+  },
+  {
+    version: '2.9.0',
+    date: '2026-07-30',
+    title: 'Diseño móvil',
+    changes: [
+      'Tabla convertida en tarjetas y panel lateral accesible desde móviles.',
+      'Modales adaptados como paneles inferiores en pantallas pequeñas.'
+    ]
+  },
+  {
+    version: '2.8.0',
+    date: '2026-07-30',
+    title: 'Sincronización y fichajes pendientes',
+    changes: [
+      'Indicador visible del estado de sincronización y reintento manual.',
+      'Cola persistente con reintento automático al recuperar la conexión.',
+      'Detección y acceso rápido a fichajes incompletos o incoherentes.'
+    ]
+  },
+  {
+    version: '2.7.1',
+    date: '2026-07-30',
+    title: 'Correcciones del dashboard',
+    changes: [
+      'El periodo Trimestre muestra los últimos tres meses y su rango.',
+      'El indicador de teletrabajo muestra el consumo del trimestre natural correspondiente.',
+      'Corregido el desbordamiento de cifras en las tarjetas.'
+    ]
+  },
+  {
+    version: '2.7.0',
+    date: '2026-07-30',
+    title: 'Dashboard de estadísticas',
+    changes: [
+      'Estadísticas de uso del tiempo por mes, trimestre y año.',
+      'Indicadores de horas, diferencia, bolsa y teletrabajo.',
+      'Gráficos de evolución, comparativas, distribución de días e incidencias.'
+    ]
+  },
+  {
+    version: '2.6.3',
+    date: '2026-07-07',
+    title: 'Protección de recuperación de datos',
+    changes: [
+      'La copia local se conserva y restaura cuando la carga remota no devuelve meses.',
+      'La copia recuperada se resincroniza mediante guardados idempotentes de perfil, meses y días.'
+    ]
+  },
+  {
+    version: '2.6.2',
+    date: '2026-06-17',
+    title: 'Persistencia remota restaurada',
+    changes: [
+      'Restablecido el guardado de fichajes y configuración en Supabase.'
+    ]
+  },
+  {
+    version: '2.6.1',
+    date: '2026-06-17',
+    title: 'Actualización segura de la PWA',
+    changes: [
+      'Actualización inmediata del service worker y de la caché de la aplicación.',
+      'Protección frente a la sobrescritura de datos locales durante la carga remota desde GitHub.'
+    ]
+  },
+  {
+    version: '2.6.0',
+    date: '2026-06-17',
+    title: 'Sincronización mediante GitHub',
+    changes: [
+      'Caché local, archivo JSON remoto, estado visible y detección de conflictos.',
+      'Este mecanismo temporal fue sustituido por la persistencia en Supabase de la v2.6.2.'
+    ]
+  },
+  {
+    version: '2.5.2',
+    date: '2026-06-14',
+    title: 'Cálculo de bolsa unificado',
+    changes: [
+      'Lógica compartida de cálculo y propagación para tabla, estadísticas y exportaciones.',
+      'Incluida la salida automática de los viernes.'
+    ]
+  },
+  {
+    version: '2.5.1',
+    date: '2026-06-02',
+    title: 'Arrastre de bolsa corregido',
+    changes: [
+      'La bolsa se reinicia al comenzar la jornada intensiva y conserva hasta dos horas positivas al finalizar.'
+    ]
+  },
+  {
+    version: '2.5.0',
+    date: '2026-06-01',
+    title: 'Bolsa en jornada intensiva',
+    changes: [
+      'Primera incorporación del arrastre de bolsa en la frontera de jornada intensiva.',
+      'La regla fue revisada en la v2.5.1.'
+    ]
+  },
+  {
+    version: '2.4.1',
+    date: '2026-06-01',
+    title: 'Teletrabajo de tarde',
+    changes: [
+      'Corregido el consumo del teletrabajo de tarde para excluir la pausa mínima de comida.'
+    ]
+  },
+  {
+    version: '2.4.0',
+    date: '2026-05-06',
+    title: 'Edición mediante modal',
+    changes: [
+      'Las horas pasan a modo lectura en la tabla y se editan desde el modal.',
+      'Las notas permanecen editables directamente en la tabla.'
+    ]
+  },
+  {
+    version: '2.3.24',
+    date: '2026-05-05',
+    title: 'Mejora visual del tipo de día',
+    changes: [
+      'Aumentado el contraste del desplegable de tipo para facilitar su lectura.'
+    ]
+  },
+  {
+    version: '2.3.23',
+    date: '2026-04-20',
+    title: 'Guardado y validación de filas',
+    changes: [
+      'Añadidos el guardado explícito y la validación de la fila editada.',
+      'Eliminado posteriormente código duplicado visible sin alterar los datos.'
+    ]
+  },
+  {
+    version: '2.3.22',
+    date: '2026-04-17',
+    title: 'Acceso directo al periodo actual',
+    changes: [
+      'Resaltado del día actual y selección automática del mes vigente al arrancar.'
+    ]
+  },
+  {
+    version: '2.3.21',
+    date: '2026-04-15',
+    title: 'Validación de horarios',
+    changes: [
+      'Validación de la secuencia horaria tanto en la tabla como en el modal de edición.'
+    ]
+  },
+  {
+    version: '2.3.20',
+    date: '2026-04-13',
+    title: 'Guardado de notas',
+    changes: [
+      'Las notas se guardan automáticamente al abandonar el campo.'
+    ]
+  },
+  {
+    version: '2.3.19',
+    date: '2026-04-13',
+    title: 'Navegación mensual',
+    changes: [
+      'Incorporado el carrusel de pestañas y flechas para navegar entre meses.'
+    ]
+  },
+  {
+    version: '2.3.18',
+    date: '2026-04-12',
+    title: 'Panel lateral plegable',
+    changes: [
+      'El panel de configuración puede plegarse y conserva la preferencia elegida.'
+    ]
+  },
+  {
+    version: '2.3.17',
+    date: '2026-04-12',
+    title: 'Edición completa del fichaje',
+    changes: [
+      'Nuevo modal de edición y acceso mediante el botón «+ Fichaje».'
+    ]
+  }
+];
+const APP_VERSION = RELEASE_NOTES[0].version;
 let months = [];
 let currentMonthIdx = 0;
 let openMenuIdx = null;
@@ -1877,6 +2261,7 @@ let currentAppView = 'records';
 let dashboardPeriod = 'month';
 let holidayCalendars = {};
 let holidaySaveInProgress = false;
+let releaseNotesReturnFocus = null;
 
 function timeToMins(t) {
   if (!t || t === '') return null;
@@ -3654,6 +4039,120 @@ function escapeHtmlAttribute(value) {
   })[character]);
 }
 
+function compareVersionsDescending(leftVersion, rightVersion) {
+  const left = String(leftVersion).split('.').map(Number);
+  const right = String(rightVersion).split('.').map(Number);
+  const length = Math.max(left.length, right.length);
+  for (let index = 0; index < length; index++) {
+    const difference = (right[index] || 0) - (left[index] || 0);
+    if (difference !== 0) return difference;
+  }
+  return 0;
+}
+
+function getSortedReleaseNotes(releaseNotes = RELEASE_NOTES) {
+  return releaseNotes.slice().sort((left, right) =>
+    right.date.localeCompare(left.date)
+    || compareVersionsDescending(left.version, right.version)
+  );
+}
+
+function formatReleaseDate(isoDate) {
+  const [year, month, day] = String(isoDate).split('-').map(Number);
+  if (!year || !month || !day) return String(isoDate);
+  return new Date(year, month - 1, day).toLocaleDateString('es-ES', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric'
+  });
+}
+
+function renderReleaseNotesMarkup(releaseNotes = RELEASE_NOTES) {
+  const sortedNotes = getSortedReleaseNotes(releaseNotes);
+  if (sortedNotes.length === 0) {
+    return '<div class="release-notes-empty">No hay notas de versión disponibles.</div>';
+  }
+
+  return sortedNotes.map((release, index) => {
+    const changes = Array.isArray(release.changes) ? release.changes : [];
+    return `<article class="release-note${index === 0 ? ' latest' : ''}" aria-labelledby="release-note-title-${index}">
+      <div class="release-note-header">
+        <span class="release-note-version">v${escapeHtmlAttribute(release.version)}</span>
+        <time class="release-note-date" datetime="${escapeHtmlAttribute(release.date)}">${escapeHtmlAttribute(formatReleaseDate(release.date))}</time>
+      </div>
+      <h3 class="release-note-title" id="release-note-title-${index}">${escapeHtmlAttribute(release.title)}</h3>
+      <ul class="release-note-changes">${changes.map(change =>
+        `<li>${escapeHtmlAttribute(change)}</li>`
+      ).join('')}</ul>
+    </article>`;
+  }).join('');
+}
+
+function renderAppVersion() {
+  const label = document.querySelector('#app-version');
+  const trigger = document.querySelector('#release-notes-trigger');
+  if (label) label.textContent = `v${APP_VERSION}`;
+  if (trigger) trigger.setAttribute('aria-label', `Ver notas de la versión ${APP_VERSION}`);
+}
+
+function openReleaseNotesModal() {
+  const modal = document.querySelector('#release-notes-modal');
+  const list = document.querySelector('#release-notes-list');
+  if (!modal || !list) return;
+  releaseNotesReturnFocus = document.querySelector('#release-notes-trigger')
+    || (document.activeElement?.focus ? document.activeElement : null);
+  list.innerHTML = renderReleaseNotesMarkup();
+  setMobileSidebarOpen(false);
+  modal.classList.add('show');
+  list.focus();
+}
+
+function closeReleaseNotesModal() {
+  document.querySelector('#release-notes-modal')?.classList.remove('show');
+  const returnFocus = releaseNotesReturnFocus;
+  releaseNotesReturnFocus = null;
+  returnFocus?.focus();
+}
+
+function handleReleaseNotesBackdrop(event) {
+  if (event.target === event.currentTarget) closeReleaseNotesModal();
+}
+
+function handleReleaseNotesKeydown(event) {
+  const modal = document.querySelector('#release-notes-modal');
+  if (!modal?.classList.contains('show')) return;
+  if (event.key === 'Escape') {
+    event.preventDefault();
+    closeReleaseNotesModal();
+    return;
+  }
+  if (event.key !== 'Tab') return;
+
+  const focusable = Array.from(modal.querySelectorAll(
+    'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), '
+    + 'textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+  ));
+  if (focusable.length === 0) {
+    event.preventDefault();
+    return;
+  }
+
+  const first = focusable[0];
+  const last = focusable[focusable.length - 1];
+  if (!modal.contains(document.activeElement)) {
+    event.preventDefault();
+    (event.shiftKey ? last : first).focus();
+  } else if (event.shiftKey && document.activeElement === first) {
+    event.preventDefault();
+    last.focus();
+  } else if (!event.shiftKey && document.activeElement === last) {
+    event.preventDefault();
+    first.focus();
+  }
+}
+
+document.addEventListener('keydown', handleReleaseNotesKeydown);
+
 // Updates state without re-rendering (for fields edited inline like notas)
 function updateDayField(idx, field, value) {
   months[currentMonthIdx].days[idx][field] = value;
@@ -4539,7 +5038,7 @@ document.querySelectorAll('.config-input:not([data-manual-save]), .select-input:
 
 // ── Service Worker registration ──────────────────────────────────────────────
 if ('serviceWorker' in navigator) {
-  const swVersion = '2.13.0';
+  const swVersion = APP_VERSION;
   let swRefreshing = false;
 
   navigator.serviceWorker.addEventListener('controllerchange', () => {
@@ -5509,6 +6008,7 @@ async function handleSignUp() {
 }
 
 async function initApp() {
+  renderAppVersion();
   updateSyncIndicator();
   const hasSession = await initAuth();
 
