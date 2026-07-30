@@ -81,6 +81,60 @@
   }
   .view-btn:hover { color: var(--text); }
   .view-btn.active { background: var(--surface2); color: var(--accent); }
+  .header-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .sync-indicator,
+  .pending-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    min-height: 30px;
+    padding: 5px 9px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+  }
+  .sync-indicator:hover,
+  .pending-indicator:hover { border-color: var(--muted); color: var(--text); }
+  .sync-dot {
+    width: 7px;
+    height: 7px;
+    flex-shrink: 0;
+    border-radius: 50%;
+    background: var(--muted);
+  }
+  .sync-indicator.synced .sync-dot { background: var(--green); }
+  .sync-indicator.syncing .sync-dot {
+    background: var(--accent2);
+    animation: sync-pulse 1s ease-in-out infinite;
+  }
+  .sync-indicator.offline .sync-dot { background: var(--orange); }
+  .sync-indicator.pending .sync-dot { background: var(--accent); }
+  .sync-indicator.error .sync-dot { background: var(--danger); }
+  .pending-indicator.has-pending {
+    border-color: #fb923c66;
+    color: var(--orange);
+  }
+  .pending-count {
+    min-width: 18px;
+    padding: 1px 5px;
+    border-radius: 9px;
+    background: var(--surface2);
+    color: inherit;
+    text-align: center;
+    font-weight: 700;
+  }
+  @keyframes sync-pulse {
+    0%, 100% { opacity: 0.45; transform: scale(0.85); }
+    50% { opacity: 1; transform: scale(1); }
+  }
   .tabs-wrap {
     display: flex;
     align-items: center;
@@ -189,6 +243,41 @@
   }
   .config-input:focus { outline: none; border-color: var(--accent); }
   .stats-grid { display: flex; flex-direction: column; gap: 8px; }
+  .section-title-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+  .section-title-row .section-title { margin-bottom: 0; }
+  .pending-list { display: flex; flex-direction: column; gap: 6px; }
+  .pending-empty {
+    padding: 9px 10px;
+    border: 1px solid #4ade8038;
+    border-radius: 6px;
+    background: #102017;
+    color: var(--green);
+    font-size: 10px;
+  }
+  .pending-item {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 48px minmax(0, 1fr);
+    gap: 9px;
+    padding: 8px 9px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--surface2);
+    color: var(--text);
+    cursor: pointer;
+    text-align: left;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .pending-item:hover { border-color: var(--orange); }
+  .pending-item-date { color: var(--orange); font-size: 10px; }
+  .pending-item-reason { overflow: hidden; color: var(--muted); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+  .pending-more { color: var(--muted); font-size: 10px; text-align: center; }
   .stat-card {
     background: var(--surface2);
     border: 1px solid var(--border);
@@ -792,6 +881,7 @@
 
   @media (max-width: 1100px) {
     header { padding: 16px 20px; gap: 14px; flex-wrap: wrap; }
+    .header-status { margin-left: auto; }
     .dashboard-kpis { grid-template-columns: repeat(3, minmax(140px, 1fr)); }
     .dashboard-grid { grid-template-columns: 1fr; }
     .dashboard-panel-wide { grid-column: auto; }
@@ -807,6 +897,8 @@
     .dashboard-kpi-time-range { font-size: 16px; }
     .period-switcher { width: 100%; }
     .period-btn { flex: 1; }
+    .sync-label,
+    .pending-label { display: none; }
     .comparison-row { grid-template-columns: 58px minmax(0, 1fr); }
     .comparison-values { grid-column: 2; }
     .type-legend { grid-template-columns: 1fr; }
@@ -1002,7 +1094,15 @@
     <button class="add-month-btn" id="btn-add-month" onclick="showAddMonthModal()">+ Mes</button>
     <button class="add-month-btn" onclick="openDayEditGeneral()" id="btn-add-fichaje">+ Fichaje</button>
   </div>
-  <div style="display: flex; align-items: center; gap: 16px;">
+  <div class="header-status">
+    <button class="sync-indicator" id="sync-indicator" onclick="retrySync()" title="Estado de sincronización. Pulsa para reintentar.">
+      <span class="sync-dot"></span>
+      <span class="sync-label" id="sync-label">Comprobando…</span>
+    </button>
+    <button class="pending-indicator" id="pending-indicator" onclick="focusFirstPending()" title="Abrir el primer fichaje pendiente">
+      <span class="pending-label">Pendientes</span>
+      <span class="pending-count" id="pending-header-count">0</span>
+    </button>
     <div style="
       font-family: 'Syne', sans-serif;
       font-size: 11px;
@@ -1010,7 +1110,7 @@
       color: var(--muted);
       letter-spacing: 1px;
       text-transform: uppercase;
-    ">v2.7.1</div>
+    ">v2.8.0</div>
     <button id="signout-btn" style="
       padding: 6px 12px;
       background: transparent;
@@ -1030,6 +1130,13 @@
   <div class="sidebar scrollbar-thin" id="sidebar">
     <div id="sidebar-toggle-wrap">
       <button id="sidebar-toggle-btn" onclick="toggleSidebar()" title="Ocultar panel">‹</button>
+    </div>
+    <div>
+      <div class="section-title-row">
+        <div class="section-title">Fichajes pendientes</div>
+        <span class="pending-count" id="pending-sidebar-count">0</span>
+      </div>
+      <div class="pending-list" id="pending-list"></div>
     </div>
     <div>
       <div class="section-title">Configuración</div>
@@ -1727,6 +1834,7 @@ function recalcAll() {
 }
 
 function renderTable() {
+  renderPendingPunches();
   const m = months[currentMonthIdx];
   if (!m) { document.getElementById('content').innerHTML = '<div class="empty-state"><div class="big">📋</div><p>No hay meses. Añade uno con el botón "+ Mes".</p></div>'; return; }
 
@@ -1883,12 +1991,86 @@ function renderStats() {
 }
 
 function renderActiveView() {
+  renderPendingPunches();
   if (currentAppView === 'dashboard') {
     renderDashboard();
     return;
   }
   renderTable();
   renderStats();
+}
+
+function getPendingPunches(sourceMonths = months, now = new Date()) {
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const pending = [];
+
+  sourceMonths.forEach((monthData, monthIdx) => {
+    (monthData.days || []).forEach((day, dayIdx) => {
+      if (day.tipo !== 'habil') return;
+      const date = new Date(day.date);
+      const dayDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+      if (dayDate > today) return;
+
+      const hasEntry = Boolean(day.entrada?.trim());
+      const hasExit = Boolean(day.salida?.trim());
+      const isToday = dayDate.getTime() === today.getTime();
+      if (isToday && !hasEntry && !hasExit) return;
+
+      let reason = '';
+      if (!hasEntry && !hasExit) reason = 'Sin entrada ni salida';
+      else if (!hasEntry) reason = 'Falta la entrada';
+      else if (!hasExit) reason = 'Falta la salida';
+      else if (validateDaySequence(day).length > 0) reason = 'Horario incoherente';
+      if (!reason) return;
+
+      pending.push({monthIdx, dayIdx, date, reason});
+    });
+  });
+
+  return pending.sort((a, b) => b.date - a.date);
+}
+
+function renderPendingPunches() {
+  const pending = getPendingPunches();
+  const headerCount = document.getElementById('pending-header-count');
+  const sidebarCount = document.getElementById('pending-sidebar-count');
+  const headerIndicator = document.getElementById('pending-indicator');
+  const list = document.getElementById('pending-list');
+  if (!headerCount || !sidebarCount || !headerIndicator || !list) return;
+
+  headerCount.textContent = pending.length;
+  sidebarCount.textContent = pending.length;
+  headerIndicator.classList.toggle('has-pending', pending.length > 0);
+
+  if (pending.length === 0) {
+    list.innerHTML = '<div class="pending-empty">Todos los fichajes están completos.</div>';
+    return;
+  }
+
+  const visible = pending.slice(0, 6);
+  list.innerHTML = visible.map(item => {
+    const date = item.date.toLocaleDateString('es-ES', {day: '2-digit', month: '2-digit'});
+    return `<button class="pending-item" onclick="openPendingPunch(${item.monthIdx},${item.dayIdx})">
+      <span class="pending-item-date">${date}</span>
+      <span class="pending-item-reason">${item.reason}</span>
+    </button>`;
+  }).join('') + (
+    pending.length > visible.length
+      ? `<div class="pending-more">+${pending.length - visible.length} pendientes más</div>`
+      : ''
+  );
+}
+
+function openPendingPunch(monthIdx, dayIdx) {
+  currentMonthIdx = monthIdx;
+  renderTabs();
+  switchAppView('records');
+  openDayEdit(dayIdx);
+}
+
+function focusFirstPending() {
+  const first = getPendingPunches()[0];
+  if (first) openPendingPunch(first.monthIdx, first.dayIdx);
 }
 
 function switchAppView(view) {
@@ -2880,7 +3062,7 @@ function saveStateLocal() {
       months: serializeMonthsForStorage(months),
       config: readConfigFromDOM(),
       syncQueue,
-      lastSync: new Date().toISOString()
+      lastSuccessfulSync
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
   } catch (e) { console.warn('Error saving to localStorage:', e); }
@@ -2895,7 +3077,11 @@ function loadStateLocal() {
     months = reviveMonthsFromStorage(data.months || []);
     
     if (data.config) applyConfigToDOM(data.config);
-    syncQueue = data.syncQueue || [];
+    syncQueue = Array.isArray(data.syncQueue)
+      ? data.syncQueue.filter(item => typeof item === 'string')
+      : [];
+    lastSuccessfulSync = data.lastSuccessfulSync || null;
+    updateSyncIndicator();
     return true;
   } catch (e) { console.warn('Error loading from localStorage:', e); return false; }
 }
@@ -2943,6 +3129,7 @@ function shouldRestoreLocalSnapshot(remoteLoaded, remoteMonths, localSnapshot) {
 
 // Función fallback para compatible con código existente
 function saveState() {
+  if (currentUser && !isOnline) queueSyncChange('full');
   saveStateLocal();
   if (currentUser && isOnline) syncChanges();
 }
@@ -2975,33 +3162,44 @@ async function upsertMonthToSupabase(monthData) {
 }
 
 async function syncMonthToSupabase(monthData) {
-  if (!await upsertMonthToSupabase(monthData)) return;
+  if (!await upsertMonthToSupabase(monthData)) return false;
+  let success = true;
   for (const day of monthData.days) {
-    await saveDay(monthData.id, 0, day);
+    success = await saveDay(monthData.id, 0, day) && success;
   }
+  return success;
 }
 
 async function syncAllMonthsToSupabase() {
-  if (!currentUser || !isOnline) return;
+  if (!currentUser || !isOnline) return false;
   const hasProfile = await ensureUserProfile();
-  if (!hasProfile) return;
+  if (!hasProfile) return false;
 
+  let success = true;
   for (const monthData of months) {
-    await syncMonthToSupabase(monthData);
+    success = await syncMonthToSupabase(monthData) && success;
   }
-  await saveConfig();
+  success = await saveConfig() && success;
   saveStateLocal();
+  return success;
 }
 
 // Sincronizar cambios a Supabase
 async function syncChanges() {
-  if (!currentUser || !isOnline) return;
+  if (!currentUser || !isOnline) return false;
 
+  const syncKey = 'full';
+  beginSyncOperation(syncKey);
   try {
-    await syncMonthToSupabase(months[currentMonthIdx]);
-    await saveConfig();
+    const monthSaved = await syncMonthToSupabase(months[currentMonthIdx]);
+    const configSaved = await saveConfig();
+    const success = monthSaved && configSaved;
+    finishSyncOperation(syncKey, success, success ? '' : 'No se pudieron guardar todos los cambios');
+    return success;
   } catch (e) {
     console.error('Sync error:', e);
+    finishSyncOperation(syncKey, false, e.message);
+    return false;
   }
 }
 
@@ -3011,7 +3209,7 @@ async function persistDayChange(idx) {
   if (!currentMonth || !day) return;
 
   saveStateLocal();
-  if (currentUser && isOnline) {
+  if (currentUser) {
     await saveDay(currentMonth.id, idx, day);
   }
 }
@@ -3028,7 +3226,15 @@ function applyDefaultTimes(monthData) {
 }
 
 async function saveNewMonthToSupabase(monthData) {
-  if (!currentUser || !isOnline) return;
+  const syncKey = `month:${monthData.id}`;
+  queueSyncChange(syncKey);
+  if (!currentUser || !isOnline) {
+    saveStateLocal();
+    updateSyncIndicator();
+    return false;
+  }
+
+  beginSyncOperation(syncKey);
   try {
     // 1. Create month record
     const mRes = await fetch(`${SUPABASE_URL}/rest/v1/months?on_conflict=id`, {
@@ -3047,8 +3253,10 @@ async function saveNewMonthToSupabase(monthData) {
       })
     });
     if (!mRes.ok) {
-      console.error('Error creando mes en Supabase:', await mRes.text());
-      return;
+      const message = await mRes.text();
+      console.error('Error creando mes en Supabase:', message);
+      finishSyncOperation(syncKey, false, `Mes: ${mRes.status}`);
+      return false;
     }
     // 2. Insert days (assign IDs to local days for future upserts)
     const daysPayload = monthData.days.map(d => {
@@ -3086,13 +3294,19 @@ async function saveNewMonthToSupabase(monthData) {
       body: JSON.stringify(daysPayload)
     });
     if (!dRes.ok) {
-      console.error('Error creando días en Supabase:', await dRes.text());
+      const message = await dRes.text();
+      console.error('Error creando días en Supabase:', message);
+      finishSyncOperation(syncKey, false, `Días: ${dRes.status}`);
+      return false;
     } else {
       console.log('✓ Mes guardado en Supabase:', monthData.id);
-      saveStateLocal();
+      finishSyncOperation(syncKey, true);
+      return true;
     }
   } catch (e) {
     console.error('Error en saveNewMonthToSupabase:', e);
+    finishSyncOperation(syncKey, false, e.message);
+    return false;
   }
 }
 
@@ -3120,7 +3334,7 @@ document.querySelectorAll('.config-input, .select-input').forEach(el => {
 
 // ── Service Worker registration ──────────────────────────────────────────────
 if ('serviceWorker' in navigator) {
-  const swVersion = '2.7.1';
+  const swVersion = '2.8.0';
   let swRefreshing = false;
 
   navigator.serviceWorker.addEventListener('controllerchange', () => {
@@ -3158,15 +3372,138 @@ let currentUser = null;
 let currentSession = null;
 let isOnline = navigator.onLine;
 let syncQueue = [];
+let lastSuccessfulSync = null;
+let activeSyncOperations = 0;
+let syncErrorMessage = '';
+
+function queueSyncChange(key) {
+  if (!key || syncQueue.includes(key)) return;
+  syncQueue.push(key);
+  updateSyncIndicator();
+}
+
+function removeSyncChange(key) {
+  syncQueue = syncQueue.filter(item => item !== key);
+}
+
+function getSyncStatus() {
+  if (!isOnline) return 'offline';
+  if (activeSyncOperations > 0) return 'syncing';
+  if (syncErrorMessage) return 'error';
+  if (syncQueue.length > 0) return 'pending';
+  return 'synced';
+}
+
+function updateSyncIndicator() {
+  const indicator = document.getElementById('sync-indicator');
+  const label = document.getElementById('sync-label');
+  if (!indicator || !label) return;
+
+  const status = getSyncStatus();
+  const labels = {
+    synced: 'Sincronizado',
+    syncing: 'Sincronizando…',
+    offline: syncQueue.length > 0 ? `Sin conexión · ${syncQueue.length}` : 'Sin conexión',
+    pending: `${syncQueue.length} ${syncQueue.length === 1 ? 'cambio pendiente' : 'cambios pendientes'}`,
+    error: 'Error de sincronización'
+  };
+  indicator.className = `sync-indicator ${status}`;
+  label.textContent = labels[status];
+
+  const lastSyncText = lastSuccessfulSync
+    ? new Date(lastSuccessfulSync).toLocaleString('es-ES')
+    : 'Todavía no se ha completado una sincronización';
+  const errorText = syncErrorMessage ? ` Error: ${syncErrorMessage}` : '';
+  indicator.title = `${labels[status]}. Última sincronización: ${lastSyncText}.${errorText} Pulsa para reintentar.`;
+}
+
+function beginSyncOperation(key) {
+  queueSyncChange(key);
+  activeSyncOperations++;
+  updateSyncIndicator();
+}
+
+function finishSyncOperation(key, success, error = '') {
+  activeSyncOperations = Math.max(0, activeSyncOperations - 1);
+  if (success) {
+    removeSyncChange(key);
+    lastSuccessfulSync = new Date().toISOString();
+    if (syncQueue.length === 0) syncErrorMessage = '';
+  } else {
+    syncErrorMessage = error || 'No se pudo guardar en la nube';
+  }
+  saveStateLocal();
+  updateSyncIndicator();
+}
+
+function getDaySyncKey(monthId, dayData) {
+  const date = dayData.date instanceof Date
+    ? `${dayData.date.getFullYear()}-${dayData.date.getMonth() + 1}-${dayData.date.getDate()}`
+    : String(dayData.date || '');
+  return `day:${monthId}:${dayData.id || date}`;
+}
+
+async function retrySync() {
+  if (!isOnline || !currentUser || activeSyncOperations > 0) {
+    updateSyncIndicator();
+    return false;
+  }
+
+  syncErrorMessage = '';
+  if (syncQueue.length === 0) queueSyncChange('full');
+  const queuedChanges = [...syncQueue];
+  let success = true;
+
+  for (const key of queuedChanges) {
+    if (key === 'config') {
+      success = await saveConfig() && success;
+      continue;
+    }
+    if (key === 'full') {
+      beginSyncOperation(key);
+      try {
+        const synced = await syncAllMonthsToSupabase();
+        finishSyncOperation(key, synced, synced ? '' : 'No se pudo completar la sincronización');
+        success = synced && success;
+      } catch (e) {
+        finishSyncOperation(key, false, e.message);
+        success = false;
+      }
+      continue;
+    }
+    if (key.startsWith('month:')) {
+      const monthId = key.slice('month:'.length);
+      const monthData = months.find(month => month.id === monthId);
+      if (monthData) success = await saveNewMonthToSupabase(monthData) && success;
+      else removeSyncChange(key);
+      continue;
+    }
+    if (key.startsWith('day:')) {
+      const [, monthId, dayId] = key.split(':');
+      const monthData = months.find(month => month.id === monthId);
+      const dayIdx = monthData?.days.findIndex(day => day.id === dayId) ?? -1;
+      if (monthData && dayIdx >= 0) {
+        success = await saveDay(monthData.id, dayIdx, monthData.days[dayIdx]) && success;
+      } else {
+        removeSyncChange(key);
+      }
+    }
+  }
+
+  saveStateLocal();
+  updateSyncIndicator();
+  return success;
+}
 
 window.addEventListener('online', () => {
   isOnline = true;
-  console.log('🟢 Online');
+  updateSyncIndicator();
+  retrySync();
 });
 
 window.addEventListener('offline', () => {
   isOnline = false;
-  console.log('🔴 Offline');
+  updateSyncIndicator();
 });
 
 // ── AUTH REST ────────────────────────────────────────────────────────────
@@ -3476,21 +3813,24 @@ async function ensureCurrentMonthExists() {
 // ── SYNC REST ────────────────────────────────────────────────────────────
 
 async function saveDay(monthId, dayIdx, dayData) {
+  const id = dayData.id || 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    const r = Math.random() * 16 | 0;
+    const v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+  dayData.id = id;
+  const syncKey = getDaySyncKey(monthId, dayData);
+  queueSyncChange(syncKey);
+
   if (!currentUser || !isOnline) {
     console.log('Guardando en cache local (no online o no user)');
     saveStateLocal();
-    return;
+    updateSyncIndicator();
+    return false;
   }
 
+  beginSyncOperation(syncKey);
   try {
-    // Generar UUID v4 simple
-    const id = dayData.id || 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-      const r = Math.random() * 16 | 0;
-      const v = c === 'x' ? r : (r & 0x3 | 0x8);
-      return v.toString(16);
-    });
-
-    dayData.id = id;
     console.log('Guardando día:', dayData);
     console.log('Month ID:', monthId);
     const payload = {
@@ -3529,12 +3869,14 @@ async function saveDay(monthId, dayIdx, dayData) {
       console.error('Error guardando día, status:', res.status, 'body:', respText);
       throw new Error('Error guardando día: ' + res.status);
     }
-    
+
     console.log('✓ Día guardado');
-    saveStateLocal();
+    finishSyncOperation(syncKey, true);
+    return true;
   } catch (e) {
     console.error('Error saving day:', e);
-    saveStateLocal();
+    finishSyncOperation(syncKey, false, e.message);
+    return false;
   }
 }
 
@@ -3556,17 +3898,22 @@ function _showConfigToast(msg, isError) {
 
 async function saveConfig() {
   console.log('saveConfig() llamado — user:', currentUser?.id, 'online:', isOnline);
+  const syncKey = 'config';
+  queueSyncChange(syncKey);
   if (!currentUser) {
     console.warn('saveConfig: no currentUser, guardando solo local');
     saveStateLocal();
-    return;
+    updateSyncIndicator();
+    return false;
   }
   if (!isOnline) {
     console.warn('saveConfig: offline, guardando solo local');
     saveStateLocal();
-    return;
+    updateSyncIndicator();
+    return false;
   }
 
+  beginSyncOperation(syncKey);
   try {
     const payload = {
       user_id: currentUser.id,
@@ -3604,23 +3951,29 @@ async function saveConfig() {
         const renewed = await refreshSession();
         if (renewed) {
           console.log('Token renovado, reintentando saveConfig...');
+          activeSyncOperations = Math.max(0, activeSyncOperations - 1);
           return saveConfig();
         } else {
+          finishSyncOperation(syncKey, false, 'Sesión caducada');
           showLoginModal();
-          return;
+          return false;
         }
       }
       console.error('Error guardando config, status:', res.status, 'body:', errText);
       _showConfigToast('Error config: ' + res.status + ' — ' + errText.slice(0, 80), true);
+      finishSyncOperation(syncKey, false, `Configuración: ${res.status}`);
+      return false;
     } else {
       console.log('✓ Config guardada');
       _showConfigToast('✓ Configuración guardada', false);
+      finishSyncOperation(syncKey, true);
+      return true;
     }
-    saveStateLocal();
   } catch (e) {
     console.error('Error saving config:', e);
     _showConfigToast('Error de red: ' + e.message, true);
-    saveStateLocal();
+    finishSyncOperation(syncKey, false, e.message);
+    return false;
   }
 }
 
@@ -3866,19 +4219,34 @@ async function handleSignUp() {
 }
 
 async function initApp() {
+  updateSyncIndicator();
   const hasSession = await initAuth();
-  
+
   if (hasSession) {
+    activeSyncOperations++;
+    updateSyncIndicator();
     console.log('✓ Sesión restaurada');
     const hasLocalState = loadStateLocal(); // Aplicar caché local (config incluida) antes de Supabase
     const localSnapshot = hasLocalState ? createStateSnapshot() : null;
+    const hasPendingLocalChanges = syncQueue.length > 0;
     await ensureUserProfile();
     const hasRemote = await loadDataFromSupabase();
-    if (shouldRestoreLocalSnapshot(hasRemote, months, localSnapshot)) {
+    activeSyncOperations = Math.max(0, activeSyncOperations - 1);
+
+    if (hasRemote && hasPendingLocalChanges && localSnapshot) {
+      restoreStateSnapshot(localSnapshot);
+      await retrySync();
+    } else if (shouldRestoreLocalSnapshot(hasRemote, months, localSnapshot)) {
       restoreStateSnapshot(localSnapshot);
       await syncAllMonthsToSupabase();
     } else {
       await ensureCurrentMonthExists();
+    }
+    if (hasRemote && syncQueue.length === 0) {
+      lastSuccessfulSync = new Date().toISOString();
+      syncErrorMessage = '';
+    } else if (!hasRemote) {
+      syncErrorMessage = 'No se pudieron cargar los datos remotos';
     }
 
     // Seleccionar por defecto el mes actual si existe, si no el primero disponible
@@ -3896,6 +4264,8 @@ async function initApp() {
     renderTable();
     renderStats();
     recalcAll(); // Recalcular todo con la config definitiva cargada desde Supabase
+    saveStateLocal();
+    updateSyncIndicator();
   } else {
     console.log('✓ Sin sesión, mostrando login');
     showLoginModal();

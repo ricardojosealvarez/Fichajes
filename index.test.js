@@ -194,3 +194,50 @@ test('el dashboard calcula cobertura y diferencia hasta hoy', () => {
   assert.equal(result.pendingDays, 1);
   assert.equal(result.typeCounts.vacaciones, 1);
 });
+
+test('detecta fichajes pasados incompletos y omite futuros o no hábiles', () => {
+  const context = vm.createContext({
+    validateDaySequence: day => day.invalid ? [{ field: 'salida' }] : []
+  });
+  vm.runInContext(extractFunction('getPendingPunches'), context);
+  const sourceMonths = [{
+    year: 2026,
+    month: 6,
+    days: [
+      { date: new Date(2026, 6, 27), tipo: 'habil', entrada: '', salida: '' },
+      { date: new Date(2026, 6, 28), tipo: 'habil', entrada: '08:00', salida: '' },
+      { date: new Date(2026, 6, 29), tipo: 'habil', entrada: '08:00', salida: '15:00', invalid: true },
+      { date: new Date(2026, 6, 30), tipo: 'habil', entrada: '', salida: '' },
+      { date: new Date(2026, 6, 30), tipo: 'habil', entrada: '08:00', salida: '' },
+      { date: new Date(2026, 6, 31), tipo: 'habil', entrada: '', salida: '' },
+      { date: new Date(2026, 6, 28), tipo: 'vacaciones', entrada: '', salida: '' }
+    ]
+  }];
+
+  const result = context.getPendingPunches(sourceMonths, new Date(2026, 6, 30, 12));
+
+  assert.deepEqual(
+    Array.from(result, item => item.reason),
+    ['Falta la salida', 'Horario incoherente', 'Falta la salida', 'Sin entrada ni salida']
+  );
+});
+
+test('prioriza los estados de sincronización activos y recuperables', () => {
+  const context = vm.createContext({
+    isOnline: true,
+    activeSyncOperations: 0,
+    syncErrorMessage: '',
+    syncQueue: []
+  });
+  vm.runInContext(extractFunction('getSyncStatus'), context);
+
+  assert.equal(context.getSyncStatus(), 'synced');
+  context.syncQueue = ['config'];
+  assert.equal(context.getSyncStatus(), 'pending');
+  context.syncErrorMessage = 'fallo';
+  assert.equal(context.getSyncStatus(), 'error');
+  context.activeSyncOperations = 1;
+  assert.equal(context.getSyncStatus(), 'syncing');
+  context.isOnline = false;
+  assert.equal(context.getSyncStatus(), 'offline');
+});
