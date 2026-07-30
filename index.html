@@ -1503,7 +1503,7 @@
       color: var(--muted);
       letter-spacing: 1px;
       text-transform: uppercase;
-    ">v2.11.0</div>
+    ">v2.12.0</div>
     <button id="signout-btn" style="
       padding: 6px 12px;
       background: transparent;
@@ -1599,7 +1599,7 @@
 
     <div>
       <div class="section-title">Festivos</div>
-      <div class="holiday-summary" id="holiday-summary">Calendario predeterminado</div>
+      <div class="holiday-summary" id="holiday-summary">Calendario automático de Andalucía</div>
       <button class="btn btn-secondary holiday-manage-btn" onclick="openHolidaysModal()">Gestionar festivos</button>
     </div>
 
@@ -1692,14 +1692,14 @@
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="holidays-modal-title">
     <div class="modal-title" id="holidays-modal-title">Festivos configurables</div>
     <p style="font-size:12px;color:var(--muted);line-height:1.6">
-      Personaliza los festivos por año. Los cambios se aplican también a los meses ya creados.
+      Los festivos nacionales y autonómicos de Andalucía se calculan automáticamente según el patrón vigente. Revisa los años futuros cuando se publique su decreto anual.
     </p>
     <div class="holiday-toolbar">
       <div class="config-row">
         <label class="config-label" for="holiday-year">Año</label>
         <input class="config-input" id="holiday-year" type="number" min="2020" max="2099" data-manual-save="true" onchange="renderHolidayManager()">
       </div>
-      <button class="btn btn-secondary" onclick="restoreDefaultHolidays()">Restaurar predeterminados</button>
+      <button class="btn btn-secondary" onclick="restoreDefaultHolidays()">Restaurar calendario automático</button>
     </div>
     <div class="holiday-form">
       <div class="config-row">
@@ -1877,22 +1877,67 @@ function calcFridaySalida(day, absPrev, cfg) {
 }
 
 // ── Festivos configurables ───────────────────────────────────────────────────
-const DEFAULT_HOLIDAYS = {
-  2026: [
-    { iso: '2026-01-01', nota: 'Año Nuevo' },
-    { iso: '2026-01-06', nota: 'Epifanía del Señor' },
-    { iso: '2026-02-28', nota: 'Día de Andalucía' },
-    { iso: '2026-04-02', nota: 'Jueves Santo' },
-    { iso: '2026-04-03', nota: 'Viernes Santo' },
-    { iso: '2026-05-01', nota: 'Fiesta del Trabajo' },
-    { iso: '2026-08-15', nota: 'Asunción de la Virgen' },
-    { iso: '2026-10-12', nota: 'Fiesta Nacional de España' },
-    { iso: '2026-11-02', nota: 'Día siguiente a Todos los Santos' },
-    { iso: '2026-12-07', nota: 'Lunes siguiente al Día de la Constitución' },
-    { iso: '2026-12-08', nota: 'Inmaculada Concepción' },
-    { iso: '2026-12-25', nota: 'Natividad del Señor' },
-  ]
-};
+const ANDALUSIAN_FIXED_HOLIDAY_RULES = [
+  {month: 0, day: 1, nota: 'Año Nuevo'},
+  {month: 0, day: 6, nota: 'Epifanía del Señor'},
+  {month: 1, day: 28, nota: 'Día de Andalucía'},
+  {month: 4, day: 1, nota: 'Fiesta del Trabajo'},
+  {month: 7, day: 15, nota: 'Asunción de la Virgen'},
+  {month: 9, day: 12, nota: 'Fiesta Nacional de España'},
+  {month: 10, day: 1, nota: 'Todos los Santos'},
+  {month: 11, day: 6, nota: 'Día de la Constitución Española'},
+  {month: 11, day: 8, nota: 'Día de la Inmaculada Concepción'},
+  {month: 11, day: 25, nota: 'Natividad del Señor'}
+];
+
+function getEasterSunday(year) {
+  const a = year % 19;
+  const b = Math.floor(year / 100);
+  const c = year % 100;
+  const d = Math.floor(b / 4);
+  const e = b % 4;
+  const f = Math.floor((b + 8) / 25);
+  const g = Math.floor((b - f + 1) / 3);
+  const h = (19 * a + b - d - g + 15) % 30;
+  const i = Math.floor(c / 4);
+  const k = c % 4;
+  const l = (32 + 2 * e + 2 * i - h - k) % 7;
+  const m = Math.floor((a + 11 * h + 22 * l) / 451);
+  const month = Math.floor((h + l - 7 * m + 114) / 31);
+  const day = ((h + l - 7 * m + 114) % 31) + 1;
+  return new Date(year, month - 1, day);
+}
+
+function addCalendarDays(date, days) {
+  const result = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  result.setDate(result.getDate() + days);
+  return result;
+}
+
+function moveSundayHolidayToMonday(date) {
+  return date.getDay() === 0 ? addCalendarDays(date, 1) : date;
+}
+
+function getAutomaticAndalusianHolidays(year) {
+  const numericYear = Number(year);
+  if (!Number.isInteger(numericYear) || numericYear < 2020 || numericYear > 2099) return [];
+
+  const easterSunday = getEasterSunday(numericYear);
+  const holidays = ANDALUSIAN_FIXED_HOLIDAY_RULES.map(rule => ({
+    date: moveSundayHolidayToMonday(new Date(numericYear, rule.month, rule.day)),
+    nota: rule.nota
+  }));
+  holidays.push(
+    {date: addCalendarDays(easterSunday, -3), nota: 'Jueves Santo'},
+    {date: addCalendarDays(easterSunday, -2), nota: 'Viernes Santo'}
+  );
+
+  return normalizeHolidayList(holidays.map(holiday => ({
+    iso: toLocalIsoDate(holiday.date),
+    nota: holiday.nota,
+    managed: true
+  })), numericYear);
+}
 
 function toLocalIsoDate(date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
@@ -1942,8 +1987,7 @@ function normalizeHolidayCalendars(source) {
 }
 
 function getDefaultHolidaysForYear(year) {
-  return normalizeHolidayList(DEFAULT_HOLIDAYS[year] || [], year)
-    .map(holiday => ({...holiday, managed: true}));
+  return getAutomaticAndalusianHolidays(year);
 }
 
 function getConfiguredHolidaysForYear(year) {
@@ -1983,6 +2027,66 @@ const HOLIDAY_TIME_FIELDS = [
   'comidaFin',
   'salida'
 ];
+
+function holidayDayHasRecordedData(day) {
+  return HOLIDAY_TIME_FIELDS.some(field => Boolean(day[field]))
+    || Boolean(day.notas)
+    || day.teleDia
+    || day.teleTarde;
+}
+
+function holidayDayHasGeneratedDefaults(day) {
+  return day.entrada === '08:00'
+    && day.desayunoIni === '09:00'
+    && day.desayunoFin === '09:15'
+    && !day.comidaIni
+    && !day.comidaFin
+    && day.salida === '15:00'
+    && !day.notas
+    && !day.teleDia
+    && !day.teleTarde;
+}
+
+function isLegacyAutomaticHolidayNote(iso, note) {
+  const legacyNotes = {
+    '2026-11-02': ['Día siguiente a Todos los Santos'],
+    '2026-12-07': ['Lunes siguiente al Día de la Constitución'],
+    '2026-12-08': ['Inmaculada Concepción']
+  };
+  return legacyNotes[iso]?.includes(String(note || '')) === true;
+}
+
+function applyAutomaticHolidaysToExistingMonths(sourceMonths, today = new Date()) {
+  const changed = [];
+  const todayIso = toLocalIsoDate(today);
+  for (const monthData of sourceMonths) {
+    if (Object.prototype.hasOwnProperty.call(holidayCalendars, String(monthData.year))) continue;
+    const holidayMap = new Map(
+      getDefaultHolidaysForYear(monthData.year).map(holiday => [holiday.iso, holiday])
+    );
+
+    (monthData.days || []).forEach((day, dayIdx) => {
+      const iso = toLocalIsoDate(day.date);
+      const holiday = holidayMap.get(iso);
+      if (!holiday) return;
+      const canApply = !holidayDayHasRecordedData(day)
+        || (iso > todayIso && holidayDayHasGeneratedDefaults(day));
+
+      if (day.tipo === 'habil' && canApply) {
+        day.tipo = 'festivo';
+        day.notas = holiday.nota;
+        changed.push({monthData, day, dayIdx});
+      } else if (
+        day.tipo === 'festivo'
+        && isLegacyAutomaticHolidayNote(iso, day.notas)
+      ) {
+        day.notas = holiday.nota;
+        changed.push({monthData, day, dayIdx});
+      }
+    });
+  }
+  return changed;
+}
 
 function findHolidayDayRefs(sourceMonths, iso) {
   const refs = [];
@@ -2050,12 +2154,7 @@ function holidayChangesClearRecordedTimes(sourceMonths, year, previousHolidays, 
   return normalizeHolidayList(nextHolidays, year).some(item => {
     if (previousDates.has(item.iso)) return false;
     return findHolidayDayRefs(sourceMonths, item.iso).some(ref =>
-      ref.day.tipo === 'habil' && (
-        HOLIDAY_TIME_FIELDS.some(field => Boolean(ref.day[field]))
-        || Boolean(ref.day.notas)
-        || ref.day.teleDia
-        || ref.day.teleTarde
-      )
+      ref.day.tipo === 'habil' && holidayDayHasRecordedData(ref.day)
     );
   });
 }
@@ -2088,7 +2187,7 @@ function renderHolidaySummary() {
   const year = months[currentMonthIdx]?.year || new Date().getFullYear();
   const total = getConfiguredHolidaysForYear(year).length;
   const customized = Object.prototype.hasOwnProperty.call(holidayCalendars, String(year));
-  summary.textContent = `${total} ${total === 1 ? 'festivo' : 'festivos'} · ${year}${customized ? ' · personalizado' : ''}`;
+  summary.textContent = `${total} ${total === 1 ? 'festivo' : 'festivos'} · ${year} · ${customized ? 'personalizado' : 'automático'}`;
 }
 
 function renderHolidayManager() {
@@ -2154,13 +2253,13 @@ function openHolidaysModal() {
   document.getElementById('holiday-year').focus();
 }
 
-async function persistHolidayCalendar(year, nextHolidays, successMessage) {
+async function persistHolidayCalendar(year, nextHolidays, successMessage, previousHolidays = null) {
   if (holidaySaveInProgress) {
     setHolidayFeedback('Espera a que termine el guardado actual.');
     return false;
   }
 
-  const previous = getConfiguredHolidaysForYear(year);
+  const previous = previousHolidays ?? getConfiguredHolidaysForYear(year);
   const normalizedNext = normalizeHolidayList(nextHolidays, year);
   if (holidayChangesClearRecordedTimes(months, year, previous, normalizedNext)) {
     const confirmed = confirm('Alguna fecha seleccionada contiene horas, notas o teletrabajo. Al convertirla en festivo se borrarán esos datos. ¿Continuar?');
@@ -2243,7 +2342,9 @@ async function removeHoliday(iso) {
 async function restoreDefaultHolidays() {
   const year = getHolidayManagerYear();
   const defaults = getDefaultHolidaysForYear(year);
-  await persistHolidayCalendar(year, defaults, 'Calendario predeterminado restaurado.');
+  const hasOverride = Object.prototype.hasOwnProperty.call(holidayCalendars, String(year));
+  const previous = hasOverride ? getConfiguredHolidaysForYear(year) : [];
+  await persistHolidayCalendar(year, defaults, 'Calendario automático restaurado.', previous);
 }
 
 function getWorkdays(year, month) {
@@ -3497,6 +3598,13 @@ function importJSON(text) {
     days: (m.days || []).map(d => ({...d, date: new Date(d.date)}))
   }));
   applyConfigToDOM(data.config);
+  const automaticHolidayChanges = applyAutomaticHolidaysToExistingMonths(months);
+  if (currentUser) {
+    automaticHolidayChanges.forEach(ref => {
+      ensureDayId(ref.day);
+      queueSyncChange(getDaySyncKey(ref.monthData.id, ref.day));
+    });
+  }
   currentMonthIdx = 0;
   saveState();
   renderTabs();
@@ -4114,7 +4222,7 @@ document.querySelectorAll('.config-input:not([data-manual-save]), .select-input:
 
 // ── Service Worker registration ──────────────────────────────────────────────
 if ('serviceWorker' in navigator) {
-  const swVersion = '2.11.0';
+  const swVersion = '2.12.0';
   let swRefreshing = false;
 
   navigator.serviceWorker.addEventListener('controllerchange', () => {
@@ -5107,6 +5215,17 @@ async function initApp() {
     } else {
       await ensureCurrentMonthExists();
     }
+
+    const automaticHolidayChanges = applyAutomaticHolidaysToExistingMonths(months);
+    if (automaticHolidayChanges.length > 0) {
+      automaticHolidayChanges.forEach(ref => {
+        ensureDayId(ref.day);
+        queueSyncChange(getDaySyncKey(ref.monthData.id, ref.day));
+      });
+      saveStateLocal();
+      await retrySync();
+    }
+
     if (hasRemote && syncQueue.length === 0) {
       lastSuccessfulSync = new Date().toISOString();
       syncErrorMessage = '';

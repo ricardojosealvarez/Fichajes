@@ -23,6 +23,42 @@ const extractFunction = name => {
   throw new Error(`No se pudo extraer la función ${name}`);
 };
 
+const extractConstArray = name => {
+  const start = html.indexOf(`const ${name} = [`);
+  assert.notEqual(start, -1, `No se encontró la constante ${name}`);
+  const end = html.indexOf('];', start);
+  assert.notEqual(end, -1, `No se pudo extraer la constante ${name}`);
+  return html.slice(start, end + 2);
+};
+
+const createHolidayContext = (overrides = {}) => {
+  const context = vm.createContext({
+    Date,
+    holidayCalendars: {},
+    ...overrides
+  });
+  vm.runInContext(extractConstArray('ANDALUSIAN_FIXED_HOLIDAY_RULES'), context);
+  vm.runInContext(extractConstArray('HOLIDAY_TIME_FIELDS'), context);
+  [
+    'getEasterSunday',
+    'addCalendarDays',
+    'moveSundayHolidayToMonday',
+    'toLocalIsoDate',
+    'isValidHolidayIso',
+    'normalizeHolidayList',
+    'normalizeHolidayCalendars',
+    'getAutomaticAndalusianHolidays',
+    'getDefaultHolidaysForYear',
+    'getConfiguredHolidaysForYear',
+    'setHolidayCalendarOverride',
+    'holidayDayHasRecordedData',
+    'holidayDayHasGeneratedDefaults',
+    'isLegacyAutomaticHolidayNote',
+    'applyAutomaticHolidaysToExistingMonths'
+  ].forEach(name => vm.runInContext(extractFunction(name), context));
+  return context;
+};
+
 const createContext = overrides => {
   const context = vm.createContext({
     Math,
@@ -302,20 +338,68 @@ test('la navegación mensual limita el contenido y actualiza sus controles', () 
   assert.equal(next.style.display, 'none');
 });
 
-test('normaliza festivos y permite sustituir los predeterminados por una lista vacía', () => {
-  const context = vm.createContext({
-    holidayCalendars: {},
-    DEFAULT_HOLIDAYS: {
-      2026: [{iso: '2026-01-06', nota: 'Reyes'}]
-    }
-  });
-  [
-    'isValidHolidayIso',
-    'normalizeHolidayList',
-    'normalizeHolidayCalendars',
-    'getDefaultHolidaysForYear',
-    'getConfiguredHolidaysForYear'
-  ].forEach(name => vm.runInContext(extractFunction(name), context));
+test('genera los calendarios oficiales de Andalucía de 2026 y 2027', () => {
+  const context = createHolidayContext();
+  const expected = {
+    2026: [
+      '2026-01-01',
+      '2026-01-06',
+      '2026-02-28',
+      '2026-04-02',
+      '2026-04-03',
+      '2026-05-01',
+      '2026-08-15',
+      '2026-10-12',
+      '2026-11-02',
+      '2026-12-07',
+      '2026-12-08',
+      '2026-12-25'
+    ],
+    2027: [
+      '2027-01-01',
+      '2027-01-06',
+      '2027-03-01',
+      '2027-03-25',
+      '2027-03-26',
+      '2027-05-01',
+      '2027-08-16',
+      '2027-10-12',
+      '2027-11-01',
+      '2027-12-06',
+      '2027-12-08',
+      '2027-12-25'
+    ]
+  };
+
+  for (const [year, dates] of Object.entries(expected)) {
+    const holidays = context.getAutomaticAndalusianHolidays(Number(year));
+    assert.deepEqual(Array.from(holidays, holiday => holiday.iso), dates);
+    assert.equal(holidays.length, 12);
+    assert.equal(holidays.every(holiday => holiday.managed === true), true);
+  }
+});
+
+test('calcula la Semana Santa y traslada solo los festivos en domingo', () => {
+  const context = createHolidayContext();
+
+  assert.equal(context.toLocalIsoDate(context.getEasterSunday(2026)), '2026-04-05');
+  assert.equal(context.toLocalIsoDate(context.getEasterSunday(2027)), '2027-03-28');
+
+  const dates2027 = Array.from(
+    context.getAutomaticAndalusianHolidays(2027),
+    holiday => holiday.iso
+  );
+  assert.equal(dates2027.includes('2027-02-28'), false);
+  assert.equal(dates2027.includes('2027-03-01'), true);
+  assert.equal(dates2027.includes('2027-08-15'), false);
+  assert.equal(dates2027.includes('2027-08-16'), true);
+  assert.equal(dates2027.includes('2027-05-01'), true);
+  assert.equal(dates2027.includes('2027-12-25'), true);
+  assert.deepEqual(Array.from(context.getAutomaticAndalusianHolidays(2019)), []);
+});
+
+test('normaliza festivos y mantiene personalizaciones aisladas por año', () => {
+  const context = createHolidayContext();
 
   const normalized = context.normalizeHolidayCalendars({
     2026: [
@@ -326,11 +410,135 @@ test('normaliza festivos y permite sustituir los predeterminados por una lista v
   });
   assert.equal(normalized['2026'].length, 1);
   assert.equal(normalized['2026'][0].nota, 'Fiesta del Trabajo');
-  assert.equal(context.getConfiguredHolidaysForYear(2026).length, 1);
+  assert.equal(context.getConfiguredHolidaysForYear(2026).length, 12);
   assert.equal(context.getConfiguredHolidaysForYear(2026)[0].managed, true);
 
   context.holidayCalendars = {'2026': []};
   assert.equal(context.getConfiguredHolidaysForYear(2026).length, 0);
+  assert.equal(context.getConfiguredHolidaysForYear(2027).length, 12);
+
+  const defaults = context.getDefaultHolidaysForYear(2026);
+  context.setHolidayCalendarOverride(2026, defaults);
+  assert.equal(
+    Object.prototype.hasOwnProperty.call(context.holidayCalendars, '2026'),
+    false
+  );
+});
+
+test('actualiza meses existentes sin borrar fichajes ni notas del usuario', () => {
+  const context = createHolidayContext();
+  const transferredHoliday = {
+    date: new Date(2027, 2, 1),
+    tipo: 'habil',
+    entrada: '08:00',
+    desayunoIni: '09:00',
+    desayunoFin: '09:15',
+    comidaIni: '',
+    comidaFin: '',
+    salida: '15:00',
+    teleDia: false,
+    teleTarde: false,
+    notas: ''
+  };
+  const protectedFichaje = {
+    date: new Date(2027, 2, 25),
+    tipo: 'habil',
+    entrada: '08:01',
+    desayunoIni: '09:00',
+    desayunoFin: '09:15',
+    comidaIni: '',
+    comidaFin: '',
+    salida: '15:00',
+    teleDia: false,
+    teleTarde: false,
+    notas: ''
+  };
+  const protectedNote = {
+    date: new Date(2027, 2, 26),
+    tipo: 'habil',
+    entrada: '',
+    desayunoIni: '',
+    desayunoFin: '',
+    comidaIni: '',
+    comidaFin: '',
+    salida: '',
+    teleDia: false,
+    teleTarde: false,
+    notas: 'Trabajo autorizado'
+  };
+  const pastDefaultFichaje = {
+    date: new Date(2026, 4, 1),
+    tipo: 'habil',
+    entrada: '08:00',
+    desayunoIni: '09:00',
+    desayunoFin: '09:15',
+    comidaIni: '',
+    comidaFin: '',
+    salida: '15:00',
+    teleDia: false,
+    teleTarde: false,
+    notas: ''
+  };
+  const legacyHoliday = {
+    date: new Date(2026, 11, 7),
+    tipo: 'festivo',
+    entrada: '',
+    salida: '',
+    teleDia: false,
+    notas: 'Lunes siguiente al Día de la Constitución'
+  };
+  const sourceMonths = [
+    {
+      id: 'march-2027',
+      year: 2027,
+      month: 2,
+      days: [transferredHoliday, protectedFichaje, protectedNote]
+    },
+    {id: 'may-2026', year: 2026, month: 4, days: [pastDefaultFichaje]},
+    {id: 'december-2026', year: 2026, month: 11, days: [legacyHoliday]}
+  ];
+
+  const changed = context.applyAutomaticHolidaysToExistingMonths(
+    sourceMonths,
+    new Date(2026, 6, 30)
+  );
+  assert.equal(changed.length, 2);
+  assert.equal(transferredHoliday.tipo, 'festivo');
+  assert.equal(transferredHoliday.notas, 'Día de Andalucía');
+  assert.equal(transferredHoliday.entrada, '08:00');
+  assert.equal(transferredHoliday.salida, '15:00');
+  assert.equal(protectedFichaje.tipo, 'habil');
+  assert.equal(protectedFichaje.entrada, '08:01');
+  assert.equal(protectedFichaje.salida, '15:00');
+  assert.equal(protectedNote.tipo, 'habil');
+  assert.equal(protectedNote.notas, 'Trabajo autorizado');
+  assert.equal(pastDefaultFichaje.tipo, 'habil');
+  assert.equal(legacyHoliday.notas, 'Día de la Constitución Española');
+  assert.equal(
+    context.isLegacyAutomaticHolidayNote(
+      '2026-11-02',
+      'Día siguiente a Todos los Santos'
+    ),
+    true
+  );
+  assert.equal(
+    context.isLegacyAutomaticHolidayNote('2026-12-08', 'Inmaculada Concepción'),
+    true
+  );
+
+  context.holidayCalendars = {'2027': []};
+  const customizedDay = {
+    date: new Date(2027, 7, 16),
+    tipo: 'habil',
+    notas: ''
+  };
+  assert.equal(
+    context.applyAutomaticHolidaysToExistingMonths([
+      {id: 'august-2027', year: 2027, month: 7, days: [customizedDay]}
+    ]).length,
+    0
+  );
+  assert.equal(customizedDay.tipo, 'habil');
 });
 
 test('aplica y elimina festivos configurados sin alterar festivos manuales', () => {
@@ -344,6 +552,7 @@ test('aplica y elimina festivos configurados sin alterar festivos manuales', () 
       'salida'
     ]
   });
+  vm.runInContext(extractFunction('holidayDayHasRecordedData'), context);
   [
     'toLocalIsoDate',
     'isValidHolidayIso',
@@ -422,6 +631,7 @@ test('avisa antes de sobrescribir horas, notas o teletrabajo al añadir un festi
       'salida'
     ]
   });
+  vm.runInContext(extractFunction('holidayDayHasRecordedData'), context);
   [
     'toLocalIsoDate',
     'isValidHolidayIso',
