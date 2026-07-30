@@ -278,6 +278,10 @@
   .pending-item-date { color: var(--orange); font-size: 10px; }
   .pending-item-reason { overflow: hidden; color: var(--muted); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
   .pending-more { color: var(--muted); font-size: 10px; text-align: center; }
+  .mobile-panel-btn,
+  .mobile-sidebar-close,
+  .sidebar-backdrop { display: none; }
+  body.mobile-sidebar-open { overflow: hidden; }
   .stat-card {
     background: var(--surface2);
     border: 1px solid var(--border);
@@ -887,8 +891,117 @@
     .dashboard-panel-wide { grid-column: auto; }
   }
   @media (max-width: 700px) {
-    .brand-area { width: 100%; justify-content: space-between; }
-    .tabs-wrap { max-width: calc(100vw - 40px); overflow-x: auto; }
+    body { min-width: 0; }
+    header {
+      position: relative;
+      padding: 12px;
+      gap: 10px;
+    }
+    .brand-area {
+      width: 100%;
+      justify-content: space-between;
+      gap: 10px;
+    }
+    .logo { font-size: 17px; }
+    .view-switcher { flex: 1; justify-content: flex-end; }
+    .view-btn { flex: 1; max-width: 120px; padding: 5px 7px; font-size: 10px; }
+    #month-actions {
+      width: 100%;
+      min-width: 0;
+      gap: 6px !important;
+      order: 3;
+    }
+    .tabs-wrap {
+      flex: 1;
+      min-width: 0;
+      max-width: none;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+    .tabs-wrap::-webkit-scrollbar { display: none; }
+    .tabs { flex-wrap: nowrap; }
+    .tab { padding: 6px 10px; font-size: 11px; white-space: nowrap; }
+    .add-month-btn { padding: 6px 9px; font-size: 11px; white-space: nowrap; }
+    .header-status {
+      width: 100%;
+      margin-left: 0;
+      justify-content: flex-end;
+      gap: 6px;
+      order: 4;
+    }
+    .mobile-panel-btn {
+      display: inline-flex;
+      align-items: center;
+      min-height: 30px;
+      padding: 5px 9px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+      font-family: 'Syne', sans-serif;
+      font-size: 10px;
+      font-weight: 700;
+    }
+    .main {
+      display: block;
+      height: auto;
+      min-height: calc(100dvh - 120px);
+    }
+    .sidebar,
+    .sidebar.collapsed {
+      position: fixed;
+      inset: 0 auto 0 0;
+      z-index: 320;
+      width: min(330px, 88vw);
+      height: 100dvh;
+      padding: 22px 18px;
+      overflow-y: auto;
+      visibility: hidden;
+      pointer-events: none;
+      transform: translateX(-102%);
+      transition: transform 0.2s ease, visibility 0s linear 0.2s;
+    }
+    .sidebar.mobile-open,
+    .sidebar.collapsed.mobile-open {
+      visibility: visible;
+      pointer-events: auto;
+      transform: translateX(0);
+      transition-delay: 0s;
+    }
+    .sidebar.collapsed > *:not(#sidebar-toggle-wrap) { display: block; }
+    #sidebar-toggle-wrap { display: none; }
+    .mobile-sidebar-close {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 32px;
+      height: 32px;
+      margin: -10px 0 8px auto;
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      background: var(--surface2);
+      color: var(--text);
+      font-size: 18px;
+      cursor: pointer;
+    }
+    .sidebar-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 310;
+      border: 0;
+      background: #000000b8;
+    }
+    .sidebar-backdrop.show { display: block; }
+    .content,
+    .main.dashboard-mode .content {
+      width: 100%;
+      padding: 12px;
+      overflow: visible;
+    }
     .main.dashboard-mode .content { padding: 20px 14px 36px; }
     .dashboard-header { align-items: flex-start; flex-direction: column; }
     .dashboard-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -902,6 +1015,119 @@
     .comparison-row { grid-template-columns: 58px minmax(0, 1fr); }
     .comparison-values { grid-column: 2; }
     .type-legend { grid-template-columns: 1fr; }
+
+    .attendance-table,
+    .attendance-table tbody { display: block; width: 100%; }
+    .attendance-table thead { display: none; }
+    .attendance-table tbody tr {
+      position: relative;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0;
+      margin-bottom: 10px;
+      overflow: visible;
+      border: 1px solid var(--border) !important;
+      border-radius: 9px;
+      background: var(--surface);
+    }
+    .attendance-table tbody tr:hover { background: var(--surface); }
+    .attendance-table td {
+      width: auto;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 4px;
+      padding: 10px 11px;
+      border-bottom: 1px solid #3d414866;
+    }
+    .attendance-table td:nth-last-child(-n+2) { border-bottom: 0; }
+    .attendance-table td::before {
+      content: attr(data-label);
+      color: var(--muted);
+      font-family: 'Syne', sans-serif;
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.7px;
+      text-transform: uppercase;
+    }
+    .attendance-table td.mobile-hidden { display: none; }
+    .attendance-table .date-col,
+    .attendance-table .day-col {
+      width: auto;
+      padding-top: 12px;
+      background: var(--surface2);
+      font-size: 13px;
+    }
+    .attendance-table .date-col::before,
+    .attendance-table .day-col::before { display: none; }
+    .attendance-table .date-col { color: var(--accent); }
+    .attendance-table .day-col { align-items: flex-end; color: var(--text); }
+    .attendance-table .calc-cell,
+    .attendance-table .time-display {
+      min-width: 0;
+      padding: 0;
+      text-align: left;
+      font-size: 14px;
+    }
+    .attendance-table .tele-cell {
+      display: flex;
+      flex-flow: row wrap;
+      align-items: center;
+    }
+    .attendance-table .tele-cell::before { width: 100%; }
+    .attendance-table .notes-cell,
+    .attendance-table .type-cell {
+      grid-column: 1 / -1;
+    }
+    .attendance-table .notes-input { width: 100%; padding: 5px 0; }
+    .attendance-table .type-cell {
+      flex-flow: row wrap;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .attendance-table .type-cell::before { width: 100%; }
+    .attendance-table .action-cell {
+      position: absolute;
+      right: 7px;
+      bottom: 7px;
+      width: auto;
+      padding: 0;
+      border: 0;
+    }
+    .attendance-table .action-cell::before { display: none; }
+    .attendance-table .type-cell { padding-right: 52px; }
+    .attendance-table tbody tr.row-today td:first-child {
+      box-shadow: inset 4px 0 0 var(--accent);
+    }
+    .modal-overlay { align-items: flex-end; }
+    .modal,
+    #day-edit-modal .modal {
+      width: 100%;
+      max-width: none;
+      max-height: 92dvh;
+      overflow-y: auto;
+      padding: 22px 18px;
+      border-radius: 14px 14px 0 0;
+    }
+    .modal-actions {
+      position: sticky;
+      bottom: -22px;
+      padding: 12px 0 4px;
+      background: var(--surface);
+    }
+  }
+
+  @media (max-width: 430px) {
+    .dashboard-kpis { grid-template-columns: 1fr; }
+    .dashboard-title { font-size: 22px; }
+    .dashboard-panel { padding: 14px; }
+    .day-edit-grid { grid-template-columns: 1fr; }
+    .day-edit-row.full { grid-column: auto; }
+    .sync-indicator,
+    .pending-indicator,
+    .mobile-panel-btn { padding-inline: 7px; }
+    #btn-add-month { display: none; }
   }
 
 </style>
@@ -1095,6 +1321,7 @@
     <button class="add-month-btn" onclick="openDayEditGeneral()" id="btn-add-fichaje">+ Fichaje</button>
   </div>
   <div class="header-status">
+    <button class="mobile-panel-btn" id="mobile-panel-btn" onclick="toggleMobileSidebar()" aria-expanded="false" aria-controls="sidebar">PANEL</button>
     <button class="sync-indicator" id="sync-indicator" onclick="retrySync()" title="Estado de sincronización. Pulsa para reintentar.">
       <span class="sync-dot"></span>
       <span class="sync-label" id="sync-label">Comprobando…</span>
@@ -1110,7 +1337,7 @@
       color: var(--muted);
       letter-spacing: 1px;
       text-transform: uppercase;
-    ">v2.8.0</div>
+    ">v2.9.0</div>
     <button id="signout-btn" style="
       padding: 6px 12px;
       background: transparent;
@@ -1131,6 +1358,7 @@
     <div id="sidebar-toggle-wrap">
       <button id="sidebar-toggle-btn" onclick="toggleSidebar()" title="Ocultar panel">‹</button>
     </div>
+    <button class="mobile-sidebar-close" onclick="setMobileSidebarOpen(false)" aria-label="Cerrar panel">×</button>
     <div>
       <div class="section-title-row">
         <div class="section-title">Fichajes pendientes</div>
@@ -1234,6 +1462,7 @@
 
   <div class="content scrollbar-thin" id="content"></div>
 </div>
+<button class="sidebar-backdrop" id="sidebar-backdrop" onclick="setMobileSidebarOpen(false)" aria-label="Cerrar panel lateral"></button>
 
 <!-- Day Edit Modal -->
 <div class="modal-overlay" id="day-edit-modal">
@@ -1895,24 +2124,24 @@ function renderTable() {
       isToday ? 'row-today' : ''
     ].filter(Boolean).join(' ');
     rows += `<tr ${rowClasses ? `class="${rowClasses}"` : ''} data-idx="${i}">
-      <td class="date-col">${dateStr}</td>
-      <td class="day-col">${dayName}</td>
-      <td>${renderTimeDisplay(day.entrada)}</td>
-      <td>${renderTimeDisplay(day.desayunoIni)}</td>
-      <td>${renderTimeDisplay(day.desayunoFin)}</td>
-      <td>${renderTimeDisplay(day.comidaIni)}</td>
-      <td>${renderTimeDisplay(day.comidaFin)}</td>
-      <td>${renderTimeDisplay(salidaAuto ? salidaDisplay : day.salida, salidaAuto ? 'auto-calc' : '')}</td>
-      <td class="center"><span class="calc-cell suma">${sumaStr}</span></td>
-      <td class="center"><span class="calc-cell diario ${diarioClass}">${diarioStr}</span></td>
-      <td class="center"><span class="calc-cell abs">${absStr}</span></td>
-      <td class="tele-cell">
+      <td class="date-col" data-label="Fecha">${dateStr}</td>
+      <td class="day-col" data-label="Día">${dayName}</td>
+      <td data-label="Entrada">${renderTimeDisplay(day.entrada)}</td>
+      <td class="mobile-hidden" data-label="Desayuno inicio">${renderTimeDisplay(day.desayunoIni)}</td>
+      <td class="mobile-hidden" data-label="Desayuno fin">${renderTimeDisplay(day.desayunoFin)}</td>
+      <td class="mobile-hidden" data-label="Comida inicio">${renderTimeDisplay(day.comidaIni)}</td>
+      <td class="mobile-hidden" data-label="Comida fin">${renderTimeDisplay(day.comidaFin)}</td>
+      <td data-label="Salida">${renderTimeDisplay(salidaAuto ? salidaDisplay : day.salida, salidaAuto ? 'auto-calc' : '')}</td>
+      <td class="center" data-label="Total"><span class="calc-cell suma">${sumaStr}</span></td>
+      <td class="center" data-label="Diferencia"><span class="calc-cell diario ${diarioClass}">${diarioStr}</span></td>
+      <td class="center" data-label="Bolsa"><span class="calc-cell abs">${absStr}</span></td>
+      <td class="tele-cell" data-label="Teletrabajo">
         <button class="tele-btn ${day.teleDia ? 'active-dia' : ''}" onclick="setTele(${i},'dia')" ${(day.tipo !== 'habil' || day.teleTarde) ? 'disabled' : ''} title="Día completo de teletrabajo">DÍA</button>
         <button class="tele-btn ${day.teleTarde ? 'active-tarde' : ''}" onclick="setTele(${i},'tarde')" ${(day.tipo !== 'habil' || day.teleDia) ? 'disabled' : ''} title="Tarde en teletrabajo">TARDE</button>
         <span class="tele-bolsa ${teleCls}">${teleStr}</span>
       </td>
-      <td><input class="notes-input" type="text" value="${day.notas}" oninput="updateDayField(${i},'notas',this.value)" onblur="persistDayChange(${i})" data-field="notas" placeholder="—"></td>
-      <td class="type-cell">
+      <td class="notes-cell" data-label="Notas"><input class="notes-input" type="text" value="${day.notas}" oninput="updateDayField(${i},'notas',this.value)" onblur="persistDayChange(${i})" data-field="notas" placeholder="—"></td>
+      <td class="type-cell" data-label="Tipo">
         <div class="type-dropdown-wrap">
           <div class="type-pill ${day.tipo}" onclick="toggleTypeMenu(event,${i})" title="Cambiar tipo de día">
             <span class="dot"></span>${DAY_TYPES.find(t=>t.key===day.tipo)?.label||'Hábil'}
@@ -1922,14 +2151,14 @@ function renderTable() {
           </div>
         </div>
       </td>
-      <td>
+      <td class="action-cell" data-label="Acciones">
         <button class="btn btn-secondary" style="padding:3px 8px;font-size:12px" onclick="openDayEdit(${i})" title="Editar fichaje">✎</button>
       </td>
     </tr>`;
   }
 
   document.getElementById('content').innerHTML = `
-    <table>
+    <table class="attendance-table">
       <thead>
         <tr>
           <th>Fecha</th>
@@ -2065,6 +2294,7 @@ function openPendingPunch(monthIdx, dayIdx) {
   currentMonthIdx = monthIdx;
   renderTabs();
   switchAppView('records');
+  setMobileSidebarOpen(false);
   openDayEdit(dayIdx);
 }
 
@@ -2656,6 +2886,7 @@ function applyConfigToDOM(cfg) {
 let _importMode = 'json';
 
 function showImportModal(mode) {
+  setMobileSidebarOpen(false);
   _importMode = mode;
   document.getElementById('import-file-input').value = '';
   setImportFeedback('', '');
@@ -3334,7 +3565,7 @@ document.querySelectorAll('.config-input, .select-input').forEach(el => {
 
 // ── Service Worker registration ──────────────────────────────────────────────
 if ('serviceWorker' in navigator) {
-  const swVersion = '2.8.0';
+  const swVersion = '2.9.0';
   let swRefreshing = false;
 
   navigator.serviceWorker.addEventListener('controllerchange', () => {
@@ -4372,6 +4603,27 @@ function toggleSidebar() {
   btn.title = collapsed ? 'Mostrar panel' : 'Ocultar panel';
   localStorage.setItem('sidebarCollapsed', collapsed ? '1' : '0');
 }
+
+function setMobileSidebarOpen(open) {
+  const sidebar = document.getElementById('sidebar');
+  const backdrop = document.getElementById('sidebar-backdrop');
+  const button = document.getElementById('mobile-panel-btn');
+  if (!sidebar || !backdrop || !button) return;
+
+  sidebar.classList.toggle('mobile-open', open);
+  backdrop.classList.toggle('show', open);
+  document.body.classList.toggle('mobile-sidebar-open', open);
+  button.setAttribute('aria-expanded', String(open));
+}
+
+function toggleMobileSidebar() {
+  const sidebar = document.getElementById('sidebar');
+  setMobileSidebarOpen(!sidebar?.classList.contains('mobile-open'));
+}
+
+window.addEventListener('resize', () => {
+  if (window.innerWidth > 700) setMobileSidebarOpen(false);
+});
 
 function initSidebarState() {
   if (localStorage.getItem('sidebarCollapsed') === '1') {

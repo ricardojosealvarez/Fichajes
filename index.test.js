@@ -241,3 +241,55 @@ test('prioriza los estados de sincronización activos y recuperables', () => {
   context.isOnline = false;
   assert.equal(context.getSyncStatus(), 'offline');
 });
+
+test('la vista móvil expone tarjetas etiquetadas y acceso al panel', () => {
+  assert.match(html, /class="attendance-table"/);
+  assert.match(html, /data-label="Entrada"/);
+  assert.match(html, /data-label="Salida"/);
+  assert.match(html, /id="mobile-panel-btn"/);
+  assert.match(html, /class="mobile-sidebar-close"/);
+  assert.match(html, /id="sidebar-backdrop"/);
+});
+
+test('abre y cierra el panel lateral móvil de forma accesible', () => {
+  const createClassList = () => {
+    const values = new Set();
+    return {
+      contains: value => values.has(value),
+      toggle: (value, force) => {
+        if (force) values.add(value);
+        else values.delete(value);
+      }
+    };
+  };
+  const sidebar = { classList: createClassList() };
+  const backdrop = { classList: createClassList() };
+  const button = {
+    attributes: {},
+    setAttribute(name, value) {
+      this.attributes[name] = value;
+    }
+  };
+  const body = { classList: createClassList() };
+  const context = vm.createContext({
+    document: {
+      body,
+      getElementById: id => ({
+        sidebar,
+        'sidebar-backdrop': backdrop,
+        'mobile-panel-btn': button
+      })[id]
+    }
+  });
+  vm.runInContext(extractFunction('setMobileSidebarOpen'), context);
+
+  context.setMobileSidebarOpen(true);
+  assert.equal(sidebar.classList.contains('mobile-open'), true);
+  assert.equal(backdrop.classList.contains('show'), true);
+  assert.equal(body.classList.contains('mobile-sidebar-open'), true);
+  assert.equal(button.attributes['aria-expanded'], 'true');
+
+  context.setMobileSidebarOpen(false);
+  assert.equal(sidebar.classList.contains('mobile-open'), false);
+  assert.equal(button.attributes['aria-expanded'], 'false');
+});
