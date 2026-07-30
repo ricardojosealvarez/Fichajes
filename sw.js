@@ -1,9 +1,11 @@
-const APP_VERSION = '2.14.0';
+const APP_VERSION = '2.15.0';
 const CACHE_NAME = `fichajes-v${APP_VERSION}`;
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
-  './manifest.json'
+  './manifest.json',
+  './MANUAL_USUARIO.html',
+  './Manual_de_usuario_Fichajes.docx'
 ];
 
 // Install: cache assets

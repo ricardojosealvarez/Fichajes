@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Manual de usuario de Fichajes</title>
+<style>
+  :root {
+    color-scheme: dark;
+    --bg: #161719;
+    --surface: #1e2023;
+    --border: #3d4148;
+    --accent: #e8ff47;
+    --accent2: #47c8ff;
+    --text: #e8eaed;
+    --muted: #a6adba;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    max-width: 820px;
+    margin: 0 auto;
+    padding: 8px 28px 44px;
+    background: var(--bg);
+    color: var(--text);
+    font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-size: 15px;
+    line-height: 1.65;
+  }
+  h1, h2, h3 { color: var(--text); line-height: 1.25; }
+  h1 { margin: 10px 0 8px; font-size: clamp(26px, 5vw, 38px); }
+  h2 {
+    margin: 34px 0 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+    color: var(--accent);
+    font-size: 22px;
+  }
+  h3 { margin: 24px 0 8px; color: var(--accent2); font-size: 17px; }
+  p { margin: 0 0 13px; }
+  h1 + p, h1 + p + p { color: var(--muted); }
+  ul, ol { margin: 0 0 16px; padding-left: 24px; }
+  li { margin: 5px 0; }
+  code {
+    padding: 2px 5px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    background: var(--surface);
+    color: var(--accent);
+    font-family: "SFMono-Regular", Consolas, monospace;
+    font-size: 0.9em;
+  }
+  @media (max-width: 600px) {
+    body { padding: 4px 18px 36px; font-size: 14px; }
+    h2 { margin-top: 28px; font-size: 20px; }
+  }
+</style>
+</head>
+<body>
+<h1>Manual de usuario de Fichajes</h1>
+<p>Versión de la aplicación: 2.15.0</p>
+<p>Fecha del manual: 2026-07-30</p>
+<h2>1. Propósito</h2>
+<p>Fichajes es una aplicación web instalable para registrar jornadas laborales, controlar la bolsa de horas, marcar días no hábiles, gestionar teletrabajo y conservar copias de seguridad de los datos.</p>
+<p>La aplicación funciona desde navegador moderno y puede instalarse como PWA en escritorio o móvil. Los datos se guardan localmente en el navegador y, con sesión iniciada, se sincronizan con la cuenta del usuario.</p>
+<h2>2. Requisitos</h2>
+<ul><li>Navegador moderno compatible con JavaScript ES6.</li><li>Conexión a internet para iniciar sesión, crear cuenta, sincronizar datos y actualizar la aplicación.</li><li>Acceso HTTPS si se quiere instalar como aplicación en el dispositivo.</li><li>Cuenta de usuario creada desde la pantalla inicial de Fichajes.</li></ul>
+<h2>3. Acceso y cuenta</h2>
+<h3>3.1 Iniciar sesión</h3>
+<ol><li>Abrir la URL de la aplicación.</li><li>Seleccionar la pestaña <code>Iniciar sesión</code>.</li><li>Introducir email y contraseña.</li><li>Pulsar <code>Iniciar sesión</code>.</li></ol>
+<p>Si la sesión es válida, se cargan los meses, la configuración y los fichajes asociados a la cuenta.</p>
+<h3>3.2 Crear cuenta</h3>
+<ol><li>Abrir la URL de la aplicación.</li><li>Seleccionar la pestaña <code>Crear cuenta</code>.</li><li>Introducir email.</li><li>Introducir contraseña de al menos 6 caracteres.</li><li>Repetir la contraseña.</li><li>Pulsar <code>Crear cuenta</code>.</li></ol>
+<p>Tras crear la cuenta, la aplicación inicia sesión y prepara la configuración inicial.</p>
+<h3>3.3 Cerrar sesión</h3>
+<p>Pulsar <code>Sign Out</code> en la cabecera. La sesión se elimina del navegador y se vuelve a mostrar la pantalla de acceso.</p>
+<h2>4. Pantalla principal</h2>
+<p>La pantalla se divide en cuatro zonas:</p>
+<ul><li>Cabecera: contiene el selector de vista <code>FICHAJES</code> / <code>ESTADÍSTICAS</code>, los meses, las acciones rápidas, el estado de sincronización, los fichajes pendientes, el acceso al manual, la versión y el cierre de sesión.</li><li>Panel rápido <code>Hoy</code>: resume el estado y las métricas del día actual.</li><li>Panel lateral: contiene pendientes, configuración, teletrabajo, festivos, resumen mensual, copias de seguridad, importación/exportación y acciones.</li><li>Área principal: muestra la tabla mensual o el dashboard de estadísticas.</li></ul>
+<p>El panel lateral puede ocultarse o mostrarse con el botón situado en su parte superior. En móvil se abre mediante <code>PANEL</code> y se presenta por encima del contenido.</p>
+<h3>4.1 Cambiar de vista</h3>
+<ul><li><code>FICHAJES</code>: muestra el panel <code>Hoy</code>, la tabla del mes y las herramientas de edición.</li><li><code>ESTADÍSTICAS</code>: muestra indicadores y gráficos del periodo seleccionado.</li></ul>
+<p>Al entrar en <code>ESTADÍSTICAS</code>, las acciones de creación de mes y fichaje se ocultan para dejar espacio al análisis.</p>
+<h3>4.2 Panel rápido Hoy</h3>
+<p>El panel <code>Hoy</code> aparece sobre la tabla y se actualiza automáticamente al cambiar de fecha.</p>
+<p>Según la situación puede mostrar:</p>
+<ul><li>Estado: sin iniciar, en curso, completado, horario a revisar, día no hábil, fin de semana o mes sin crear.</li><li>Entrada y salida.</li><li>Salida y total previstos cuando la aplicación puede calcularlos.</li><li>Diferencia diaria y saldo de bolsa.</li><li>Marca de teletrabajo.</li></ul>
+<p>El botón del panel abre directamente el fichaje del día. Si el mes actual todavía no existe, permite abrir el formulario para crearlo.</p>
+<h3>4.3 Uso en móvil y tablet</h3>
+<ul><li>La tabla se transforma en tarjetas para facilitar la lectura.</li><li>Los campos secundarios permanecen disponibles desde el modal de edición.</li><li>El panel lateral se abre con <code>PANEL</code> y se cierra con su botón de cierre o pulsando el fondo.</li><li>Los modales se presentan como paneles inferiores.</li><li>En pantallas estrechas puede ocultarse <code>+ Mes</code>; el mes actual también puede crearse desde el panel <code>Hoy</code>.</li></ul>
+<h2>5. Gestión de meses</h2>
+<h3>5.1 Seleccionar mes</h3>
+<p>Usar las pestañas de la cabecera para cambiar entre meses. Si hay más de 12 meses, se activan los botones de navegación anterior y siguiente.</p>
+<h3>5.2 Crear mes</h3>
+<ol><li>Pulsar <code>+ Mes</code>.</li><li>Seleccionar año.</li><li>Seleccionar mes.</li><li>Pulsar <code>Crear</code>.</li></ol>
+<p>El mes se genera con días laborables de lunes a viernes. Los festivos nacionales y autonómicos de Andalucía se calculan para el año seleccionado y se marcan automáticamente como <code>Festivo</code>, salvo que se haya personalizado ese calendario.</p>
+<p>Los días hábiles nuevos se crean con valores por defecto:</p>
+<ul><li>Entrada: <code>08:00</code></li><li>Desayuno inicio: <code>09:00</code></li><li>Desayuno fin: <code>09:15</code></li><li>Salida: <code>15:00</code></li></ul>
+<h3>5.3 Eliminar mes</h3>
+<ol><li>Seleccionar el mes que se quiere eliminar.</li><li>En el panel lateral, ir a <code>Acciones</code>.</li><li>Pulsar <code>Eliminar mes</code>.</li><li>Confirmar la operación.</li></ol>
+<p>Esta acción elimina todos los registros del mes seleccionado.</p>
+<h2>6. Registro de fichajes</h2>
+<h3>6.1 Campos de cada día</h3>
+<p>La tabla mensual contiene:</p>
+<ul><li>Fecha: día y mes.</li><li>Día: nombre del día de la semana.</li><li>Entrada: hora de entrada.</li><li>Des. ini: inicio del desayuno.</li><li>Des. fin: fin del desayuno.</li><li>Com. ini: inicio de comida.</li><li>Com. fin: fin de comida.</li><li>Salida: hora de salida.</li><li>Suma: tiempo computado del día.</li><li>Diario: diferencia entre horas computadas y jornada esperada.</li><li>Bolsa: saldo acumulado de bolsa de horas.</li><li>Teletrabajo: marca de día completo o tarde.</li><li>Notas: observaciones libres.</li><li>Tipo: clasificación del día.</li><li>Edición: acceso al formulario del fichaje.</li></ul>
+<h3>6.2 Editar un fichaje desde la tabla</h3>
+<ol><li>Localizar el día en el mes activo.</li><li>Pulsar el botón de edición de la última columna.</li><li>Rellenar o corregir horas.</li><li>Añadir notas si procede.</li><li>Marcar teletrabajo si aplica.</li><li>Pulsar <code>Guardar</code>.</li></ol>
+<h3>6.3 Añadir o editar fichaje desde la cabecera</h3>
+<ol><li>Pulsar <code>+ Fichaje</code>.</li><li>Seleccionar la fecha dentro del mes activo.</li><li>Completar los campos.</li><li>Pulsar <code>Guardar</code>.</li></ol>
+<p>Este flujo permite registrar fichajes sin buscar visualmente la fila en la tabla.</p>
+<h3>6.4 Formato de horas</h3>
+<p>Los campos horarios usan formato <code>HH:MM</code>.</p>
+<p>Formatos aceptados:</p>
+<ul><li><code>08:00</code></li><li><code>8:00</code>, que se normaliza a <code>08:00</code></li><li><code>800</code>, que se normaliza a <code>08:00</code></li><li><code>8</code>, que se normaliza a <code>08:00</code></li></ul>
+<p>Si una hora no es válida, el campo se marca como incorrecto.</p>
+<h3>6.5 Validaciones de secuencia</h3>
+<p>La aplicación valida que las horas mantengan un orden lógico:</p>
+<ul><li>Desayuno inicio debe ser posterior a entrada.</li><li>Desayuno fin debe ser posterior a desayuno inicio.</li><li>Comida inicio debe ser posterior al bloque anterior.</li><li>Comida fin debe ser posterior a comida inicio.</li><li>Salida debe ser posterior al último bloque registrado.</li></ul>
+<p>No se guarda el formulario si hay errores de secuencia.</p>
+<h3>6.6 Fichajes pendientes</h3>
+<p>La aplicación detecta fichajes de fechas pasadas o del día actual que necesitan revisión:</p>
+<ul><li>Falta entrada.</li><li>Falta salida.</li><li>Faltan entrada y salida en un día pasado.</li><li>La secuencia horaria es incoherente.</li></ul>
+<p>El contador <code>Pendientes</code> de la cabecera abre el primer registro pendiente. El panel lateral muestra hasta seis accesos directos, ordenados desde el más reciente. Los días futuros, los días no hábiles y el día actual todavía no iniciado no se consideran pendientes.</p>
+<h2>7. Tipos de día</h2>
+<p>Cada fila tiene un selector <code>Tipo</code> con estas opciones:</p>
+<ul><li>Hábil.</li><li>Festivo.</li><li>Puente.</li><li>Asuntos propios.</li><li>Vacaciones.</li><li>Turno de navidad.</li></ul>
+<p>Al cambiar un día a un tipo no hábil, la aplicación limpia las horas del día y excluye ese registro del cálculo de jornada ordinaria. El día permanece visible en la tabla para mantener el contexto del mes.</p>
+<h3>7.1 Festivos automáticos de Andalucía</h3>
+<p>La aplicación genera para cada año entre 2020 y 2099:</p>
+<ul><li>Festivos nacionales de fecha fija.</li><li>Festivos autonómicos de Andalucía.</li><li>Jueves Santo y Viernes Santo, calculados a partir de la Semana Santa.</li><li>Traslado al lunes cuando un festivo fijo configurado por la aplicación cae en domingo.</li></ul>
+<p>Los calendarios futuros deben revisarse cuando se publique el decreto oficial correspondiente.</p>
+<h3>7.2 Gestionar festivos</h3>
+<ol><li>Abrir <code>Festivos</code> en el panel lateral.</li><li>Pulsar <code>Gestionar festivos</code>.</li><li>Seleccionar el año.</li><li>Para añadir o modificar un festivo, indicar fecha y nombre y pulsar <code>Añadir</code>.</li><li>Para eliminarlo, pulsar el botón de eliminación de su fila.</li><li>Para descartar personalizaciones, pulsar <code>Restaurar calendario automático</code>.</li></ol>
+<p>Los cambios se aplican también a meses ya creados. Si convertir una fecha en festivo implica borrar horas, notas o teletrabajo, la aplicación pide confirmación. Los festivos creados manualmente desde la tabla no se eliminan al restaurar el calendario automático.</p>
+<h2>8. Configuración de jornada</h2>
+<p>La sección <code>Configuración</code> controla las reglas de cálculo.</p>
+<h3>8.1 Horas por día</h3>
+<ul><li><code>Horas/día - Invierno</code>: jornada esperada fuera del periodo intensivo.</li><li><code>Horas/día - Verano</code>: jornada esperada durante el periodo intensivo.</li></ul>
+<h3>8.2 Jornada intensiva</h3>
+<ul><li><code>Inicio jornada intensiva</code>: fecha en formato <code>DD/MM</code>.</li><li><code>Fin jornada intensiva</code>: fecha en formato <code>DD/MM</code>.</li></ul>
+<p>Los días comprendidos entre ambas fechas usan la jornada de verano.</p>
+<h3>8.3 Reglas horarias</h3>
+<ul><li><code>Hora mín. entrada</code>: si se ficha antes de esta hora, el cálculo computa desde esta hora mínima.</li><li><code>Tiempo máx. desayuno</code>: el desayuno solo descuenta el exceso sobre este tiempo.</li><li><code>Tiempo mín. comida</code>: si hay tramo de comida, se descuenta como mínimo este tiempo.</li><li><code>Hora mín. salida</code>: si no hay comida, la salida computada no puede ser anterior a esta hora.</li></ul>
+<h3>8.4 Bolsa inicial</h3>
+<p><code>Bolsa inicio de año</code> define el saldo inicial de la bolsa de horas. El valor máximo admitido es <code>05:00</code>.</p>
+<h2>9. Cálculos de jornada</h2>
+<h3>9.1 Suma</h3>
+<p><code>Suma</code> representa el tiempo computado del día. Se calcula aplicando:</p>
+<ul><li>Entrada efectiva: la mayor entre la entrada real y la hora mínima de entrada.</li><li>Descuento de desayuno: solo el exceso sobre el tiempo máximo configurado.</li><li>Descuento de comida: si hay comida, se descuenta el mayor valor entre duración real y tiempo mínimo de comida.</li><li>Salida efectiva: respeta la hora mínima de salida cuando corresponde.</li><li>Límite diario: la suma no supera 11 horas.</li></ul>
+<h3>9.2 Diario</h3>
+<p><code>Diario</code> es la diferencia entre la suma del día y las horas esperadas para esa fecha.</p>
+<ul><li>Valor positivo: se generan minutos a favor.</li><li>Valor negativo: faltan minutos respecto a la jornada esperada.</li></ul>
+<h3>9.3 Bolsa</h3>
+<p><code>Bolsa</code> es el saldo acumulado tras aplicar cada día del mes y los meses anteriores.</p>
+<p>La aplicación aplica estas reglas de bolsa:</p>
+<ul><li>Primer día de jornada intensiva: el saldo se reinicia a <code>00:00</code>.</li><li>Primer día laborable posterior a la jornada intensiva: se conserva el saldo positivo con un máximo de <code>02:00</code>; un saldo negativo se ajusta a <code>00:00</code>.</li><li>Viernes durante la jornada intensiva: el saldo positivo queda limitado a <code>02:00</code>.</li><li>Viernes fuera de la jornada intensiva: el saldo positivo queda limitado a <code>05:00</code>.</li><li>De lunes a jueves no se aplica un tope adicional.</li></ul>
+<h3>9.4 Salida automática de viernes</h3>
+<p>En viernes hábil con entrada registrada y salida vacía, la aplicación calcula una salida automática para ajustar la jornada al saldo de bolsa disponible. La salida calculada aparece destacada como valor automático.</p>
+<h2>10. Teletrabajo</h2>
+<h3>10.1 Configurar bolsa trimestral</h3>
+<p>La sección <code>Bolsa teletrabajo</code> permite definir una bolsa por trimestre:</p>
+<ul><li>T1: enero, febrero y marzo.</li><li>T2: abril, mayo y junio.</li><li>T3: julio, agosto y septiembre.</li><li>T4: octubre, noviembre y diciembre.</li></ul>
+<p>El formato es <code>HH:MM</code>.</p>
+<h3>10.2 Marcar teletrabajo</h3>
+<p>En cada día hábil se puede marcar:</p>
+<ul><li><code>DÍA</code>: día completo de teletrabajo.</li><li><code>TARDE</code>: teletrabajo de tarde.</li></ul>
+<p>Ambas marcas son excluyentes. Si se activa una, la otra queda deshabilitada.</p>
+<h3>10.3 Consumo de bolsa de teletrabajo</h3>
+<ul><li>Día completo: consume la suma computada del día.</li><li>Tarde: consume el tiempo posterior al tramo de comida según las reglas de cálculo.</li></ul>
+<p>La columna de teletrabajo muestra la bolsa restante del trimestre cuando el día tiene una marca activa.</p>
+<h3>10.4 Avisos</h3>
+<p>Si un trimestre queda excedido, el panel lateral muestra un aviso indicando el trimestre afectado y el exceso.</p>
+<h2>11. Resumen y estadísticas</h2>
+<h3>11.1 Resumen del mes</h3>
+<p>La sección <code>Resumen del mes</code> del panel lateral muestra:</p>
+<ul><li>Días registrados.</li><li>Días no hábiles.</li><li>Horas trabajadas.</li><li>Horas esperadas.</li><li>Diferencia total.</li><li>Bolsa ABS final.</li></ul>
+<p>Los valores se recalculan al cambiar fichajes, tipos de día o configuración.</p>
+<h3>11.2 Dashboard de estadísticas</h3>
+<p>Seleccionar <code>ESTADÍSTICAS</code> en la cabecera. El dashboard permite consultar:</p>
+<ul><li><code>MES</code>: el mes seleccionado.</li><li><code>TRIMESTRE</code>: el mes seleccionado y los dos meses anteriores disponibles.</li><li><code>AÑO</code>: todos los meses disponibles del año seleccionado.</li></ul>
+<p>Los indicadores principales son:</p>
+<ul><li>Horas trabajadas y número de días completos.</li><li>Horas esperadas hasta la fecha actual.</li><li>Diferencia entre tiempo real y objetivo.</li><li>Bolsa acumulada.</li><li>Teletrabajo disponible y consumido en el trimestre natural correspondiente.</li><li>Hora media de entrada y salida de fichajes completos.</li></ul>
+<p>Los gráficos y paneles muestran:</p>
+<ul><li>Evolución de la bolsa por día.</li><li>Horas trabajadas frente a esperadas, agrupadas por semana o mes.</li><li>Distribución de días por tipo.</li><li>Incidencias: fichajes pendientes, bolsa negativa o teletrabajo excedido.</li></ul>
+<p>Los días futuros no se incluyen como tiempo pendiente en los indicadores.</p>
+<h2>12. Copias de seguridad</h2>
+<h3>12.1 Exportar backup JSON</h3>
+<ol><li>Ir a <code>Backup completo</code>.</li><li>Pulsar <code>Exportar JSON</code>.</li></ol>
+<p>El archivo generado contiene:</p>
+<ul><li>Configuración.</li><li>Todos los meses.</li><li>Todos los fichajes.</li><li>Tipos de día.</li><li>Notas.</li><li>Marcas de teletrabajo.</li></ul>
+<p>Uso recomendado: copia completa de seguridad o migración entre navegadores/dispositivos.</p>
+<h3>12.2 Importar backup JSON</h3>
+<ol><li>Ir a <code>Backup completo</code>.</li><li>Pulsar <code>Importar JSON</code>.</li><li>Seleccionar o arrastrar el archivo.</li><li>Confirmar la sustitución de datos.</li></ol>
+<p>La importación JSON reemplaza todos los datos actuales por los del archivo.</p>
+<h2>13. Exportación e importación mensual</h2>
+<h3>13.1 Exportar CSV del mes</h3>
+<ol><li>Seleccionar el mes.</li><li>Ir a <code>Exportar / Importar mes</code>.</li><li>Pulsar <code>Exportar CSV del mes</code>.</li></ol>
+<p>El archivo CSV incluye fecha, ISO, día, tipo, horas, suma, diario, teletrabajo y notas.</p>
+<p>Uso recomendado: revisión en hoja de cálculo o intercambio de un mes concreto.</p>
+<h3>13.2 Importar CSV del mes</h3>
+<ol><li>Ir a <code>Exportar / Importar mes</code>.</li><li>Pulsar <code>Importar CSV del mes</code>.</li><li>Seleccionar o arrastrar un CSV exportado desde la aplicación.</li><li>Si el mes ya existe, confirmar la sobrescritura.</li></ol>
+<p>El CSV debe contener la columna <code>ISO</code>. Los CSV exportados por versiones antiguas sin esa columna no pueden importarse.</p>
+<h2>14. Persistencia y sincronización</h2>
+<h3>14.1 Guardado local</h3>
+<p>La aplicación guarda una copia local en el navegador. Esto permite recuperar datos entre sesiones y trabajar con menor dependencia de la red.</p>
+<p>Los datos locales dependen del navegador y del dispositivo. Si se eliminan datos del sitio, caché o almacenamiento local, se puede perder la copia local.</p>
+<h3>14.2 Sincronización remota</h3>
+<p>Con sesión iniciada y conexión disponible, la aplicación sincroniza meses, días y configuración con la cuenta del usuario.</p>
+<p>El indicador de la cabecera puede mostrar:</p>
+<ul><li><code>Sincronizado</code>: no hay cambios pendientes.</li><li><code>Sincronizando...</code>: existe una operación en curso.</li><li><code>N cambios pendientes</code>: los cambios están guardados localmente pero aún no en la nube.</li><li><code>Sin conexión</code>: la aplicación está trabajando con la copia local.</li><li><code>Error de sincronización</code>: el último intento no finalizó correctamente.</li></ul>
+<p>Pulsar el indicador para reintentar manualmente. Si no hay conexión, los cambios se conservan en una cola local persistente y se reintentan automáticamente al recuperarla.</p>
+<p>La aplicación protege la copia local: si la carga remota finaliza sin meses pero el navegador contiene datos, restaura la copia local y prepara su resincronización.</p>
+<h3>14.3 Recomendación de backup</h3>
+<p>Exportar JSON periódicamente, especialmente antes de:</p>
+<ul><li>Cambiar de navegador.</li><li>Limpiar datos del navegador.</li><li>Importar archivos.</li><li>Eliminar meses.</li><li>Usar la aplicación en otro dispositivo.</li></ul>
+<h2>15. Instalación como aplicación</h2>
+<h3>15.1 Chrome o Edge en escritorio</h3>
+<ol><li>Abrir la URL de Fichajes.</li><li>Pulsar el icono de instalación en la barra de direcciones.</li><li>Confirmar <code>Instalar</code>.</li></ol>
+<p>También puede instalarse desde el menú del navegador con la opción de instalar aplicación.</p>
+<h3>15.2 Android</h3>
+<ol><li>Abrir la URL en Chrome.</li><li>Usar el aviso de instalación o el menú del navegador.</li><li>Seleccionar <code>Añadir a pantalla de inicio</code>.</li></ol>
+<h3>15.3 iOS</h3>
+<ol><li>Abrir la URL en Safari.</li><li>Pulsar compartir.</li><li>Seleccionar <code>Añadir a pantalla de inicio</code>.</li></ol>
+<h2>16. Uso offline</h2>
+<p>La aplicación usa service worker para cachear los archivos principales. Si ya se ha abierto previamente, puede seguir cargando sin conexión en muchos escenarios.</p>
+<p>Limitaciones offline:</p>
+<ul><li>No se puede iniciar sesión si no hay sesión local válida.</li><li>No se sincronizan cambios hasta recuperar conexión.</li><li>Las actualizaciones de la aplicación requieren conexión.</li></ul>
+<h2>17. Actualizaciones</h2>
+<p>La aplicación comprueba actualizaciones del service worker al cargarse. Cuando hay una versión nueva, el navegador actualiza los archivos cacheados y recarga la aplicación cuando corresponde.</p>
+<p>Si se observan datos visuales o comportamiento antiguo tras una actualización, cerrar y volver a abrir la aplicación suele forzar la carga de la versión vigente.</p>
+<h3>17.1 Historial de versiones</h3>
+<p>Pulsar el número de versión de la cabecera para abrir <code>Cambios y mejoras</code>. El modal muestra las versiones documentadas ordenadas desde la más reciente, con su fecha y una descripción de los cambios.</p>
+<h3>17.2 Manual integrado y descarga</h3>
+<p>Pulsar el botón <code>?</code> de la cabecera para abrir este manual sin abandonar la aplicación. El modal permite:</p>
+<ul><li>Consultar todas las secciones mediante desplazamiento.</li><li>Cerrar con el botón, pulsando fuera del modal o usando la tecla <code>Escape</code>.</li><li>Descargar la versión DOCX mediante <code>Descargar DOCX</code>.</li></ul>
+<h2>18. Buenas prácticas</h2>
+<ul><li>Revisar la configuración antes de introducir fichajes del mes.</li><li>Crear el mes al inicio del periodo y comprobar festivos.</li><li>Usar <code>Notas</code> para justificar incidencias, permisos o ajustes.</li><li>Exportar JSON antes de importaciones o eliminaciones.</li><li>Evitar editar el mismo usuario simultáneamente en varios dispositivos sin esperar a que se sincronicen los cambios.</li><li>Usar CSV para análisis mensual y JSON para backup completo.</li><li>Revisar el contador de pendientes antes de cerrar la jornada.</li><li>Comprobar que el indicador muestre <code>Sincronizado</code> antes de cerrar sesión o cambiar de dispositivo.</li><li>Revisar el calendario automático de años futuros cuando se publique la normativa oficial.</li></ul>
+<h2>19. Solución de problemas</h2>
+<h3>19.1 No puedo iniciar sesión</h3>
+<p>Comprobar:</p>
+<ul><li>Email escrito correctamente.</li><li>Contraseña correcta.</li><li>Conexión a internet.</li><li>Que la cuenta existe.</li></ul>
+<p>Si el problema persiste, cerrar la pestaña, abrir de nuevo la aplicación e intentarlo otra vez.</p>
+<h3>19.2 No aparecen mis meses</h3>
+<p>Comprobar:</p>
+<ul><li>Que se ha iniciado sesión con la cuenta correcta.</li><li>Que hay conexión a internet.</li><li>Si existe un backup JSON reciente, restaurarlo desde <code>Importar JSON</code>.</li></ul>
+<p>Si el indicador muestra cambios pendientes o error, pulsarlo para reintentar. No importar un backup ni crear meses duplicados hasta comprobar si la copia local se ha restaurado.</p>
+<h3>19.3 El cálculo de horas no coincide con lo esperado</h3>
+<p>Revisar:</p>
+<ul><li>Horas/día de invierno y verano.</li><li>Fechas de jornada intensiva.</li><li>Hora mínima de entrada.</li><li>Tiempo máximo de desayuno.</li><li>Tiempo mínimo de comida.</li><li>Hora mínima de salida.</li><li>Tipo del día.</li><li>Si la salida del viernes se está calculando automáticamente.</li></ul>
+<h3>19.4 No puedo marcar teletrabajo</h3>
+<p>Comprobar:</p>
+<ul><li>Que el día está marcado como <code>Hábil</code>.</li><li>Que no está activa la opción opuesta, ya que <code>DÍA</code> y <code>TARDE</code> son excluyentes.</li></ul>
+<h3>19.5 La importación CSV falla</h3>
+<p>Comprobar:</p>
+<ul><li>Que el archivo procede de una exportación CSV de la aplicación actual.</li><li>Que contiene la columna <code>ISO</code>.</li><li>Que no se ha modificado la cabecera del CSV.</li></ul>
+<h3>19.6 He eliminado o sobrescrito datos</h3>
+<p>Restaurar el backup JSON más reciente desde <code>Importar JSON</code>. Si no existe backup, revisar si los datos siguen disponibles en otro navegador o dispositivo con la misma cuenta.</p>
+<h3>19.7 Hay cambios pendientes o error de sincronización</h3>
+<ol><li>Comprobar la conexión.</li><li>Pulsar el indicador de sincronización.</li><li>Esperar a que muestre <code>Sincronizado</code>.</li><li>Si persiste, no limpiar los datos del navegador; exportar un backup JSON antes de continuar.</li></ol>
+<h3>19.8 Un festivo no coincide con el calendario esperado</h3>
+<p>Abrir <code>Gestionar festivos</code>, seleccionar el año y revisar si figura como <code>personalizado</code>. Se puede corregir una fecha manualmente o restaurar el calendario automático. Para años futuros, contrastar el calendario con el decreto oficial cuando esté disponible.</p>
+<h3>19.9 El panel Hoy indica que falta el mes actual</h3>
+<p>Pulsar <code>Añadir mes actual</code>, revisar el año y el mes propuestos y confirmar la creación.</p>
+<h2>20. Glosario</h2>
+<ul><li>ABS: saldo acumulado de bolsa de horas mostrado en la columna <code>Bolsa</code>.</li><li>Bolsa: diferencia acumulada entre horas trabajadas y horas esperadas.</li><li>Diario: diferencia diaria entre suma computada y jornada esperada.</li><li>Jornada intensiva: periodo configurado donde se aplica la jornada de verano.</li><li>Pendiente: fichaje pasado o iniciado que carece de datos obligatorios o tiene una secuencia horaria incoherente.</li><li>Sincronización: copia de los cambios locales en la cuenta remota.</li><li>Suma: tiempo diario computado tras aplicar reglas de entrada, salida, desayuno y comida.</li><li>Teletrabajo DÍA: marca de teletrabajo para toda la jornada.</li><li>Teletrabajo TARDE: marca de teletrabajo para el tramo de tarde.</li></ul>
+<script>
+  document.addEventListener("keydown", event => {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      window.parent.postMessage({type: "close-manual"}, "*");
+    }
+  });
+</script>
+</body>
+</html>

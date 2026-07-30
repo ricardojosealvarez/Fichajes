@@ -5,6 +5,7 @@ const vm = require('node:vm');
 
 const html = fs.readFileSync(new URL('./index.html', `file://${__filename}`), 'utf8');
 const serviceWorker = fs.readFileSync(new URL('./sw.js', `file://${__filename}`), 'utf8');
+const embeddedManual = fs.readFileSync(new URL('./MANUAL_USUARIO.html', `file://${__filename}`), 'utf8');
 
 const extractFunction = name => {
   const functionStart = html.indexOf(`function ${name}(`);
@@ -578,7 +579,7 @@ test('mantiene coherentes la versión visible, las notas y la caché', () => {
   const releaseNotes = vm.runInContext('RELEASE_NOTES', context);
   const sortedNotes = context.getSortedReleaseNotes(releaseNotes);
 
-  assert.equal(releaseNotes[0].version, '2.14.0');
+  assert.equal(releaseNotes[0].version, '2.15.0');
   assert.equal(releaseNotes.at(-1).version, '2.3.17');
   assert.deepEqual(
     Array.from(releaseNotes, release => release.version),
@@ -594,10 +595,10 @@ test('mantiene coherentes la versión visible, las notas y la caché', () => {
     && Array.isArray(release.changes)
     && release.changes.length > 0
   ));
-  assert.match(html, /id="app-version">v2\.14\.0</);
+  assert.match(html, /id="app-version">v2\.15\.0</);
   assert.match(html, /const APP_VERSION = RELEASE_NOTES\[0\]\.version;/);
   assert.match(html, /const swVersion = APP_VERSION;/);
-  assert.match(serviceWorker, /const APP_VERSION = '2\.14\.0';/);
+  assert.match(serviceWorker, /const APP_VERSION = '2\.15\.0';/);
 });
 
 test('expone el modal de versiones con estructura accesible', () => {
@@ -609,6 +610,58 @@ test('expone el modal de versiones con estructura accesible', () => {
   assert.match(html, /id="release-notes-close"[^>]+onclick="closeReleaseNotesModal\(\)"/);
   assert.match(html, /document\.addEventListener\('keydown', handleReleaseNotesKeydown\)/);
   assert.match(html, /#release-notes-modal \.modal[\s\S]*?max-height:/);
+});
+
+test('integra el manual accesible y su descarga DOCX', () => {
+  assert.match(html, /id="manual-trigger"[\s\S]*?aria-haspopup="dialog"[\s\S]*?aria-controls="manual-modal"/);
+  assert.match(html, /id="manual-modal"[\s\S]*?role="dialog"\s+aria-modal="true"\s+aria-labelledby="manual-modal-title"/);
+  assert.match(html, /id="manual-frame"[\s\S]*?src="MANUAL_USUARIO\.html"/);
+  assert.match(html, /href="Manual_de_usuario_Fichajes\.docx"[\s\S]*?download/);
+  assert.match(html, /id="manual-close"[^>]+onclick="closeManualModal\(\)"/);
+  assert.match(html, /document\.addEventListener\('keydown', handleManualKeydown\)/);
+  assert.match(embeddedManual, /Manual de usuario de Fichajes/);
+  assert.match(embeddedManual, /Versión de la aplicación: 2\.15\.0/);
+  assert.match(embeddedManual, /Dashboard de estadísticas/);
+  assert.match(serviceWorker, /'\.\/MANUAL_USUARIO\.html'/);
+  assert.match(serviceWorker, /'\.\/Manual_de_usuario_Fichajes\.docx'/);
+});
+
+test('abre y cierra el manual restaurando el foco', () => {
+  const values = new Set();
+  const calls = [];
+  const trigger = {focus: () => calls.push('trigger-focus')};
+  const closeButton = {focus: () => calls.push('close-focus')};
+  const modal = {
+    classList: {
+      add: value => values.add(value),
+      remove: value => values.delete(value)
+    }
+  };
+  const elements = {
+    '#manual-modal': modal,
+    '#manual-trigger': trigger,
+    '#manual-close': closeButton
+  };
+  const context = vm.createContext({
+    document: {
+      activeElement: trigger,
+      querySelector: selector => elements[selector] || null
+    },
+    manualReturnFocus: null,
+    setMobileSidebarOpen: open => calls.push(`sidebar:${open}`)
+  });
+  ['openManualModal', 'closeManualModal', 'handleManualBackdrop']
+    .forEach(name => vm.runInContext(extractFunction(name), context));
+
+  context.openManualModal();
+  assert.equal(values.has('show'), true);
+  assert.deepEqual(calls, ['sidebar:false', 'close-focus']);
+
+  context.handleManualBackdrop({target: {}, currentTarget: modal});
+  assert.equal(values.has('show'), true);
+  context.handleManualBackdrop({target: modal, currentTarget: modal});
+  assert.equal(values.has('show'), false);
+  assert.equal(calls.at(-1), 'trigger-focus');
 });
 
 test('prioriza los estados de sincronización activos y recuperables', () => {

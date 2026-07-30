@@ -118,6 +118,26 @@
     outline: 2px solid var(--accent);
     outline-offset: 2px;
   }
+  .manual-trigger {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    border: 1px solid var(--border);
+    border-radius: 50%;
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    font-family: 'Syne', sans-serif;
+    font-size: 14px;
+    font-weight: 800;
+  }
+  .manual-trigger:hover { border-color: var(--accent); color: var(--accent); }
+  .manual-trigger:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
   .sync-indicator,
   .pending-indicator {
     display: inline-flex;
@@ -951,6 +971,43 @@
     border-top: 1px solid var(--border);
   }
 
+  /* User manual */
+  #manual-modal .modal {
+    width: min(920px, calc(100vw - 32px));
+    height: min(860px, calc(100dvh - 32px));
+    max-height: calc(100dvh - 32px);
+    padding: 0;
+    gap: 0;
+    overflow: hidden;
+  }
+  .manual-modal-header {
+    padding: 22px 26px 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .manual-modal-subtitle {
+    margin-top: 6px;
+    color: var(--muted);
+    font-size: 11px;
+    line-height: 1.5;
+  }
+  .manual-frame {
+    width: 100%;
+    min-height: 0;
+    flex: 1;
+    border: 0;
+    background: var(--surface);
+  }
+  #manual-modal .modal-actions {
+    padding: 14px 26px 18px;
+    border-top: 1px solid var(--border);
+  }
+  .manual-download {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+  }
+
   /* Day edit modal */
   .day-edit-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
   .day-edit-row { display: flex; flex-direction: column; gap: 4px; }
@@ -1480,6 +1537,13 @@
       max-height: 92dvh;
       border-radius: 14px 14px 0 0;
     }
+    #manual-modal .modal {
+      width: 100%;
+      height: 92dvh;
+      max-width: none;
+      max-height: 92dvh;
+      border-radius: 14px 14px 0 0;
+    }
     .modal-actions {
       position: sticky;
       bottom: -22px;
@@ -1487,6 +1551,10 @@
       background: var(--surface);
     }
     #release-notes-modal .modal-actions {
+      bottom: 0;
+      padding: 14px 18px 18px;
+    }
+    #manual-modal .modal-actions {
       bottom: 0;
       padding: 14px 18px 18px;
     }
@@ -1516,6 +1584,7 @@
     .release-note { padding: 13px 14px; }
     .release-note-header { align-items: flex-start; }
     .release-note-date { line-height: 1.4; text-align: right; white-space: normal; }
+    .manual-modal-header { padding: 19px 18px 14px; }
   }
 
   @media (max-width: 430px) {
@@ -1740,14 +1809,24 @@
       <span class="pending-count" id="pending-header-count">0</span>
     </button>
     <button
+      class="manual-trigger"
+      id="manual-trigger"
+      type="button"
+      title="Abrir manual de usuario"
+      aria-label="Abrir manual de usuario"
+      aria-haspopup="dialog"
+      aria-controls="manual-modal"
+      onclick="openManualModal()"
+    >?</button>
+    <button
       class="version-trigger"
       id="release-notes-trigger"
       type="button"
-      aria-label="Ver notas de la versión 2.14.0"
+      aria-label="Ver notas de la versión 2.15.0"
       aria-haspopup="dialog"
       aria-controls="release-notes-modal"
       onclick="openReleaseNotesModal()"
-    ><span id="app-version">v2.14.0</span></button>
+    ><span id="app-version">v2.15.0</span></button>
     <button id="signout-btn" style="
       padding: 6px 12px;
       background: transparent;
@@ -1978,6 +2057,31 @@
   </div>
 </div>
 
+<!-- User Manual Modal -->
+<div class="modal-overlay" id="manual-modal" onclick="handleManualBackdrop(event)">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="manual-modal-title">
+    <div class="manual-modal-header">
+      <h2 class="modal-title" id="manual-modal-title">Manual de usuario</h2>
+      <p class="manual-modal-subtitle">Guía completa de Fichajes v2.15.0</p>
+    </div>
+    <iframe
+      class="manual-frame"
+      id="manual-frame"
+      src="MANUAL_USUARIO.html"
+      title="Contenido del manual de usuario"
+      loading="lazy"
+    ></iframe>
+    <div class="modal-actions">
+      <a
+        class="btn btn-primary manual-download"
+        href="Manual_de_usuario_Fichajes.docx"
+        download
+      >Descargar DOCX</a>
+      <button class="btn btn-secondary" id="manual-close" type="button" onclick="closeManualModal()">Cerrar</button>
+    </div>
+  </div>
+</div>
+
 <!-- Add Month Modal -->
 <div class="modal-overlay" id="add-month-modal">
   <div class="modal">
@@ -2016,6 +2120,15 @@ const DAY_TYPES = [
   { key: 'navidad',    label: 'Turno de navidad', color: '#ffb347' },
 ];
 const RELEASE_NOTES = [
+  {
+    version: '2.15.0',
+    date: '2026-07-30',
+    title: 'Manual de usuario integrado',
+    changes: [
+      'Manual actualizado accesible desde la cabecera mediante un modal.',
+      'Descarga directa de la versión DOCX desde la aplicación.'
+    ]
+  },
   {
     version: '2.14.0',
     date: '2026-07-30',
@@ -2262,6 +2375,7 @@ let dashboardPeriod = 'month';
 let holidayCalendars = {};
 let holidaySaveInProgress = false;
 let releaseNotesReturnFocus = null;
+let manualReturnFocus = null;
 
 function timeToMins(t) {
   if (!t || t === '') return null;
@@ -4152,6 +4266,67 @@ function handleReleaseNotesKeydown(event) {
 }
 
 document.addEventListener('keydown', handleReleaseNotesKeydown);
+
+function openManualModal() {
+  const modal = document.querySelector('#manual-modal');
+  if (!modal) return;
+  manualReturnFocus = document.querySelector('#manual-trigger')
+    || (document.activeElement?.focus ? document.activeElement : null);
+  setMobileSidebarOpen(false);
+  modal.classList.add('show');
+  document.querySelector('#manual-close')?.focus();
+}
+
+function closeManualModal() {
+  document.querySelector('#manual-modal')?.classList.remove('show');
+  const returnFocus = manualReturnFocus;
+  manualReturnFocus = null;
+  returnFocus?.focus();
+}
+
+function handleManualBackdrop(event) {
+  if (event.target === event.currentTarget) closeManualModal();
+}
+
+function handleManualKeydown(event) {
+  const modal = document.querySelector('#manual-modal');
+  if (!modal?.classList.contains('show')) return;
+  if (event.key === 'Escape') {
+    event.preventDefault();
+    closeManualModal();
+    return;
+  }
+  if (event.key !== 'Tab') return;
+
+  const focusable = Array.from(modal.querySelectorAll(
+    'button:not([disabled]), [href], iframe, [tabindex]:not([tabindex="-1"])'
+  ));
+  if (focusable.length === 0) {
+    event.preventDefault();
+    return;
+  }
+
+  const first = focusable[0];
+  const last = focusable[focusable.length - 1];
+  if (!modal.contains(document.activeElement)) {
+    event.preventDefault();
+    (event.shiftKey ? last : first).focus();
+  } else if (event.shiftKey && document.activeElement === first) {
+    event.preventDefault();
+    last.focus();
+  } else if (!event.shiftKey && document.activeElement === last) {
+    event.preventDefault();
+    first.focus();
+  }
+}
+
+document.addEventListener('keydown', handleManualKeydown);
+window.addEventListener('message', event => {
+  const manualWindow = document.querySelector('#manual-frame')?.contentWindow;
+  if (event.source === manualWindow && event.data?.type === 'close-manual') {
+    closeManualModal();
+  }
+});
 
 // Updates state without re-rendering (for fields edited inline like notas)
 function updateDayField(idx, field, value) {
