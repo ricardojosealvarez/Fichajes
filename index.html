@@ -315,6 +315,98 @@
   .mobile-sidebar-close,
   .sidebar-backdrop { display: none; }
   body.mobile-sidebar-open { overflow: hidden; }
+  .today-panel {
+    display: grid;
+    grid-template-columns: minmax(180px, 0.7fr) minmax(0, 2fr) auto;
+    align-items: center;
+    gap: 18px;
+    margin-bottom: 18px;
+    padding: 16px 18px;
+    border: 1px solid #e8ff4745;
+    border-radius: 10px;
+    background: linear-gradient(120deg, #1b1d17, var(--surface));
+  }
+  .today-panel-heading { min-width: 0; }
+  .today-panel-kicker {
+    color: var(--accent);
+    font-family: 'Syne', sans-serif;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 1.6px;
+    text-transform: uppercase;
+  }
+  .today-panel-date {
+    margin-top: 4px;
+    overflow: hidden;
+    font-family: 'Syne', sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .today-panel-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 7px;
+    color: var(--muted);
+    font-size: 10px;
+  }
+  .today-panel-status::before {
+    width: 7px;
+    height: 7px;
+    flex-shrink: 0;
+    border-radius: 50%;
+    background: currentColor;
+    content: '';
+  }
+  .today-panel-status.ok { color: var(--green); }
+  .today-panel-status.active { color: var(--accent2); }
+  .today-panel-status.warn { color: var(--orange); }
+  .today-panel-status.rest { color: var(--muted); }
+  .today-panel-metrics {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(72px, 1fr));
+    gap: 8px;
+    min-width: 0;
+  }
+  .today-panel-metric {
+    min-width: 0;
+    padding: 8px 9px;
+    border: 1px solid #3d41487a;
+    border-radius: 7px;
+    background: #0e0f116e;
+  }
+  .today-panel-metric-label {
+    overflow: hidden;
+    color: var(--muted);
+    font-size: 9px;
+    letter-spacing: 0.5px;
+    text-overflow: ellipsis;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+  .today-panel-metric-value {
+    margin-top: 4px;
+    overflow: hidden;
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .today-panel-metric-value.pos { color: var(--green); }
+  .today-panel-metric-value.neg { color: var(--danger); }
+  .today-panel-metric-value.predicted { color: var(--accent2); }
+  .today-panel-message {
+    min-width: 0;
+    color: var(--muted);
+    font-size: 11px;
+    line-height: 1.5;
+  }
+  .today-panel-actions { min-width: 112px; }
+  .today-panel-actions .btn { width: 100%; padding-inline: 12px; white-space: nowrap; }
   .stat-card {
     background: var(--surface2);
     border: 1px solid var(--border);
@@ -1158,6 +1250,15 @@
     .comparison-row { grid-template-columns: 58px minmax(0, 1fr); }
     .comparison-values { grid-column: 2; }
     .type-legend { grid-template-columns: 1fr; }
+    .today-panel {
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 12px;
+    }
+    .today-panel-metrics,
+    .today-panel-message {
+      grid-column: 1 / -1;
+      grid-row: 2;
+    }
 
     .attendance-table,
     .attendance-table tbody {
@@ -1273,6 +1374,18 @@
       gap: 12px;
     }
     .attendance-table tbody tr { margin-bottom: 0; }
+  }
+
+  @media (max-width: 520px) {
+    .today-panel { grid-template-columns: 1fr; padding: 14px; }
+    .today-panel-date { white-space: normal; }
+    .today-panel-metrics {
+      grid-column: auto;
+      grid-row: auto;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .today-panel-message { grid-column: auto; grid-row: auto; }
+    .today-panel-actions { width: 100%; }
   }
 
   @media (max-width: 430px) {
@@ -1503,7 +1616,7 @@
       color: var(--muted);
       letter-spacing: 1px;
       text-transform: uppercase;
-    ">v2.12.0</div>
+    ">v2.13.0</div>
     <button id="signout-btn" style="
       padding: 6px 12px;
       background: transparent;
@@ -2698,10 +2811,214 @@ function recalcAll() {
   renderActiveView();
 }
 
+function getTodayPanelData(sourceMonths = months, now = new Date()) {
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const iso = toLocalIsoDate(today);
+  const rawDateLabel = today.toLocaleDateString('es-ES', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long'
+  });
+  const dateLabel = rawDateLabel.charAt(0).toUpperCase() + rawDateLabel.slice(1);
+  const monthIdx = sourceMonths.findIndex(monthData =>
+    monthData.year === today.getFullYear() && monthData.month === today.getMonth()
+  );
+
+  if (today.getDay() === 0 || today.getDay() === 6) {
+    return {state: 'weekend', date: today, dateLabel, iso, monthIdx, dayIdx: -1, day: null};
+  }
+
+  if (monthIdx < 0) {
+    return {state: 'missing', date: today, dateLabel, iso, monthIdx, dayIdx: -1, day: null};
+  }
+
+  const monthData = sourceMonths[monthIdx];
+  const dayIdx = (monthData.days || []).findIndex(day => toLocalIsoDate(day.date) === iso);
+  if (dayIdx < 0) {
+    return {state: 'missing', date: today, dateLabel, iso, monthIdx, dayIdx, day: null};
+  }
+
+  const day = monthData.days[dayIdx];
+  const type = DAY_TYPES.find(item => item.key === day.tipo);
+  if (day.tipo !== 'habil') {
+    return {
+      state: 'non-working',
+      date: today,
+      dateLabel,
+      iso,
+      monthIdx,
+      dayIdx,
+      day,
+      typeLabel: type?.label || 'No hábil'
+    };
+  }
+
+  const entry = String(day.entrada || '').trim();
+  const exit = String(day.salida || '').trim();
+  const invalid = (!entry && Boolean(exit)) || validateDaySequence(day).length > 0;
+  let state = 'not-started';
+  if (invalid) state = 'invalid';
+  else if (entry && exit) state = 'complete';
+  else if (entry) state = 'in-progress';
+
+  return {state, date: today, dateLabel, iso, monthIdx, dayIdx, day, typeLabel: 'Hábil'};
+}
+
+function getTodayPanelMetrics(data) {
+  if (!data?.day || data.day.tipo !== 'habil') return null;
+  const cfg = getConfig();
+  const monthData = months[data.monthIdx];
+  const todayIso = data.iso || toLocalIsoDate(data.day.date);
+  let abs = computeBolsaUpTo(data.monthIdx);
+  let result = null;
+
+  const daysThroughToday = (monthData.days || [])
+    .filter(day => toLocalIsoDate(day.date) <= todayIso)
+    .slice()
+    .sort((a, b) => a.date - b.date);
+  for (const day of daysThroughToday) {
+    result = calculateBolsaDay(day, abs, cfg);
+    abs = result.abs;
+  }
+
+  return {
+    entry: data.day.entrada || '',
+    exit: data.day.salida || (result?.salidaAuto ? result.salida : ''),
+    exitPredicted: Boolean(result?.salidaAuto && !data.day.salida),
+    total: result?.suma ?? null,
+    difference: result?.diario ?? null,
+    balance: result?.abs ?? abs
+  };
+}
+
+function renderTodayPanelMarkup(now = new Date()) {
+  const data = getTodayPanelData(months, now);
+  const statusByState = {
+    weekend: {label: 'Fin de semana', className: 'rest'},
+    missing: {label: 'Sin registro', className: 'warn'},
+    'non-working': {label: data.typeLabel, className: 'rest'},
+    'not-started': {label: 'Sin iniciar', className: 'rest'},
+    'in-progress': {label: 'En curso', className: 'active'},
+    invalid: {label: 'Revisar horario', className: 'warn'},
+    complete: {label: 'Completado', className: 'ok'}
+  };
+  const status = statusByState[data.state];
+  let body = '';
+  let action = '';
+
+  if (data.state === 'weekend') {
+    body = '<div class="today-panel-message">No requiere fichaje.</div>';
+  } else if (data.state === 'missing') {
+    const monthExists = data.monthIdx >= 0;
+    body = `<div class="today-panel-message">${
+      monthExists
+        ? 'No existe una fila para la fecha de hoy.'
+        : `Todavía no existe ${MONTH_NAMES[data.date.getMonth()]} ${data.date.getFullYear()}.`
+    }</div>`;
+    if (!monthExists) {
+      action = '<button class="btn btn-primary" onclick="showTodayMonthModal()">Añadir mes actual</button>';
+    }
+  } else if (data.state === 'non-working') {
+    body = `<div class="today-panel-message">${
+      escapeHtmlAttribute(data.day.notas || 'Hoy no requiere fichaje.')
+    }</div>`;
+    action = '<button class="btn btn-secondary" onclick="openTodayPunch()">Ver día</button>';
+  } else {
+    const metrics = getTodayPanelMetrics(data);
+    const differenceClass = metrics.difference === null
+      ? ''
+      : (metrics.difference >= 0 ? 'pos' : 'neg');
+    const balanceClass = metrics.balance >= 0 ? 'pos' : 'neg';
+    const teleLabel = data.day.teleDia
+      ? ' · Teletrabajo'
+      : (data.day.teleTarde ? ' · Teletrabajo tarde' : '');
+    status.label += teleLabel;
+    body = `<div class="today-panel-metrics">
+      <div class="today-panel-metric">
+        <div class="today-panel-metric-label">Entrada</div>
+        <div class="today-panel-metric-value">${escapeHtmlAttribute(metrics.entry || '--:--')}</div>
+      </div>
+      <div class="today-panel-metric">
+        <div class="today-panel-metric-label">${metrics.exitPredicted ? 'Salida prevista' : 'Salida'}</div>
+        <div class="today-panel-metric-value ${metrics.exitPredicted ? 'predicted' : ''}">${escapeHtmlAttribute(metrics.exit || '--:--')}</div>
+      </div>
+      <div class="today-panel-metric">
+        <div class="today-panel-metric-label">${metrics.exitPredicted ? 'Total previsto' : 'Total'}</div>
+        <div class="today-panel-metric-value ${metrics.exitPredicted ? 'predicted' : ''}">${metrics.total === null ? '--:--' : minsToTime(metrics.total)}</div>
+      </div>
+      <div class="today-panel-metric">
+        <div class="today-panel-metric-label">Diferencia</div>
+        <div class="today-panel-metric-value ${differenceClass}">${metrics.difference === null ? '--:--' : minsToTime(metrics.difference)}</div>
+      </div>
+      <div class="today-panel-metric">
+        <div class="today-panel-metric-label">Bolsa</div>
+        <div class="today-panel-metric-value ${balanceClass}">${minsToTime(metrics.balance)}</div>
+      </div>
+    </div>`;
+    const actionLabels = {
+      'not-started': 'Abrir fichaje',
+      'in-progress': 'Completar fichaje',
+      invalid: 'Revisar fichaje',
+      complete: 'Editar fichaje'
+    };
+    action = `<button class="btn btn-primary" onclick="openTodayPunch()">${actionLabels[data.state]}</button>`;
+  }
+
+  return `<section class="today-panel" id="today-panel" data-state="${data.state}" aria-live="polite" aria-label="Panel rápido de hoy">
+    <div class="today-panel-heading">
+      <div class="today-panel-kicker">Hoy</div>
+      <div class="today-panel-date">${escapeHtmlAttribute(data.dateLabel)}</div>
+      <div class="today-panel-status ${status.className}">${escapeHtmlAttribute(status.label)}</div>
+    </div>
+    ${body}
+    <div class="today-panel-actions">${action}</div>
+  </section>`;
+}
+
+let todayPanelRefreshTimer = null;
+
+function refreshTodayPanel(now = new Date()) {
+  const panel = document.querySelector('#today-panel');
+  if (panel) panel.outerHTML = renderTodayPanelMarkup(now);
+}
+
+function scheduleTodayPanelRefresh(now = new Date()) {
+  if (todayPanelRefreshTimer !== null) window.clearTimeout(todayPanelRefreshTimer);
+  const nextDay = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+  const delay = Math.max(1000, nextDay.getTime() - now.getTime() + 100);
+  todayPanelRefreshTimer = window.setTimeout(() => {
+    refreshTodayPanel();
+    scheduleTodayPanelRefresh();
+  }, delay);
+}
+
+function openTodayPunch(now = new Date()) {
+  const data = getTodayPanelData(months, now);
+  if (data.monthIdx < 0 || data.dayIdx < 0) return;
+  currentMonthIdx = data.monthIdx;
+  renderTabs();
+  switchAppView('records');
+  setMobileSidebarOpen(false);
+  const dayIdx = (months[currentMonthIdx]?.days || [])
+    .findIndex(day => toLocalIsoDate(day.date) === data.iso);
+  if (dayIdx >= 0) openDayEdit(dayIdx);
+}
+
+function showTodayMonthModal(now = new Date()) {
+  switchAppView('records');
+  showAddMonthModal();
+  document.getElementById('new-year').value = String(now.getFullYear());
+  document.getElementById('new-month').value = String(now.getMonth());
+}
+
 function renderTable() {
   renderPendingPunches();
   const m = months[currentMonthIdx];
-  if (!m) { document.getElementById('content').innerHTML = '<div class="empty-state"><div class="big">📋</div><p>No hay meses. Añade uno con el botón "+ Mes".</p></div>'; return; }
+  const todayPanel = renderTodayPanelMarkup();
+  if (!m) {
+    document.getElementById('content').innerHTML = `${todayPanel}<div class="empty-state"><div class="big">📋</div><p>No hay meses. Añade uno con el botón "+ Mes".</p></div>`;
+    return;
+  }
 
   // Ordenar días por fecha por si acaso
   m.days.sort((a, b) => a.date - b.date);
@@ -2793,7 +3110,7 @@ function renderTable() {
     </tr>`;
   }
 
-  document.getElementById('content').innerHTML = `
+  document.getElementById('content').innerHTML = `${todayPanel}
     <table class="attendance-table">
       <thead>
         <tr>
@@ -4222,7 +4539,7 @@ document.querySelectorAll('.config-input:not([data-manual-save]), .select-input:
 
 // ── Service Worker registration ──────────────────────────────────────────────
 if ('serviceWorker' in navigator) {
-  const swVersion = '2.12.0';
+  const swVersion = '2.13.0';
   let swRefreshing = false;
 
   navigator.serviceWorker.addEventListener('controllerchange', () => {
@@ -5248,6 +5565,7 @@ async function initApp() {
     renderTable();
     renderStats();
     recalcAll(); // Recalcular todo con la config definitiva cargada desde Supabase
+    scheduleTodayPanelRefresh();
     saveStateLocal();
     updateSyncIndicator();
   } else {
@@ -5377,6 +5695,12 @@ function toggleMobileSidebar() {
 window.addEventListener('resize', () => {
   if (window.innerWidth > 1100) setMobileSidebarOpen(false);
   syncTabsViewport(true);
+});
+
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState !== 'visible') return;
+  refreshTodayPanel();
+  scheduleTodayPanelRefresh();
 });
 
 function initSidebarState() {

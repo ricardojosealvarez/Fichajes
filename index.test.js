@@ -261,6 +261,165 @@ test('detecta fichajes pasados incompletos y omite futuros o no hábiles', () =>
   );
 });
 
+test('el panel Hoy localiza el día real y representa sus estados', () => {
+  const context = vm.createContext({
+    DAY_TYPES: [
+      {key: 'habil', label: 'Hábil'},
+      {key: 'festivo', label: 'Festivo'}
+    ],
+    validateDaySequence: day => day.invalid ? [{field: 'salida'}] : []
+  });
+  vm.runInContext(extractFunction('toLocalIsoDate'), context);
+  vm.runInContext(extractFunction('getTodayPanelData'), context);
+
+  const today = {
+    date: new Date(2026, 6, 30),
+    tipo: 'habil',
+    entrada: '',
+    salida: ''
+  };
+  const sourceMonths = [
+    {
+      year: 2026,
+      month: 0,
+      days: [{date: new Date(2026, 0, 30), tipo: 'habil', entrada: '08:00', salida: '15:00'}]
+    },
+    {year: 2026, month: 6, days: [today]}
+  ];
+  const now = new Date(2026, 6, 30, 12);
+
+  let result = context.getTodayPanelData(sourceMonths, now);
+  assert.equal(result.monthIdx, 1);
+  assert.equal(result.dayIdx, 0);
+  assert.equal(result.state, 'not-started');
+
+  today.entrada = '08:00';
+  result = context.getTodayPanelData(sourceMonths, now);
+  assert.equal(result.state, 'in-progress');
+
+  today.salida = '15:00';
+  result = context.getTodayPanelData(sourceMonths, now);
+  assert.equal(result.state, 'complete');
+
+  today.invalid = true;
+  result = context.getTodayPanelData(sourceMonths, now);
+  assert.equal(result.state, 'invalid');
+
+  today.invalid = false;
+  today.tipo = 'festivo';
+  today.notas = 'Festivo autonómico';
+  result = context.getTodayPanelData(sourceMonths, now);
+  assert.equal(result.state, 'non-working');
+  assert.equal(result.typeLabel, 'Festivo');
+
+  assert.equal(
+    context.getTodayPanelData([], new Date(2026, 7, 1, 12)).state,
+    'weekend'
+  );
+  assert.equal(
+    context.getTodayPanelData([], new Date(2026, 7, 3, 12)).state,
+    'missing'
+  );
+});
+
+test('el panel Hoy calcula el saldo hasta la fila actual', () => {
+  const days = [
+    {date: new Date(2026, 6, 30), entrada: '08:05', salida: '', delta: -10},
+    {date: new Date(2026, 6, 29), entrada: '08:00', salida: '15:00', delta: 20},
+    {date: new Date(2026, 6, 31), entrada: '08:00', salida: '15:00', delta: 999}
+  ];
+  const calls = [];
+  const context = vm.createContext({
+    months: [{days}],
+    getConfig: () => ({horaDay: 420}),
+    computeBolsaUpTo: () => 30,
+    calculateBolsaDay: (day, abs) => {
+      calls.push(day);
+      return {
+        abs: abs + day.delta,
+        salida: day.salida || '14:55',
+        salidaAuto: !day.salida,
+        suma: 410,
+        diario: -10
+      };
+    }
+  });
+  vm.runInContext(extractFunction('toLocalIsoDate'), context);
+  vm.runInContext(extractFunction('getTodayPanelMetrics'), context);
+
+  const result = context.getTodayPanelMetrics({
+    monthIdx: 0,
+    dayIdx: 0,
+    iso: '2026-07-30',
+    day: {...days[0], tipo: 'habil'}
+  });
+
+  assert.equal(calls.length, 2);
+  assert.equal(calls[0].date.getDate(), 29);
+  assert.equal(calls[1].date.getDate(), 30);
+  assert.equal(result.entry, '08:05');
+  assert.equal(result.exit, '14:55');
+  assert.equal(result.exitPredicted, true);
+  assert.equal(result.total, 410);
+  assert.equal(result.difference, -10);
+  assert.equal(result.balance, 40);
+});
+
+test('Editar hoy abre el mes y la fila correctos', () => {
+  const calls = [];
+  const context = vm.createContext({
+    currentMonthIdx: 0,
+    months: [
+      {year: 2026, month: 5, days: []},
+      {
+        year: 2026,
+        month: 6,
+        days: [
+          {date: new Date(2026, 6, 30), tipo: 'habil', entrada: '', salida: ''},
+          {date: new Date(2026, 6, 29), tipo: 'habil', entrada: '', salida: ''}
+        ]
+      }
+    ],
+    DAY_TYPES: [{key: 'habil', label: 'Hábil'}],
+    validateDaySequence: () => [],
+    renderTabs: () => calls.push('tabs'),
+    switchAppView: view => {
+      calls.push(`view:${view}`);
+      context.months[1].days.sort((a, b) => a.date - b.date);
+    },
+    setMobileSidebarOpen: open => calls.push(`sidebar:${open}`),
+    openDayEdit: dayIdx => calls.push(`edit:${dayIdx}`)
+  });
+  vm.runInContext(extractFunction('toLocalIsoDate'), context);
+  vm.runInContext(extractFunction('getTodayPanelData'), context);
+  vm.runInContext(extractFunction('openTodayPunch'), context);
+
+  context.openTodayPunch(new Date(2026, 6, 30, 12));
+
+  assert.equal(context.currentMonthIdx, 1);
+  assert.deepEqual(calls, ['tabs', 'view:records', 'sidebar:false', 'edit:1']);
+});
+
+test('el panel Hoy programa su actualización al siguiente día', () => {
+  const calls = [];
+  const context = vm.createContext({
+    todayPanelRefreshTimer: 7,
+    window: {
+      clearTimeout: timer => calls.push(`clear:${timer}`),
+      setTimeout: (_callback, delay) => {
+        calls.push(`delay:${delay}`);
+        return 8;
+      }
+    }
+  });
+  vm.runInContext(extractFunction('scheduleTodayPanelRefresh'), context);
+
+  context.scheduleTodayPanelRefresh(new Date(2026, 6, 30, 23, 59, 0));
+
+  assert.deepEqual(calls, ['clear:7', 'delay:60100']);
+  assert.equal(context.todayPanelRefreshTimer, 8);
+});
+
 test('prioriza los estados de sincronización activos y recuperables', () => {
   const context = vm.createContext({
     isOnline: true,
@@ -283,6 +442,12 @@ test('prioriza los estados de sincronización activos y recuperables', () => {
 
 test('la vista móvil expone tarjetas etiquetadas y acceso al panel', () => {
   assert.match(html, /class="attendance-table"/);
+  assert.match(html, /id="today-panel"/);
+  assert.match(html, /aria-label="Panel rápido de hoy"/);
+  assert.match(html, /class="today-panel-metrics"/);
+  assert.match(html, /onclick="openTodayPunch\(\)"/);
+  assert.match(html, /@media \(max-width: 520px\)[\s\S]*?\.today-panel-metrics/);
+  assert.match(html, /document\.addEventListener\('visibilitychange'/);
   assert.match(html, /data-label="Entrada"/);
   assert.match(html, /data-label="Salida"/);
   assert.match(html, /id="mobile-panel-btn"/);
