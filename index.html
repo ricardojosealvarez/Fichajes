@@ -64,6 +64,7 @@
   .logo span { color: var(--text); }
   .brand-area {
     display: flex;
+    flex: 0 0 auto;
     align-items: center;
     gap: 18px;
   }
@@ -91,6 +92,7 @@
   .view-btn.active { background: var(--surface2); color: var(--accent); }
   .header-status {
     display: flex;
+    flex: 0 0 auto;
     align-items: center;
     gap: 8px;
   }
@@ -145,9 +147,11 @@
   }
   .tabs-wrap {
     display: flex;
+    flex: 1 1 0;
     align-items: center;
     gap: 4px;
     min-width: 0;
+    overflow: hidden;
   }
   .tabs-nav-btn {
     background: transparent;
@@ -167,10 +171,17 @@
   .tabs-nav-btn:disabled { opacity: 0.2; cursor: default; }
   .tabs {
     display: flex;
+    flex: 1 1 auto;
     gap: 4px;
     min-width: 0;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    scroll-behavior: smooth;
+    scrollbar-width: none;
   }
+  .tabs::-webkit-scrollbar { display: none; }
   .tab {
+    flex: 0 0 auto;
     padding: 6px 16px;
     border: 1px solid var(--border);
     background: transparent;
@@ -196,7 +207,11 @@
     transition: all 0.15s;
   }
   .add-month-btn:hover { border-color: var(--accent); color: var(--accent); }
-  #month-actions { min-width: 0; }
+  #month-actions {
+    flex: 1 1 0;
+    min-width: 0;
+    overflow: hidden;
+  }
   .main {
     display: flex;
     flex: 1 1 auto;
@@ -973,10 +988,8 @@
       flex: 1;
       min-width: 0;
       max-width: none;
-      overflow-x: auto;
-      scrollbar-width: none;
+      overflow: hidden;
     }
-    .tabs-wrap::-webkit-scrollbar { display: none; }
     .tabs { flex-wrap: nowrap; }
     .tab { padding: 6px 10px; font-size: 11px; white-space: nowrap; }
     .add-month-btn { padding: 6px 9px; font-size: 11px; white-space: nowrap; }
@@ -1415,7 +1428,7 @@
       color: var(--muted);
       letter-spacing: 1px;
       text-transform: uppercase;
-    ">v2.10.0</div>
+    ">v2.10.1</div>
     <button id="signout-btn" style="
       padding: 6px 12px;
       background: transparent;
@@ -1632,7 +1645,6 @@ const DAY_TYPES = [
 ];
 let months = [];
 let currentMonthIdx = 0;
-let tabsOffset = 0;
 let openMenuIdx = null;
 let currentAppView = 'records';
 let dashboardPeriod = 'month';
@@ -1859,51 +1871,42 @@ function parseExistingData() {
 }
 
 function renderTabs() {
-  const MAX_TABS = 12;
+  const tabs = document.getElementById('tabs');
+  tabs.innerHTML = months.map((month, index) => {
+    return `<button class="tab ${index === currentMonthIdx ? 'active' : ''}" onclick="switchMonth(${index})">${MONTH_NAMES[month.month]} ${month.year}</button>`;
+  }).join('');
+  tabs.onscroll = () => syncTabsViewport();
+  requestAnimationFrame(() => syncTabsViewport(true));
+}
+
+function syncTabsViewport(ensureActive = false) {
   const tabs = document.getElementById('tabs');
   const btnPrev = document.getElementById('tabs-prev');
   const btnNext = document.getElementById('tabs-next');
+  if (!tabs || !btnPrev || !btnNext) return;
 
-  const total = months.length;
-  const useCarousel = total > MAX_TABS;
+  const hasOverflow = tabs.scrollWidth > tabs.clientWidth + 1;
+  btnPrev.style.display = hasOverflow ? 'flex' : 'none';
+  btnNext.style.display = hasOverflow ? 'flex' : 'none';
 
-  // Clamp tabsOffset so active tab is always visible
-  if (useCarousel) {
-    const maxOffset = total - MAX_TABS;
-    tabsOffset = Math.max(0, Math.min(tabsOffset, maxOffset));
-    // If active tab is out of view, adjust offset
-    if (currentMonthIdx < tabsOffset) tabsOffset = currentMonthIdx;
-    if (currentMonthIdx >= tabsOffset + MAX_TABS) tabsOffset = currentMonthIdx - MAX_TABS + 1;
-  } else {
-    tabsOffset = 0;
-  }
-
-  const visible = useCarousel ? months.slice(tabsOffset, tabsOffset + MAX_TABS) : months;
-  tabs.innerHTML = visible.map((m, vi) => {
-    const realIdx = useCarousel ? tabsOffset + vi : vi;
-    return `<button class="tab ${realIdx === currentMonthIdx ? 'active' : ''}" onclick="switchMonth(${realIdx})">${MONTH_NAMES[m.month]} ${m.year}</button>`;
-  }).join('');
-
-  if (btnPrev && btnNext) {
-    const wrap = document.getElementById('tabs-wrap');
-    if (useCarousel) {
-      wrap.style.display = 'flex';
-      btnPrev.style.display = 'flex';
-      btnNext.style.display = 'flex';
-      btnPrev.disabled = tabsOffset === 0;
-      btnNext.disabled = tabsOffset + MAX_TABS >= total;
-    } else {
-      btnPrev.style.display = 'none';
-      btnNext.style.display = 'none';
+  if (ensureActive && hasOverflow) {
+    const activeTab = tabs.querySelector('.tab.active');
+    if (activeTab) {
+      const centeredLeft = activeTab.offsetLeft - (tabs.clientWidth - activeTab.offsetWidth) / 2;
+      tabs.scrollLeft = Math.max(0, centeredLeft);
     }
   }
+
+  btnPrev.disabled = !hasOverflow || tabs.scrollLeft <= 1;
+  btnNext.disabled = !hasOverflow
+    || tabs.scrollLeft + tabs.clientWidth >= tabs.scrollWidth - 1;
 }
 
 function tabsScroll(dir) {
-  const MAX_TABS = 12;
-  const maxOffset = months.length - MAX_TABS;
-  tabsOffset = Math.max(0, Math.min(tabsOffset + dir, maxOffset));
-  renderTabs();
+  const tabs = document.getElementById('tabs');
+  if (!tabs) return;
+  const distance = Math.max(160, tabs.clientWidth * 0.8);
+  tabs.scrollBy({ left: dir * distance, behavior: 'smooth' });
 }
 
 function switchMonth(idx) {
@@ -3643,7 +3646,7 @@ document.querySelectorAll('.config-input, .select-input').forEach(el => {
 
 // ── Service Worker registration ──────────────────────────────────────────────
 if ('serviceWorker' in navigator) {
-  const swVersion = '2.10.0';
+  const swVersion = '2.10.1';
   let swRefreshing = false;
 
   navigator.serviceWorker.addEventListener('controllerchange', () => {
@@ -4701,6 +4704,7 @@ function toggleMobileSidebar() {
 
 window.addEventListener('resize', () => {
   if (window.innerWidth > 1100) setMobileSidebarOpen(false);
+  syncTabsViewport(true);
 });
 
 function initSidebarState() {

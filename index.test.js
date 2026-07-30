@@ -258,6 +258,45 @@ test('el contenedor principal se adapta dinámicamente al viewport', () => {
   assert.match(html, /width:\s*clamp\(220px,\s*18vw,\s*320px\)/);
   assert.match(html, /grid-template-columns:\s*repeat\(auto-fit,/);
   assert.match(html, /@media \(max-width:\s*1100px\)/);
+  assert.match(html, /#month-actions\s*\{[\s\S]*?flex:\s*1 1 0;[\s\S]*?overflow:\s*hidden;/);
+  assert.match(html, /\.tabs\s*\{[\s\S]*?overflow-x:\s*auto;/);
+});
+
+test('la navegación mensual limita el contenido y actualiza sus controles', () => {
+  const tabs = {
+    scrollWidth: 1200,
+    clientWidth: 600,
+    scrollLeft: 0,
+    querySelector: () => null
+  };
+  const previous = { style: {}, disabled: false };
+  const next = { style: {}, disabled: false };
+  const context = vm.createContext({
+    document: {
+      getElementById: id => ({
+        tabs,
+        'tabs-prev': previous,
+        'tabs-next': next
+      })[id]
+    }
+  });
+  vm.runInContext(extractFunction('syncTabsViewport'), context);
+
+  context.syncTabsViewport();
+  assert.equal(previous.style.display, 'flex');
+  assert.equal(next.style.display, 'flex');
+  assert.equal(previous.disabled, true);
+  assert.equal(next.disabled, false);
+
+  tabs.scrollLeft = 600;
+  context.syncTabsViewport();
+  assert.equal(previous.disabled, false);
+  assert.equal(next.disabled, true);
+
+  tabs.scrollWidth = 600;
+  context.syncTabsViewport();
+  assert.equal(previous.style.display, 'none');
+  assert.equal(next.style.display, 'none');
 });
 
 test('abre y cierra el panel lateral móvil de forma accesible', () => {
