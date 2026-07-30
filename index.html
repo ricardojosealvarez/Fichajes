@@ -28,18 +28,26 @@
     --orange: #fb923c;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { width: 100%; height: 100%; }
   body {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: 100dvh;
+    min-height: 100dvh;
+    overflow: hidden;
     background: var(--bg);
     color: var(--text);
     font-family: 'JetBrains Mono', monospace;
-    min-height: 100vh;
-    font-size: 13px;
+    font-size: clamp(11px, calc(10px + 0.2vw), 13px);
   }
   header {
     display: flex;
+    flex: 0 0 auto;
     align-items: center;
     justify-content: space-between;
-    padding: 20px 32px;
+    gap: clamp(10px, 1.4vw, 22px);
+    padding: clamp(12px, 1.4vw, 20px) clamp(12px, 2.2vw, 32px);
     border-bottom: 1px solid var(--border);
     background: var(--surface);
     position: sticky;
@@ -139,6 +147,7 @@
     display: flex;
     align-items: center;
     gap: 4px;
+    min-width: 0;
   }
   .tabs-nav-btn {
     background: transparent;
@@ -159,6 +168,7 @@
   .tabs {
     display: flex;
     gap: 4px;
+    min-width: 0;
   }
   .tab {
     padding: 6px 16px;
@@ -186,9 +196,17 @@
     transition: all 0.15s;
   }
   .add-month-btn:hover { border-color: var(--accent); color: var(--accent); }
-  .main { display: flex; gap: 0; height: calc(100vh - 65px); }
+  #month-actions { min-width: 0; }
+  .main {
+    display: flex;
+    flex: 1 1 auto;
+    gap: 0;
+    width: 100%;
+    min-width: 0;
+    min-height: 0;
+  }
   .sidebar {
-    width: 300px;
+    width: clamp(220px, 18vw, 320px);
     flex-shrink: 0;
     border-right: 1px solid var(--border);
     background: var(--surface);
@@ -300,7 +318,14 @@
   .stat-value.pos { color: var(--green); }
   .stat-value.neg { color: var(--danger); }
   .stat-value.neutral { color: var(--accent2); }
-  .content { flex: 1; overflow-y: auto; padding: 24px 32px; }
+  .content {
+    flex: 1 1 auto;
+    min-width: 0;
+    min-height: 0;
+    overflow: auto;
+    overscroll-behavior: contain;
+    padding: clamp(14px, 1.7vw, 24px) clamp(14px, 2.25vw, 32px);
+  }
   .main.dashboard-mode .sidebar { display: none; }
   .main.dashboard-mode .content { padding: 28px 36px 48px; }
   table { width: 100%; border-collapse: collapse; }
@@ -515,7 +540,9 @@
     border: 1px solid var(--border);
     border-radius: 12px;
     padding: 28px;
-    width: 380px;
+    width: min(380px, calc(100vw - 32px));
+    max-height: calc(100dvh - 32px);
+    overflow-y: auto;
     display: flex;
     flex-direction: column;
     gap: 16px;
@@ -653,15 +680,15 @@
   }
   .day-edit-tele-btn.active-dia   { background: #1a1f0a; border-color: var(--accent); color: var(--accent); }
   .day-edit-tele-btn.active-tarde { background: #0d1a1f; border-color: var(--accent2); color: var(--accent2); }
-  #day-edit-modal .modal { width: 480px; max-width: 96vw; gap: 18px; }
+  #day-edit-modal .modal { width: min(480px, calc(100vw - 32px)); max-width: none; gap: 18px; }
 
   /* Dashboard */
   .dashboard {
-    width: min(1240px, 100%);
+    width: 100%;
     margin: 0 auto;
     display: flex;
     flex-direction: column;
-    gap: 22px;
+    gap: clamp(14px, 1.5vw, 22px);
   }
   .dashboard-header {
     display: flex;
@@ -671,7 +698,7 @@
   }
   .dashboard-title {
     font-family: 'Syne', sans-serif;
-    font-size: 26px;
+    font-size: clamp(22px, 2vw, 30px);
     font-weight: 800;
     letter-spacing: -0.6px;
   }
@@ -703,7 +730,7 @@
   .period-btn.active { background: var(--accent); color: var(--bg); }
   .dashboard-kpis {
     display: grid;
-    grid-template-columns: repeat(6, minmax(130px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(min(150px, 100%), 1fr));
     gap: 10px;
   }
   .dashboard-kpi {
@@ -752,7 +779,7 @@
   }
   .dashboard-panel {
     min-width: 0;
-    padding: 18px;
+    padding: clamp(14px, 1.4vw, 20px);
     border: 1px solid var(--border);
     border-radius: 10px;
     background: var(--surface);
@@ -886,25 +913,56 @@
   @media (max-width: 1100px) {
     header { padding: 16px 20px; gap: 14px; flex-wrap: wrap; }
     .header-status { margin-left: auto; }
-    .dashboard-kpis { grid-template-columns: repeat(3, minmax(140px, 1fr)); }
     .dashboard-grid { grid-template-columns: 1fr; }
     .dashboard-panel-wide { grid-column: auto; }
   }
-  @media (max-width: 700px) {
-    body { min-width: 0; }
+  @media (min-width: 1651px) {
+    .attendance-table { min-width: 1180px; }
+  }
+  @media (min-width: 1101px) and (max-width: 1650px) {
+    .attendance-table { table-layout: fixed; }
+    .attendance-table th,
+    .attendance-table td { padding-inline: clamp(4px, 0.5vw, 8px); }
+    .attendance-table th:nth-child(4),
+    .attendance-table th:nth-child(5),
+    .attendance-table th:nth-child(6),
+    .attendance-table th:nth-child(7),
+    .attendance-table th:nth-child(13),
+    .attendance-table td.mobile-hidden,
+    .attendance-table .notes-cell { display: none; }
+    .attendance-table .notes-input { width: clamp(72px, 8vw, 120px); }
+  }
+  @media (max-width: 1100px) {
+    body {
+      height: auto;
+      min-width: 0;
+      min-height: 100dvh;
+      overflow-x: hidden;
+      overflow-y: auto;
+    }
     header {
-      position: relative;
+      position: sticky;
       padding: 12px;
       gap: 10px;
     }
     .brand-area {
       width: 100%;
+      min-width: 0;
       justify-content: space-between;
       gap: 10px;
     }
-    .logo { font-size: 17px; }
-    .view-switcher { flex: 1; justify-content: flex-end; }
-    .view-btn { flex: 1; max-width: 120px; padding: 5px 7px; font-size: 10px; }
+    .logo { flex: 0 1 auto; font-size: 17px; white-space: nowrap; }
+    .view-switcher { flex: 1; min-width: 0; justify-content: flex-end; }
+    .view-btn {
+      flex: 1;
+      min-width: 0;
+      max-width: 120px;
+      overflow: hidden;
+      padding: 5px 7px;
+      font-size: 10px;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
     #month-actions {
       width: 100%;
       min-width: 0;
@@ -945,8 +1003,9 @@
     }
     .main {
       display: block;
+      flex: none;
       height: auto;
-      min-height: calc(100dvh - 120px);
+      min-height: 0;
     }
     .sidebar,
     .sidebar.collapsed {
@@ -1017,7 +1076,11 @@
     .type-legend { grid-template-columns: 1fr; }
 
     .attendance-table,
-    .attendance-table tbody { display: block; width: 100%; }
+    .attendance-table tbody {
+      display: block;
+      width: 100%;
+      min-width: 0;
+    }
     .attendance-table thead { display: none; }
     .attendance-table tbody tr {
       position: relative;
@@ -1118,6 +1181,15 @@
     }
   }
 
+  @media (min-width: 720px) and (max-width: 1100px) {
+    .attendance-table tbody {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+    .attendance-table tbody tr { margin-bottom: 0; }
+  }
+
   @media (max-width: 430px) {
     .dashboard-kpis { grid-template-columns: 1fr; }
     .dashboard-title { font-size: 22px; }
@@ -1128,6 +1200,12 @@
     .pending-indicator,
     .mobile-panel-btn { padding-inline: 7px; }
     #btn-add-month { display: none; }
+  }
+
+  @media (max-width: 360px) {
+    .brand-area { gap: 6px; }
+    .logo { font-size: 15px; }
+    .view-btn { padding-inline: 4px; font-size: 9px; }
   }
 
 </style>
@@ -1337,7 +1415,7 @@
       color: var(--muted);
       letter-spacing: 1px;
       text-transform: uppercase;
-    ">v2.9.0</div>
+    ">v2.10.0</div>
     <button id="signout-btn" style="
       padding: 6px 12px;
       background: transparent;
@@ -3565,7 +3643,7 @@ document.querySelectorAll('.config-input, .select-input').forEach(el => {
 
 // ── Service Worker registration ──────────────────────────────────────────────
 if ('serviceWorker' in navigator) {
-  const swVersion = '2.9.0';
+  const swVersion = '2.10.0';
   let swRefreshing = false;
 
   navigator.serviceWorker.addEventListener('controllerchange', () => {
@@ -4622,7 +4700,7 @@ function toggleMobileSidebar() {
 }
 
 window.addEventListener('resize', () => {
-  if (window.innerWidth > 700) setMobileSidebarOpen(false);
+  if (window.innerWidth > 1100) setMobileSidebarOpen(false);
 });
 
 function initSidebarState() {

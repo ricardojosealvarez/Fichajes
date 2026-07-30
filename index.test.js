@@ -251,6 +251,15 @@ test('la vista móvil expone tarjetas etiquetadas y acceso al panel', () => {
   assert.match(html, /id="sidebar-backdrop"/);
 });
 
+test('el contenedor principal se adapta dinámicamente al viewport', () => {
+  assert.match(html, /height:\s*100dvh/);
+  assert.match(html, /\.main\s*\{[\s\S]*?flex:\s*1 1 auto;[\s\S]*?min-height:\s*0;/);
+  assert.match(html, /\.content\s*\{[\s\S]*?min-width:\s*0;[\s\S]*?overflow:\s*auto;/);
+  assert.match(html, /width:\s*clamp\(220px,\s*18vw,\s*320px\)/);
+  assert.match(html, /grid-template-columns:\s*repeat\(auto-fit,/);
+  assert.match(html, /@media \(max-width:\s*1100px\)/);
+});
+
 test('abre y cierra el panel lateral móvil de forma accesible', () => {
   const createClassList = () => {
     const values = new Set();
