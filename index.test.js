@@ -579,7 +579,7 @@ test('mantiene coherentes la versión visible, las notas y la caché', () => {
   const releaseNotes = vm.runInContext('RELEASE_NOTES', context);
   const sortedNotes = context.getSortedReleaseNotes(releaseNotes);
 
-  assert.equal(releaseNotes[0].version, '2.15.0');
+  assert.equal(releaseNotes[0].version, '2.15.1');
   assert.equal(releaseNotes.at(-1).version, '2.3.17');
   assert.deepEqual(
     Array.from(releaseNotes, release => release.version),
@@ -595,10 +595,21 @@ test('mantiene coherentes la versión visible, las notas y la caché', () => {
     && Array.isArray(release.changes)
     && release.changes.length > 0
   ));
-  assert.match(html, /id="app-version">v2\.15\.0</);
+  assert.match(html, /id="app-version">v2\.15\.1</);
   assert.match(html, /const APP_VERSION = RELEASE_NOTES\[0\]\.version;/);
   assert.match(html, /const swVersion = APP_VERSION;/);
-  assert.match(serviceWorker, /const APP_VERSION = '2\.15\.0';/);
+  assert.match(serviceWorker, /const APP_VERSION = '2\.15\.1';/);
+});
+
+test('reserva espacio para la bolsa de teletrabajo sin invadir el tipo', () => {
+  assert.match(html, /\.tele-cell\s*\{[\s\S]*?min-width:\s*0;[\s\S]*?overflow:\s*hidden;/);
+  assert.match(html, /\.tele-bolsa\s*\{[\s\S]*?flex:\s*0 0 52px;/);
+  assert.match(
+    html,
+    /@media \(min-width: 1101px\) and \(max-width: 1650px\)[\s\S]*?th:nth-child\(12\)\s*\{\s*width:\s*184px;/
+  );
+  assert.match(html, /th:nth-child\(14\)\s*\{\s*width:\s*112px;/);
+  assert.match(html, /th:nth-child\(15\)\s*\{\s*width:\s*48px;/);
 });
 
 test('expone el modal de versiones con estructura accesible', () => {

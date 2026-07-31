@@ -782,8 +782,16 @@
   .tele-btn.active-dia  { background: #1a1f0a; border-color: var(--accent); color: var(--accent); }
   .tele-btn.active-tarde{ background: #0d1a1f; border-color: var(--accent2); color: var(--accent2); }
   .tele-btn:disabled    { opacity: 0.25; cursor: not-allowed; }
-  .tele-cell { display: flex; gap: 4px; align-items: center; }
+  .tele-cell {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+  }
   .tele-bolsa {
+    flex: 0 0 52px;
     font-family: 'JetBrains Mono', monospace;
     font-size: 12px;
     font-weight: 500;
@@ -1273,6 +1281,9 @@
     .attendance-table { table-layout: fixed; }
     .attendance-table th,
     .attendance-table td { padding-inline: clamp(4px, 0.5vw, 8px); }
+    .attendance-table th:nth-child(12) { width: 184px; }
+    .attendance-table th:nth-child(14) { width: 112px; }
+    .attendance-table th:nth-child(15) { width: 48px; }
     .attendance-table th:nth-child(4),
     .attendance-table th:nth-child(5),
     .attendance-table th:nth-child(6),
@@ -1822,11 +1833,11 @@
       class="version-trigger"
       id="release-notes-trigger"
       type="button"
-      aria-label="Ver notas de la versión 2.15.0"
+      aria-label="Ver notas de la versión 2.15.1"
       aria-haspopup="dialog"
       aria-controls="release-notes-modal"
       onclick="openReleaseNotesModal()"
-    ><span id="app-version">v2.15.0</span></button>
+    ><span id="app-version">v2.15.1</span></button>
     <button id="signout-btn" style="
       padding: 6px 12px;
       background: transparent;
@@ -2120,6 +2131,14 @@ const DAY_TYPES = [
   { key: 'navidad',    label: 'Turno de navidad', color: '#ffb347' },
 ];
 const RELEASE_NOTES = [
+  {
+    version: '2.15.1',
+    date: '2026-07-31',
+    title: 'Corrección de la tabla de fichajes',
+    changes: [
+      'Reservado espacio suficiente para la bolsa de teletrabajo sin invadir el tipo de día.'
+    ]
+  },
   {
     version: '2.15.0',
     date: '2026-07-30',

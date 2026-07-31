@@ -1,4 +1,4 @@
-const APP_VERSION = '2.15.0';
+const APP_VERSION = '2.15.1';
 const CACHE_NAME = `fichajes-v${APP_VERSION}`;
 const ASSETS_TO_CACHE = [
   './',
