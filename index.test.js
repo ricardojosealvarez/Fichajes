@@ -579,7 +579,7 @@ test('mantiene coherentes la versión visible, las notas y la caché', () => {
   const releaseNotes = vm.runInContext('RELEASE_NOTES', context);
   const sortedNotes = context.getSortedReleaseNotes(releaseNotes);
 
-  assert.equal(releaseNotes[0].version, '2.15.1');
+  assert.equal(releaseNotes[0].version, '2.16.0');
   assert.equal(releaseNotes.at(-1).version, '2.3.17');
   assert.deepEqual(
     Array.from(releaseNotes, release => release.version),
@@ -595,10 +595,10 @@ test('mantiene coherentes la versión visible, las notas y la caché', () => {
     && Array.isArray(release.changes)
     && release.changes.length > 0
   ));
-  assert.match(html, /id="app-version">v2\.15\.1</);
+  assert.match(html, /id="app-version">v2\.16\.0</);
   assert.match(html, /const APP_VERSION = RELEASE_NOTES\[0\]\.version;/);
   assert.match(html, /const swVersion = APP_VERSION;/);
-  assert.match(serviceWorker, /const APP_VERSION = '2\.15\.1';/);
+  assert.match(serviceWorker, /const APP_VERSION = '2\.16\.0';/);
 });
 
 test('reserva espacio para la bolsa de teletrabajo sin invadir el tipo', () => {
@@ -756,6 +756,33 @@ test('la navegación mensual limita el contenido y actualiza sus controles', () 
   context.syncTabsViewport();
   assert.equal(previous.style.display, 'none');
   assert.equal(next.style.display, 'none');
+});
+
+test('centra con precisión la pestaña del mes activo', () => {
+  const activeTab = {
+    getBoundingClientRect: () => ({left: 710, width: 60})
+  };
+  const tabs = {
+    scrollWidth: 1200,
+    clientWidth: 600,
+    scrollLeft: 100,
+    style: {scrollBehavior: ''},
+    querySelector: () => activeTab,
+    getBoundingClientRect: () => ({left: 110})
+  };
+  const context = vm.createContext({Math});
+  vm.runInContext(extractFunction('centerActiveMonthTab'), context);
+
+  context.centerActiveMonthTab(tabs);
+
+  assert.equal(tabs.scrollLeft, 430);
+  assert.equal(tabs.style.scrollBehavior, '');
+});
+
+test('muestra los meses en formato compacto manteniendo su etiqueta completa', () => {
+  assert.match(html, /const compactLabel = `\$\{MONTH_NAMES\[month\.month\]\.slice\(0, 3\)\} \$\{String\(month\.year\)\.slice\(-2\)\}`/);
+  assert.match(html, /aria-label="\$\{fullLabel\}" title="\$\{fullLabel\}"/);
+  assert.match(html, /\.tab\s*\{[^}]*min-width:\s*58px;[^}]*font-size:\s*11px;/);
 });
 
 test('genera los calendarios oficiales de Andalucía de 2026 y 2027', () => {

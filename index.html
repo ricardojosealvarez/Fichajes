@@ -191,7 +191,7 @@
     display: flex;
     flex: 1 1 0;
     align-items: center;
-    gap: 4px;
+    gap: 3px;
     min-width: 0;
     overflow: hidden;
   }
@@ -200,7 +200,7 @@
     border: 1px solid var(--border);
     color: var(--muted);
     border-radius: 6px;
-    width: 28px; height: 28px;
+    width: 26px; height: 26px;
     display: flex; align-items: center; justify-content: center;
     cursor: pointer;
     font-size: 13px;
@@ -214,7 +214,7 @@
   .tabs {
     display: flex;
     flex: 1 1 auto;
-    gap: 4px;
+    gap: 3px;
     min-width: 0;
     overflow-x: auto;
     overscroll-behavior-inline: contain;
@@ -224,14 +224,17 @@
   .tabs::-webkit-scrollbar { display: none; }
   .tab {
     flex: 0 0 auto;
-    padding: 6px 16px;
+    min-width: 58px;
+    padding: 5px 9px;
     border: 1px solid var(--border);
     background: transparent;
     color: var(--muted);
     cursor: pointer;
     font-family: 'Syne', sans-serif;
     font-weight: 600;
-    font-size: 13px;
+    font-size: 11px;
+    line-height: 14px;
+    white-space: nowrap;
     border-radius: 6px;
     transition: all 0.15s;
   }
@@ -1337,7 +1340,7 @@
       overflow: hidden;
     }
     .tabs { flex-wrap: nowrap; }
-    .tab { padding: 6px 10px; font-size: 11px; white-space: nowrap; }
+    .tab { padding: 5px 8px; }
     .add-month-btn { padding: 6px 9px; font-size: 11px; white-space: nowrap; }
     .header-status {
       width: 100%;
@@ -1833,11 +1836,11 @@
       class="version-trigger"
       id="release-notes-trigger"
       type="button"
-      aria-label="Ver notas de la versión 2.15.1"
+      aria-label="Ver notas de la versión 2.16.0"
       aria-haspopup="dialog"
       aria-controls="release-notes-modal"
       onclick="openReleaseNotesModal()"
-    ><span id="app-version">v2.15.1</span></button>
+    ><span id="app-version">v2.16.0</span></button>
     <button id="signout-btn" style="
       padding: 6px 12px;
       background: transparent;
@@ -2131,6 +2134,15 @@ const DAY_TYPES = [
   { key: 'navidad',    label: 'Turno de navidad', color: '#ffb347' },
 ];
 const RELEASE_NOTES = [
+  {
+    version: '2.16.0',
+    date: '2026-08-03',
+    title: 'Navegación mensual compacta',
+    changes: [
+      'Pestañas de mes abreviadas para aprovechar mejor el espacio disponible.',
+      'Centrado preciso del mes en curso al cargar la aplicación.'
+    ]
+  },
   {
     version: '2.15.1',
     date: '2026-07-31',
@@ -3058,11 +3070,28 @@ function parseExistingData() {
 function renderTabs() {
   const tabs = document.getElementById('tabs');
   tabs.innerHTML = months.map((month, index) => {
-    return `<button class="tab ${index === currentMonthIdx ? 'active' : ''}" onclick="switchMonth(${index})">${MONTH_NAMES[month.month]} ${month.year}</button>`;
+    const fullLabel = `${MONTH_NAMES[month.month]} ${month.year}`;
+    const compactLabel = `${MONTH_NAMES[month.month].slice(0, 3)} ${String(month.year).slice(-2)}`;
+    return `<button class="tab ${index === currentMonthIdx ? 'active' : ''}" onclick="switchMonth(${index})" aria-label="${fullLabel}" title="${fullLabel}">${compactLabel}</button>`;
   }).join('');
   tabs.onscroll = () => syncTabsViewport();
   renderHolidaySummary();
-  requestAnimationFrame(() => syncTabsViewport(true));
+  requestAnimationFrame(() => requestAnimationFrame(() => syncTabsViewport(true)));
+}
+
+function centerActiveMonthTab(tabs) {
+  const activeTab = tabs.querySelector('.tab.active');
+  if (!activeTab) return;
+
+  const tabsRect = tabs.getBoundingClientRect();
+  const activeRect = activeTab.getBoundingClientRect();
+  const activeCenter = activeRect.left - tabsRect.left + tabs.scrollLeft + activeRect.width / 2;
+  const maxScrollLeft = Math.max(0, tabs.scrollWidth - tabs.clientWidth);
+  const centeredLeft = Math.min(maxScrollLeft, Math.max(0, activeCenter - tabs.clientWidth / 2));
+  const previousScrollBehavior = tabs.style.scrollBehavior;
+  tabs.style.scrollBehavior = 'auto';
+  tabs.scrollLeft = centeredLeft;
+  tabs.style.scrollBehavior = previousScrollBehavior;
 }
 
 function syncTabsViewport(ensureActive = false) {
@@ -3076,11 +3105,7 @@ function syncTabsViewport(ensureActive = false) {
   btnNext.style.display = hasOverflow ? 'flex' : 'none';
 
   if (ensureActive && hasOverflow) {
-    const activeTab = tabs.querySelector('.tab.active');
-    if (activeTab) {
-      const centeredLeft = activeTab.offsetLeft - (tabs.clientWidth - activeTab.offsetWidth) / 2;
-      tabs.scrollLeft = Math.max(0, centeredLeft);
-    }
+    centerActiveMonthTab(tabs);
   }
 
   btnPrev.disabled = !hasOverflow || tabs.scrollLeft <= 1;
