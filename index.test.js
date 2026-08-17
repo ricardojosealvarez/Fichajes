@@ -579,7 +579,7 @@ test('mantiene coherentes la versión visible, las notas y la caché', () => {
   const releaseNotes = vm.runInContext('RELEASE_NOTES', context);
   const sortedNotes = context.getSortedReleaseNotes(releaseNotes);
 
-  assert.equal(releaseNotes[0].version, '2.16.0');
+  assert.equal(releaseNotes[0].version, '2.16.1');
   assert.equal(releaseNotes.at(-1).version, '2.3.17');
   assert.deepEqual(
     Array.from(releaseNotes, release => release.version),
@@ -595,10 +595,17 @@ test('mantiene coherentes la versión visible, las notas y la caché', () => {
     && Array.isArray(release.changes)
     && release.changes.length > 0
   ));
-  assert.match(html, /id="app-version">v2\.16\.0</);
+  assert.match(html, /id="app-version">v2\.16\.1</);
   assert.match(html, /const APP_VERSION = RELEASE_NOTES\[0\]\.version;/);
   assert.match(html, /const swVersion = APP_VERSION;/);
-  assert.match(serviceWorker, /const APP_VERSION = '2\.16\.0';/);
+  assert.match(serviceWorker, /const APP_VERSION = '2\.16\.1';/);
+});
+
+test('el service worker no cachea peticiones remotas', () => {
+  assert.match(
+    serviceWorker,
+    /request\.method !== 'GET' \|\| url\.origin !== self\.location\.origin/
+  );
 });
 
 test('reserva espacio para la bolsa de teletrabajo sin invadir el tipo', () => {

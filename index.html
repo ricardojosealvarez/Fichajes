@@ -1840,7 +1840,7 @@
       aria-haspopup="dialog"
       aria-controls="release-notes-modal"
       onclick="openReleaseNotesModal()"
-    ><span id="app-version">v2.16.0</span></button>
+    ><span id="app-version">v2.16.1</span></button>
     <button id="signout-btn" style="
       padding: 6px 12px;
       background: transparent;
@@ -2134,6 +2134,14 @@ const DAY_TYPES = [
   { key: 'navidad',    label: 'Turno de navidad', color: '#ffb347' },
 ];
 const RELEASE_NOTES = [
+  {
+    version: '2.16.1',
+    date: '2026-08-17',
+    title: 'Actualización de datos remotos',
+    changes: [
+      'Las consultas a Supabase ya no reutilizan respuestas antiguas del caché del navegador.'
+    ]
+  },
   {
     version: '2.16.0',
     date: '2026-08-03',

@@ -1,4 +1,4 @@
-const APP_VERSION = '2.16.0';
+const APP_VERSION = '2.16.1';
 const CACHE_NAME = `fichajes-v${APP_VERSION}`;
 const ASSETS_TO_CACHE = [
   './',
@@ -45,7 +45,7 @@ self.addEventListener('fetch', event => {
   const url = new URL(request.url);
 
   // Ignorar requests no-GET (POST, PUT, DELETE, etc.)
-  if (request.method !== 'GET') {
+  if (request.method !== 'GET' || url.origin !== self.location.origin) {
     return;
   }
 
