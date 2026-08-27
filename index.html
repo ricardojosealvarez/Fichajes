@@ -1840,7 +1840,7 @@
       aria-haspopup="dialog"
       aria-controls="release-notes-modal"
       onclick="openReleaseNotesModal()"
-    ><span id="app-version">v2.16.1</span></button>
+    ><span id="app-version">v2.17.0</span></button>
     <button id="signout-btn" style="
       padding: 6px 12px;
       background: transparent;
@@ -2134,6 +2134,14 @@ const DAY_TYPES = [
   { key: 'navidad',    label: 'Turno de navidad', color: '#ffb347' },
 ];
 const RELEASE_NOTES = [
+  {
+    version: '2.17.0',
+    date: '2026-08-27',
+    title: 'Salida recomendada de los viernes',
+    changes: [
+      'La salida recomendada usa toda la bolsa disponible aunque exista una hora programada, sin anticiparse a las 13:45.'
+    ]
+  },
   {
     version: '2.16.1',
     date: '2026-08-17',
@@ -2511,7 +2519,7 @@ function calcSuma(day, cfg) {
 }
 
 function calcFridaySalida(day, absPrev, cfg) {
-  // Calculates the minimum exit time on Friday to keep ABS within cap
+  // Recomienda la salida más temprana posible consumiendo la bolsa disponible.
   const entrada = timeToMins(day.entrada);
   const desIni  = timeToMins(day.desayunoIni);
   const desFin  = timeToMins(day.desayunoFin);
@@ -2522,7 +2530,7 @@ function calcFridaySalida(day, absPrev, cfg) {
     ? Math.max(desFin - desIni - cfg.desayunoTime, 0)
     : 0;
   // Hours needed = target horaDay minus current ABS carry-in
-  const needed = (cfg.horaDay || 0) - (absPrev || 0);
+  const needed = (cfg.horaDay || 0) - Math.max(absPrev || 0, 0);
   const salida = effectiveEntrada + desPenalty + needed;
   return Math.max(salida, cfg.horaMinsalida);
 }
@@ -3196,7 +3204,7 @@ function calculateBolsaDay(day, abs, cfg) {
   if (day.tipo !== 'habil' || !day.entrada) return result;
 
   const isFriday = day.date.getDay() === 5;
-  if (isFriday && !day.salida) {
+  if (isFriday) {
     const autoSalida = calcFridaySalida(
       day,
       nextAbs,
@@ -3434,8 +3442,8 @@ function getTodayPanelMetrics(data) {
 
   return {
     entry: data.day.entrada || '',
-    exit: data.day.salida || (result?.salidaAuto ? result.salida : ''),
-    exitPredicted: Boolean(result?.salidaAuto && !data.day.salida),
+    exit: result?.salidaAuto ? result.salida : data.day.salida,
+    exitPredicted: Boolean(result?.salidaAuto),
     total: result?.suma ?? null,
     difference: result?.diario ?? null,
     balance: result?.abs ?? abs

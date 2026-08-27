@@ -104,6 +104,58 @@ test('la salida automática del viernes actualiza el saldo propagado', () => {
   assert.equal(result.abs, 0);
 });
 
+test('el viernes recomienda la salida usando la bolsa aunque ya tenga salida programada', () => {
+  const context = createContext({
+    applyBolsaBoundaryForDate: (_date, abs) => abs,
+    getHoraDay: () => 7 * 60,
+    getBolsaCap: () => 5 * 60
+  });
+  const day = {
+    date: new Date(2026, 7, 28),
+    tipo: 'habil',
+    entrada: '08:00',
+    salida: '15:00'
+  };
+
+  const result = context.calculateBolsaDay(day, 2 * 60, {
+    hourIn: 7 * 60,
+    desayunoTime: 15,
+    horaLunch: 60,
+    horaMinsalida: 13 * 60 + 45
+  });
+
+  assert.equal(result.salida, '13:45');
+  assert.equal(result.salidaAuto, true);
+  assert.equal(result.diario, -75);
+  assert.equal(result.abs, 45);
+});
+
+test('el viernes sin bolsa positiva mantiene la salida normal aunque tenga otra programada', () => {
+  const context = createContext({
+    applyBolsaBoundaryForDate: (_date, abs) => abs,
+    getHoraDay: () => 7 * 60,
+    getBolsaCap: () => 5 * 60
+  });
+  const day = {
+    date: new Date(2026, 7, 28),
+    tipo: 'habil',
+    entrada: '08:00',
+    salida: '14:30'
+  };
+
+  const result = context.calculateBolsaDay(day, -30, {
+    hourIn: 7 * 60,
+    desayunoTime: 15,
+    horaLunch: 60,
+    horaMinsalida: 13 * 60 + 45
+  });
+
+  assert.equal(result.salida, '15:00');
+  assert.equal(result.salidaAuto, true);
+  assert.equal(result.diario, 0);
+  assert.equal(result.abs, -30);
+});
+
 test('el viernes aplica el tope al saldo después de calcular la jornada', () => {
   const context = createContext({
     applyBolsaBoundaryForDate: (_date, abs) => abs,
@@ -579,7 +631,7 @@ test('mantiene coherentes la versión visible, las notas y la caché', () => {
   const releaseNotes = vm.runInContext('RELEASE_NOTES', context);
   const sortedNotes = context.getSortedReleaseNotes(releaseNotes);
 
-  assert.equal(releaseNotes[0].version, '2.16.1');
+  assert.equal(releaseNotes[0].version, '2.17.0');
   assert.equal(releaseNotes.at(-1).version, '2.3.17');
   assert.deepEqual(
     Array.from(releaseNotes, release => release.version),
@@ -595,10 +647,10 @@ test('mantiene coherentes la versión visible, las notas y la caché', () => {
     && Array.isArray(release.changes)
     && release.changes.length > 0
   ));
-  assert.match(html, /id="app-version">v2\.16\.1</);
+  assert.match(html, /id="app-version">v2\.17\.0</);
   assert.match(html, /const APP_VERSION = RELEASE_NOTES\[0\]\.version;/);
   assert.match(html, /const swVersion = APP_VERSION;/);
-  assert.match(serviceWorker, /const APP_VERSION = '2\.16\.1';/);
+  assert.match(serviceWorker, /const APP_VERSION = '2\.17\.0';/);
 });
 
 test('el service worker no cachea peticiones remotas', () => {
