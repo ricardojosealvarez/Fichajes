@@ -545,6 +545,7 @@
     text-align: center;
   }
   .time-display.auto-calc { color: var(--accent2); font-style: italic; }
+  small.auto-calc { display: block; color: var(--accent2); font-style: italic; white-space: nowrap; }
   .time-display.empty { color: var(--muted); opacity: 0.55; }
   .calc-cell {
     font-family: 'JetBrains Mono', monospace;
@@ -1840,7 +1841,7 @@
       aria-haspopup="dialog"
       aria-controls="release-notes-modal"
       onclick="openReleaseNotesModal()"
-    ><span id="app-version">v2.17.0</span></button>
+    ><span id="app-version">v2.17.1</span></button>
     <button id="signout-btn" style="
       padding: 6px 12px;
       background: transparent;
@@ -2134,6 +2135,14 @@ const DAY_TYPES = [
   { key: 'navidad',    label: 'Turno de navidad', color: '#ffb347' },
 ];
 const RELEASE_NOTES = [
+  {
+    version: '2.17.1',
+    date: '2026-08-27',
+    title: 'Recomendación sin sustituir la salida',
+    changes: [
+      'La recomendación del viernes se muestra por separado y conserva la hora de salida fijada.'
+    ]
+  },
   {
     version: '2.17.0',
     date: '2026-08-27',
@@ -3196,6 +3205,7 @@ function calculateBolsaDay(day, abs, cfg) {
   const result = {
     abs: nextAbs,
     salida: day.salida,
+    salidaRecomendada: '',
     salidaAuto: false,
     suma: null,
     diario: null
@@ -3211,8 +3221,11 @@ function calculateBolsaDay(day, abs, cfg) {
       {...cfg, horaDay: getHoraDay(day.date)}
     );
     if (autoSalida !== null) {
-      result.salida = minsToTime(autoSalida);
-      result.salidaAuto = true;
+      result.salidaRecomendada = minsToTime(autoSalida);
+      if (!day.salida) {
+        result.salida = result.salidaRecomendada;
+        result.salidaAuto = true;
+      }
     }
   }
 
@@ -3442,7 +3455,8 @@ function getTodayPanelMetrics(data) {
 
   return {
     entry: data.day.entrada || '',
-    exit: result?.salidaAuto ? result.salida : data.day.salida,
+    exit: data.day.salida || (result?.salidaAuto ? result.salida : ''),
+    exitRecommendation: result?.salidaRecomendada || '',
     exitPredicted: Boolean(result?.salidaAuto),
     total: result?.suma ?? null,
     difference: result?.diario ?? null,
@@ -3501,6 +3515,10 @@ function renderTodayPanelMarkup(now = new Date()) {
         <div class="today-panel-metric-label">${metrics.exitPredicted ? 'Salida prevista' : 'Salida'}</div>
         <div class="today-panel-metric-value ${metrics.exitPredicted ? 'predicted' : ''}">${escapeHtmlAttribute(metrics.exit || '--:--')}</div>
       </div>
+      ${metrics.exitRecommendation && !metrics.exitPredicted ? `<div class="today-panel-metric">
+        <div class="today-panel-metric-label">Salida recomendada</div>
+        <div class="today-panel-metric-value predicted">${escapeHtmlAttribute(metrics.exitRecommendation)}</div>
+      </div>` : ''}
       <div class="today-panel-metric">
         <div class="today-panel-metric-label">${metrics.exitPredicted ? 'Total previsto' : 'Total'}</div>
         <div class="today-panel-metric-value ${metrics.exitPredicted ? 'predicted' : ''}">${metrics.total === null ? '--:--' : minsToTime(metrics.total)}</div>
@@ -3619,6 +3637,7 @@ function renderTable() {
       suma,
       diario,
       salida: salidaDisplay,
+      salidaRecomendada,
       salidaAuto
     } = bolsaDay;
 
@@ -3643,7 +3662,10 @@ function renderTable() {
       <td class="mobile-hidden" data-label="Desayuno fin">${renderTimeDisplay(day.desayunoFin)}</td>
       <td class="mobile-hidden" data-label="Comida inicio">${renderTimeDisplay(day.comidaIni)}</td>
       <td class="mobile-hidden" data-label="Comida fin">${renderTimeDisplay(day.comidaFin)}</td>
-      <td data-label="Salida">${renderTimeDisplay(salidaAuto ? salidaDisplay : day.salida, salidaAuto ? 'auto-calc' : '')}</td>
+      <td data-label="Salida">
+        ${renderTimeDisplay(day.salida || salidaDisplay, salidaAuto ? 'auto-calc' : '')}
+        ${day.salida && salidaRecomendada ? `<small class="auto-calc">Recomendada: ${salidaRecomendada}</small>` : ''}
+      </td>
       <td class="center" data-label="Total"><span class="calc-cell suma">${sumaStr}</span></td>
       <td class="center" data-label="Diferencia"><span class="calc-cell diario ${diarioClass}">${diarioStr}</span></td>
       <td class="center" data-label="Bolsa"><span class="calc-cell abs">${absStr}</span></td>

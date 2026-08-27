@@ -124,10 +124,11 @@ test('el viernes recomienda la salida usando la bolsa aunque ya tenga salida pro
     horaMinsalida: 13 * 60 + 45
   });
 
-  assert.equal(result.salida, '13:45');
-  assert.equal(result.salidaAuto, true);
-  assert.equal(result.diario, -75);
-  assert.equal(result.abs, 45);
+  assert.equal(result.salida, '15:00');
+  assert.equal(result.salidaRecomendada, '13:45');
+  assert.equal(result.salidaAuto, false);
+  assert.equal(result.diario, 0);
+  assert.equal(result.abs, 2 * 60);
 });
 
 test('el viernes sin bolsa positiva mantiene la salida normal aunque tenga otra programada', () => {
@@ -150,10 +151,11 @@ test('el viernes sin bolsa positiva mantiene la salida normal aunque tenga otra 
     horaMinsalida: 13 * 60 + 45
   });
 
-  assert.equal(result.salida, '15:00');
-  assert.equal(result.salidaAuto, true);
-  assert.equal(result.diario, 0);
-  assert.equal(result.abs, -30);
+  assert.equal(result.salida, '14:30');
+  assert.equal(result.salidaRecomendada, '15:00');
+  assert.equal(result.salidaAuto, false);
+  assert.equal(result.diario, -30);
+  assert.equal(result.abs, -60);
 });
 
 test('el viernes aplica el tope al saldo después de calcular la jornada', () => {
@@ -631,7 +633,7 @@ test('mantiene coherentes la versión visible, las notas y la caché', () => {
   const releaseNotes = vm.runInContext('RELEASE_NOTES', context);
   const sortedNotes = context.getSortedReleaseNotes(releaseNotes);
 
-  assert.equal(releaseNotes[0].version, '2.17.0');
+  assert.equal(releaseNotes[0].version, '2.17.1');
   assert.equal(releaseNotes.at(-1).version, '2.3.17');
   assert.deepEqual(
     Array.from(releaseNotes, release => release.version),
@@ -647,10 +649,10 @@ test('mantiene coherentes la versión visible, las notas y la caché', () => {
     && Array.isArray(release.changes)
     && release.changes.length > 0
   ));
-  assert.match(html, /id="app-version">v2\.17\.0</);
+  assert.match(html, /id="app-version">v2\.17\.1</);
   assert.match(html, /const APP_VERSION = RELEASE_NOTES\[0\]\.version;/);
   assert.match(html, /const swVersion = APP_VERSION;/);
-  assert.match(serviceWorker, /const APP_VERSION = '2\.17\.0';/);
+  assert.match(serviceWorker, /const APP_VERSION = '2\.17\.1';/);
 });
 
 test('el service worker no cachea peticiones remotas', () => {
