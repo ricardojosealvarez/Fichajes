@@ -633,7 +633,7 @@ test('mantiene coherentes la versión visible, las notas y la caché', () => {
   const releaseNotes = vm.runInContext('RELEASE_NOTES', context);
   const sortedNotes = context.getSortedReleaseNotes(releaseNotes);
 
-  assert.equal(releaseNotes[0].version, '2.17.1');
+  assert.equal(releaseNotes[0].version, '2.17.2');
   assert.equal(releaseNotes.at(-1).version, '2.3.17');
   assert.deepEqual(
     Array.from(releaseNotes, release => release.version),
@@ -649,10 +649,31 @@ test('mantiene coherentes la versión visible, las notas y la caché', () => {
     && Array.isArray(release.changes)
     && release.changes.length > 0
   ));
-  assert.match(html, /id="app-version">v2\.17\.1</);
+  assert.match(html, /id="app-version">v2\.17\.2</);
   assert.match(html, /const APP_VERSION = RELEASE_NOTES\[0\]\.version;/);
   assert.match(html, /const swVersion = APP_VERSION;/);
-  assert.match(serviceWorker, /const APP_VERSION = '2\.17\.1';/);
+  assert.match(serviceWorker, /const APP_VERSION = '2\.17\.2';/);
+});
+
+test('actualiza desde Supabase al volver sin operaciones locales pendientes', () => {
+  const context = vm.createContext({});
+  vm.runInContext(extractFunction('shouldRefreshRemoteData'), context);
+
+  const ready = {
+    visibilityState: 'visible',
+    hasUser: true,
+    online: true,
+    activeOperations: 0,
+    pendingDaySaves: false,
+    configSaving: false,
+    modalOpen: false
+  };
+
+  assert.equal(context.shouldRefreshRemoteData(ready), true);
+  assert.equal(context.shouldRefreshRemoteData({ ...ready, pendingDaySaves: true }), false);
+  assert.equal(context.shouldRefreshRemoteData({ ...ready, activeOperations: 1 }), false);
+  assert.equal(context.shouldRefreshRemoteData({ ...ready, modalOpen: true }), false);
+  assert.equal(context.shouldRefreshRemoteData({ ...ready, visibilityState: 'hidden' }), false);
 });
 
 test('el service worker no cachea peticiones remotas', () => {

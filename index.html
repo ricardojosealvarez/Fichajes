@@ -1837,11 +1837,11 @@
       class="version-trigger"
       id="release-notes-trigger"
       type="button"
-      aria-label="Ver notas de la versión 2.16.0"
+      aria-label="Ver notas de la versión 2.17.2"
       aria-haspopup="dialog"
       aria-controls="release-notes-modal"
       onclick="openReleaseNotesModal()"
-    ><span id="app-version">v2.17.1</span></button>
+    ><span id="app-version">v2.17.2</span></button>
     <button id="signout-btn" style="
       padding: 6px 12px;
       background: transparent;
@@ -2135,6 +2135,14 @@ const DAY_TYPES = [
   { key: 'navidad',    label: 'Turno de navidad', color: '#ffb347' },
 ];
 const RELEASE_NOTES = [
+  {
+    version: '2.17.2',
+    date: '2026-09-04',
+    title: 'Actualización al volver a la aplicación',
+    changes: [
+      'Los datos se recargan desde Supabase al recuperar la pestaña, sin sobrescribir cambios locales pendientes.'
+    ]
+  },
   {
     version: '2.17.1',
     date: '2026-08-27',
@@ -5336,6 +5344,9 @@ let syncQueue = [];
 let lastSuccessfulSync = null;
 let activeSyncOperations = 0;
 let syncErrorMessage = '';
+let remoteRefreshPromise = null;
+let lastRemoteRefreshAt = 0;
+const REMOTE_REFRESH_MIN_INTERVAL_MS = 2000;
 let configSavePromise = null;
 let configSaveRequested = false;
 const daySaveStates = new Map();
@@ -6432,6 +6443,77 @@ function toggleSidebar() {
   localStorage.setItem('sidebarCollapsed', collapsed ? '1' : '0');
 }
 
+function shouldRefreshRemoteData(state) {
+  return state.visibilityState === 'visible'
+    && state.hasUser
+    && state.online
+    && state.activeOperations === 0
+    && !state.pendingDaySaves
+    && !state.configSaving
+    && !state.modalOpen;
+}
+
+async function refreshDataFromSupabase() {
+  const canRefresh = shouldRefreshRemoteData({
+    visibilityState: document.visibilityState,
+    hasUser: Boolean(currentUser),
+    online: isOnline,
+    activeOperations: activeSyncOperations,
+    pendingDaySaves: daySaveStates.size > 0,
+    configSaving: Boolean(configSavePromise),
+    modalOpen: Boolean(document.querySelector('.modal-overlay.show'))
+  });
+  if (!canRefresh || remoteRefreshPromise) return false;
+
+  const now = Date.now();
+  if (now - lastRemoteRefreshAt < REMOTE_REFRESH_MIN_INTERVAL_MS) return false;
+  lastRemoteRefreshAt = now;
+
+  remoteRefreshPromise = (async () => {
+    if (syncQueue.length > 0) {
+      const synced = await retrySync();
+      if (!synced || syncQueue.length > 0) return false;
+    }
+
+    const selectedMonth = months[currentMonthIdx];
+    const selectedYear = selectedMonth?.year;
+    const selectedMonthNumber = selectedMonth?.month;
+    activeSyncOperations++;
+    updateSyncIndicator();
+
+    try {
+      const loaded = await loadDataFromSupabase();
+      if (!loaded) {
+        syncErrorMessage = 'No se pudieron actualizar los datos remotos';
+        return false;
+      }
+
+      const matchingIndex = months.findIndex(month =>
+        month.year === selectedYear && month.month === selectedMonthNumber
+      );
+      if (matchingIndex >= 0) currentMonthIdx = matchingIndex;
+      else if (months.length > 0) currentMonthIdx = 0;
+
+      lastSuccessfulSync = new Date().toISOString();
+      syncErrorMessage = '';
+      renderTabs();
+      renderTable();
+      renderStats();
+      recalcAll();
+      refreshTodayPanel();
+      saveStateLocal();
+      return true;
+    } finally {
+      activeSyncOperations = Math.max(0, activeSyncOperations - 1);
+      updateSyncIndicator();
+    }
+  })().finally(() => {
+    remoteRefreshPromise = null;
+  });
+
+  return remoteRefreshPromise;
+}
+
 function setMobileSidebarOpen(open) {
   const sidebar = document.getElementById('sidebar');
   const backdrop = document.getElementById('sidebar-backdrop');
@@ -6458,6 +6540,11 @@ document.addEventListener('visibilitychange', () => {
   if (document.visibilityState !== 'visible') return;
   refreshTodayPanel();
   scheduleTodayPanelRefresh();
+  refreshDataFromSupabase();
+});
+
+window.addEventListener('focus', () => {
+  refreshDataFromSupabase();
 });
 
 function initSidebarState() {
