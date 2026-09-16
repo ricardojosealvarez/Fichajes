@@ -1840,11 +1840,11 @@
       class="version-trigger"
       id="release-notes-trigger"
       type="button"
-      aria-label="Ver notas de la versión 2.17.3"
+      aria-label="Ver notas de la versión 2.18.0"
       aria-haspopup="dialog"
       aria-controls="release-notes-modal"
       onclick="openReleaseNotesModal()"
-    ><span id="app-version">v2.17.3</span></button>
+    ><span id="app-version">v2.18.0</span></button>
     <button id="signout-btn" style="
       padding: 6px 12px;
       background: transparent;
@@ -2138,6 +2138,14 @@ const DAY_TYPES = [
   { key: 'navidad',    label: 'Turno de navidad', color: '#ffb347' },
 ];
 const RELEASE_NOTES = [
+  {
+    version: '2.18.0',
+    date: '2026-09-16',
+    title: 'Nuevas estadísticas de jornada',
+    changes: [
+      'Se muestran los porcentajes de horas trabajadas por la mañana y por la tarde, además del recuento de jornadas partidas y únicas.'
+    ]
+  },
   {
     version: '2.17.3',
     date: '2026-09-16',
@@ -3742,6 +3750,7 @@ function renderStats() {
   const cfg = getConfig();
   let absRunning = getPrevMonthEndABS();
   let totalSuma = 0, expected = 0, days = 0, festivos = 0;
+  let morningMinutes = 0, afternoonMinutes = 0, splitDays = 0, singleDays = 0;
 
   for (let i = 0; i < m.days.length; i++) {
     const day = m.days[i];
@@ -3753,10 +3762,33 @@ function renderStats() {
       totalSuma += bolsaDay.suma;
       expected += getHoraDay(day.date);
       days++;
+
+      const entrada = timeToMins(day.entrada);
+      const salida = timeToMins(day.salida);
+      const comidaIni = timeToMins(day.comidaIni);
+      const comidaFin = timeToMins(day.comidaFin);
+      const desayunoIni = timeToMins(day.desayunoIni);
+      const desayunoFin = timeToMins(day.desayunoFin);
+      const effectiveEntrada = Math.max(entrada, cfg.hourIn);
+      const desayunoMinutes = desayunoIni !== null && desayunoFin !== null
+        ? Math.max(desayunoFin - desayunoIni - cfg.desayunoTime, 0)
+        : 0;
+
+      if (comidaIni !== null && comidaFin !== null) {
+        splitDays++;
+        morningMinutes += Math.max(comidaIni - effectiveEntrada - desayunoMinutes, 0);
+        afternoonMinutes += Math.max(salida - comidaFin, 0);
+      } else {
+        singleDays++;
+        morningMinutes += bolsaDay.suma;
+      }
     }
   }
 
   const diff = totalSuma - expected;
+  const workedMinutes = morningMinutes + afternoonMinutes;
+  const morningPct = workedMinutes ? Math.round((morningMinutes / workedMinutes) * 100) : 0;
+  const afternoonPct = workedMinutes ? 100 - morningPct : 0;
 
   const stats = [
     { label: 'Días registrados', val: days, cls: 'neutral' },
@@ -3765,6 +3797,8 @@ function renderStats() {
     { label: 'Horas esperadas', val: minsToTime(expected), cls: 'neutral' },
     { label: 'Diferencia total', val: minsToTime(diff), cls: diff >= 0 ? 'pos' : 'neg' },
     { label: 'Bolsa ABS final', val: minsToTime(absRunning), cls: absRunning >= 0 ? 'pos' : 'neg' },
+    { label: 'Horas mañana / tarde', val: `${morningPct}% / ${afternoonPct}%`, cls: 'info' },
+    { label: 'Jornada partida / única', val: `${splitDays} / ${singleDays}`, cls: 'info' },
   ];
 
   document.getElementById('stats').innerHTML = stats.map(s =>
