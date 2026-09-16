@@ -1840,11 +1840,11 @@
       class="version-trigger"
       id="release-notes-trigger"
       type="button"
-      aria-label="Ver notas de la versión 2.18.0"
+      aria-label="Ver notas de la versión 2.18.1"
       aria-haspopup="dialog"
       aria-controls="release-notes-modal"
       onclick="openReleaseNotesModal()"
-    ><span id="app-version">v2.18.0</span></button>
+    ><span id="app-version">v2.18.1</span></button>
     <button id="signout-btn" style="
       padding: 6px 12px;
       background: transparent;
@@ -2138,6 +2138,14 @@ const DAY_TYPES = [
   { key: 'navidad',    label: 'Turno de navidad', color: '#ffb347' },
 ];
 const RELEASE_NOTES = [
+  {
+    version: '2.18.1',
+    date: '2026-09-16',
+    title: 'Estadísticas visibles en el dashboard',
+    changes: [
+      'Las métricas de distribución de horas y tipos de jornada aparecen ahora en la vista ESTADÍSTICAS.'
+    ]
+  },
   {
     version: '2.18.0',
     date: '2026-09-16',
@@ -3991,6 +3999,10 @@ function buildDashboardData() {
   let entryTotal = 0;
   let exitTotal = 0;
   let averageDays = 0;
+  let morningMinutes = 0;
+  let afternoonMinutes = 0;
+  let splitDays = 0;
+  let singleDays = 0;
   const balancePoints = [];
   const buckets = new Map();
   const typeCounts = Object.fromEntries(DAY_TYPES.map(type => [type.key, 0]));
@@ -4016,6 +4028,21 @@ function buildDashboardData() {
           completedDays++;
           const entry = timeToMins(day.entrada);
           const exit = timeToMins(bolsaDay.salida);
+          const comidaIni = timeToMins(day.comidaIni);
+          const comidaFin = timeToMins(day.comidaFin);
+          const desayunoIni = timeToMins(day.desayunoIni);
+          const desayunoFin = timeToMins(day.desayunoFin);
+          const desayunoPenalty = desayunoIni !== null && desayunoFin !== null
+            ? Math.max(desayunoFin - desayunoIni - cfg.desayunoTime, 0)
+            : 0;
+          if (entry !== null && exit !== null && comidaIni !== null && comidaFin !== null) {
+            splitDays++;
+            morningMinutes += Math.max(comidaIni - Math.max(entry, cfg.hourIn) - desayunoPenalty, 0);
+            afternoonMinutes += Math.max(exit - comidaFin, 0);
+          } else {
+            singleDays++;
+            morningMinutes += dayWorked;
+          }
           if (entry !== null && exit !== null) {
             entryTotal += entry;
             exitTotal += exit;
@@ -4051,6 +4078,10 @@ function buildDashboardData() {
   const teleEnd = selectedEnd < now ? selectedEnd : now;
   const currentQuarterConsumed = getTeleConsumedUntil(focusMonth, teleEnd, cfg);
   const currentQuarterAllocation = getTeleBolsaForQuarter(focusMonth.month);
+  const distributionTotal = morningMinutes + afternoonMinutes;
+  const morningPercentage = distributionTotal > 0
+    ? Math.round(morningMinutes / distributionTotal * 100)
+    : 0;
 
   return {
     indexes,
@@ -4067,6 +4098,10 @@ function buildDashboardData() {
     teleQuarter: getQuarterForMonth(focusMonth.month) + 1,
     averageEntry: averageDays > 0 ? Math.round(entryTotal / averageDays) : null,
     averageExit: averageDays > 0 ? Math.round(exitTotal / averageDays) : null,
+    morningPercentage,
+    afternoonPercentage: distributionTotal > 0 ? 100 - morningPercentage : 0,
+    splitDays,
+    singleDays,
     balancePoints,
     buckets: Array.from(buckets.values()),
     typeCounts
@@ -4239,6 +4274,24 @@ function renderDashboard() {
           <span>${data.averageExit === null ? '--:--' : minsToTime(data.averageExit)}</span>
         </div>
         <div class="dashboard-kpi-detail">Solo fichajes completos</div>
+      </div>
+      <div class="dashboard-kpi">
+        <div class="dashboard-kpi-label">Horas mañana / tarde</div>
+        <div class="dashboard-kpi-value dashboard-kpi-time-range">
+          <span>${data.morningPercentage}%</span>
+          <span class="dashboard-kpi-separator">/</span>
+          <span>${data.afternoonPercentage}%</span>
+        </div>
+        <div class="dashboard-kpi-detail">Jornada única o mañana / tarde partida</div>
+      </div>
+      <div class="dashboard-kpi">
+        <div class="dashboard-kpi-label">Jornada partida / única</div>
+        <div class="dashboard-kpi-value dashboard-kpi-time-range">
+          <span>${data.splitDays}</span>
+          <span class="dashboard-kpi-separator">/</span>
+          <span>${data.singleDays}</span>
+        </div>
+        <div class="dashboard-kpi-detail">Días completos registrados</div>
       </div>
     </div>
 
