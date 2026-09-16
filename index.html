@@ -496,6 +496,7 @@
     white-space: nowrap;
   }
   th.center { text-align: center; }
+  td.center { text-align: center; }
   tbody tr {
     border-bottom: 2px solid var(--border);
     transition: background 0.1s;
@@ -1505,6 +1506,8 @@
       text-align: left;
       font-size: 14px;
     }
+    .attendance-table td.center { align-items: center; }
+    .attendance-table td.center .time-display { text-align: center; }
     .attendance-table .tele-cell {
       display: flex;
       flex-flow: row wrap;
@@ -1837,11 +1840,11 @@
       class="version-trigger"
       id="release-notes-trigger"
       type="button"
-      aria-label="Ver notas de la versión 2.17.2"
+      aria-label="Ver notas de la versión 2.17.3"
       aria-haspopup="dialog"
       aria-controls="release-notes-modal"
       onclick="openReleaseNotesModal()"
-    ><span id="app-version">v2.17.2</span></button>
+    ><span id="app-version">v2.17.3</span></button>
     <button id="signout-btn" style="
       padding: 6px 12px;
       background: transparent;
@@ -2135,6 +2138,14 @@ const DAY_TYPES = [
   { key: 'navidad',    label: 'Turno de navidad', color: '#ffb347' },
 ];
 const RELEASE_NOTES = [
+  {
+    version: '2.17.3',
+    date: '2026-09-16',
+    title: 'Alineación de columnas calculadas',
+    changes: [
+      'Los datos de Salida, Suma, Diario y Bolsa quedan centrados respecto a sus encabezados.'
+    ]
+  },
   {
     version: '2.17.2',
     date: '2026-09-04',
@@ -3670,7 +3681,7 @@ function renderTable() {
       <td class="mobile-hidden" data-label="Desayuno fin">${renderTimeDisplay(day.desayunoFin)}</td>
       <td class="mobile-hidden" data-label="Comida inicio">${renderTimeDisplay(day.comidaIni)}</td>
       <td class="mobile-hidden" data-label="Comida fin">${renderTimeDisplay(day.comidaFin)}</td>
-      <td data-label="Salida">
+      <td class="center" data-label="Salida">
         ${renderTimeDisplay(day.salida || salidaDisplay, salidaAuto ? 'auto-calc' : '')}
         ${day.salida && salidaRecomendada ? `<small class="auto-calc">Recomendada: ${salidaRecomendada}</small>` : ''}
       </td>
