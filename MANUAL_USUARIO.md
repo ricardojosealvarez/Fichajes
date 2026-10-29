@@ -1,8 +1,8 @@
 # Manual de usuario de Fichajes
 
-Versión de la aplicación: 2.15.0
+Versión de la aplicación: 2.19.1
 
-Fecha del manual: 2026-07-30
+Fecha del manual: 2026-10-29
 
 ## 1. Propósito
 
@@ -70,6 +70,7 @@ Según la situación puede mostrar:
 - Estado: sin iniciar, en curso, completado, horario a revisar, día no hábil, fin de semana o mes sin crear.
 - Entrada y salida.
 - Salida y total previstos cuando la aplicación puede calcularlos.
+- Salida recomendada de los viernes, separada de la salida guardada.
 - Diferencia diaria y saldo de bolsa.
 - Marca de teletrabajo.
 
@@ -87,7 +88,9 @@ El botón del panel abre directamente el fichaje del día. Si el mes actual toda
 
 ### 5.1 Seleccionar mes
 
-Usar las pestañas de la cabecera para cambiar entre meses. Si hay más de 12 meses, se activan los botones de navegación anterior y siguiente.
+Usar las pestañas de la cabecera para cambiar entre meses. Las etiquetas muestran el mes abreviado y las dos últimas cifras del año, por ejemplo `Oct 26`. Al situar el puntero sobre una pestaña se muestra el mes y el año completos.
+
+Cuando los meses no caben en el espacio disponible, aparecen los botones de navegación anterior y siguiente. La aplicación centra el mes activo en la zona visible al cargar o cambiar de mes.
 
 ### 5.2 Crear mes
 
@@ -95,6 +98,8 @@ Usar las pestañas de la cabecera para cambiar entre meses. Si hay más de 12 me
 2. Seleccionar año.
 3. Seleccionar mes.
 4. Pulsar `Crear`.
+
+El formulario propone el mes siguiente al último creado. Si el último es diciembre, propone enero del año siguiente. Si no hay meses, propone el mes y el año actuales. Se pueden cambiar ambos valores antes de crear el mes.
 
 El mes se genera con días laborables de lunes a viernes. Los festivos nacionales y autonómicos de Andalucía se calculan para el año seleccionado y se marcan automáticamente como `Festivo`, salvo que se haya personalizado ese calendario.
 
@@ -283,22 +288,39 @@ La aplicación aplica estas reglas de bolsa:
 - Viernes fuera de la jornada intensiva: el saldo positivo queda limitado a `05:00`.
 - De lunes a jueves no se aplica un tope adicional.
 
-### 9.4 Salida automática de viernes
+### 9.4 Salida recomendada y automática de los viernes
 
-En viernes hábil con entrada registrada y salida vacía, la aplicación calcula una salida automática para ajustar la jornada al saldo de bolsa disponible. La salida calculada aparece destacada como valor automático.
+En viernes hábil con entrada registrada, la aplicación recomienda una hora de salida utilizando el saldo positivo de bolsa disponible al comenzar ese día. Tiene en cuenta la jornada esperada, la hora mínima de entrada y el exceso de desayuno. La recomendación nunca es anterior a la `Hora mín. salida` configurada, cuyo valor inicial es `13:45`.
+
+- Si la salida está vacía, la recomendación se muestra como salida automática y se utiliza para los cálculos de jornada y bolsa.
+- Si ya hay una salida guardada, se conserva esa hora y se muestra debajo `Recomendada: HH:MM`. Los cálculos siguen usando la salida guardada.
+- En el panel `Hoy`, la recomendación aparece como `Salida prevista` cuando no hay salida guardada, o como `Salida recomendada` junto a la salida existente.
+
+Si no hay bolsa positiva, la recomendación corresponde a completar la jornada ordinaria, respetando la hora mínima de salida. Para registrar la salida real, editar el fichaje y guardar la hora correspondiente.
 
 ## 10. Teletrabajo
 
-### 10.1 Configurar bolsa trimestral
+### 10.1 Configurar bolsas trimestrales por año
 
-La sección `Bolsa teletrabajo` permite definir una bolsa por trimestre:
+Cada año dispone de cuatro bolsas trimestrales independientes. Se pueden configurar antes de crear los meses de ese año.
+
+1. Abrir `Bolsa teletrabajo` en el panel lateral.
+2. Introducir el año en `Año de las bolsas trimestrales`, entre 2020 y 2099.
+3. Rellenar las bolsas de los trimestres que corresponda.
+4. Salir del campo para guardar el valor y comprobar el indicador de sincronización.
+
+Los trimestres son:
 
 - T1: enero, febrero y marzo.
 - T2: abril, mayo y junio.
 - T3: julio, agosto y septiembre.
 - T4: octubre, noviembre y diciembre.
 
-El formato es `HH:MM`.
+El formato es `HH:MM` y admite duraciones superiores a 23 horas, por ejemplo `120:00`. Los minutos deben estar entre `00` y `59`. Un valor inválido se marca en rojo y no sustituye el último valor válido.
+
+Al cambiar de mes, el panel muestra automáticamente las bolsas del año de ese mes. Cambiar solo el año del panel permite configurar otro año sin cambiar el mes seleccionado.
+
+Los años sin configurar empiezan con las cuatro bolsas en `00:00`. Las bolsas que existían antes de la configuración anual se conservan en 2026; no se copian automáticamente a otros años.
 
 ### 10.2 Marcar teletrabajo
 
@@ -314,11 +336,11 @@ Ambas marcas son excluyentes. Si se activa una, la otra queda deshabilitada.
 - Día completo: consume la suma computada del día.
 - Tarde: consume el tiempo posterior al tramo de comida según las reglas de cálculo.
 
-La columna de teletrabajo muestra la bolsa restante del trimestre cuando el día tiene una marca activa.
+La columna de teletrabajo muestra la bolsa restante del trimestre cuando el día tiene una marca activa. El consumo se acumula entre los meses del mismo trimestre y año. Las bolsas y los consumos de otros años se calculan de forma independiente.
 
 ### 10.4 Avisos
 
-Si un trimestre queda excedido, el panel lateral muestra un aviso indicando el trimestre afectado y el exceso.
+Si un trimestre queda excedido, el panel lateral muestra un aviso indicando el año, el trimestre afectado y el exceso. Los avisos corresponden al año elegido en `Año de las bolsas trimestrales`.
 
 ## 11. Resumen y estadísticas
 
@@ -332,6 +354,8 @@ La sección `Resumen del mes` del panel lateral muestra:
 - Horas esperadas.
 - Diferencia total.
 - Bolsa ABS final.
+- Horas mañana / tarde: porcentajes de distribución del tiempo.
+- Jornada partida / única: número de días de cada modalidad.
 
 Los valores se recalculan al cambiar fichajes, tipos de día o configuración.
 
@@ -349,8 +373,10 @@ Los indicadores principales son:
 - Horas esperadas hasta la fecha actual.
 - Diferencia entre tiempo real y objetivo.
 - Bolsa acumulada.
-- Teletrabajo disponible y consumido en el trimestre natural correspondiente.
+- Teletrabajo disponible y consumido en el trimestre natural y año del mes seleccionado, aunque se consulte otro periodo de estadísticas.
 - Hora media de entrada y salida de fichajes completos.
+- Porcentajes de horas de mañana y de tarde.
+- Número de jornadas partidas y únicas.
 
 Los gráficos y paneles muestran:
 
@@ -361,6 +387,16 @@ Los gráficos y paneles muestran:
 
 Los días futuros no se incluyen como tiempo pendiente en los indicadores.
 
+### 11.3 Distribución de horas y tipos de jornada
+
+Los indicadores `Horas mañana / tarde` y `Jornada partida / única` aparecen tanto en el resumen mensual del panel lateral como en `ESTADÍSTICAS`.
+
+- Jornada partida: un día hábil computable con inicio y fin de comida registrados. El tramo de mañana llega hasta el inicio de comida y el de tarde comienza al terminarla. La hora mínima de entrada y el exceso de desayuno ajustan el tramo de mañana.
+- Jornada única: un día hábil computable sin un tramo completo de comida. Todo el tiempo computado se asigna a mañana, aunque la salida sea por la tarde.
+- Horas mañana / tarde: porcentajes sobre la suma de esos tramos, redondeados a números enteros. Si no hay tiempo computable, ambos muestran `0%`.
+
+El reparto describe los tramos horarios. La columna `Suma` sigue aplicando sus descuentos y límites de jornada. El resumen lateral utiliza los registros del mes completo; el dashboard utiliza el periodo elegido y solo incluye días transcurridos.
+
 ## 12. Copias de seguridad
 
 ### 12.1 Exportar backup JSON
@@ -370,7 +406,7 @@ Los días futuros no se incluyen como tiempo pendiente en los indicadores.
 
 El archivo generado contiene:
 
-- Configuración.
+- Configuración, incluidos los calendarios personalizados de festivos y las bolsas de teletrabajo de todos los años.
 - Todos los meses.
 - Todos los fichajes.
 - Tipos de día.
@@ -387,6 +423,8 @@ Uso recomendado: copia completa de seguridad o migración entre navegadores/disp
 4. Confirmar la sustitución de datos.
 
 La importación JSON reemplaza todos los datos actuales por los del archivo.
+
+Los backups anteriores a las bolsas anuales siguen siendo compatibles. Al importarlos, sus cuatro bolsas de teletrabajo se asignan a 2026; las de otros años deberán configurarse si no figuran en la copia.
 
 ## 13. Exportación e importación mensual
 
@@ -433,7 +471,15 @@ Pulsar el indicador para reintentar manualmente. Si no hay conexión, los cambio
 
 La aplicación protege la copia local: si la carga remota finaliza sin meses pero el navegador contiene datos, restaura la copia local y prepara su resincronización.
 
-### 14.3 Recomendación de backup
+### 14.3 Actualización al volver a la aplicación
+
+Al volver a una pestaña visible o recuperar el foco de la aplicación, se recargan los datos de la cuenta si hay sesión y conexión. Se mantiene seleccionado el mismo mes si sigue disponible.
+
+La recarga se aplaza mientras hay un formulario abierto u operaciones de guardado en curso. Si existen cambios locales en cola, primero se intenta sincronizarlos; solo se cargan los datos remotos cuando ya no quedan cambios pendientes. Si ese intento falla, se conserva la copia local.
+
+Para revisar cambios hechos desde otro dispositivo, esperar a que ese dispositivo muestre `Sincronizado` y volver a la aplicación en el dispositivo de consulta.
+
+### 14.4 Recomendación de backup
 
 Exportar JSON periódicamente, especialmente antes de:
 
@@ -575,14 +621,34 @@ Abrir `Gestionar festivos`, seleccionar el año y revisar si figura como `person
 
 Pulsar `Añadir mes actual`, revisar el año y el mes propuestos y confirmar la creación.
 
+### 19.10 Las bolsas de teletrabajo aparecen a cero al cambiar de año
+
+Comprobar `Año de las bolsas trimestrales`. Cada año tiene su propia configuración y los años nuevos empiezan en `00:00`. Introducir las bolsas del año que corresponda. Las bolsas anteriores a esta función se conservan en 2026.
+
+Si las bolsas se guardan localmente pero persiste un error al sincronizar, exportar un JSON y solicitar al responsable de la aplicación que compruebe que la base de datos admite la configuración anual de teletrabajo. Reintentar la sincronización cuando se haya corregido.
+
+### 19.11 No veo los cambios de otro dispositivo
+
+1. Comprobar que ambos dispositivos utilizan la misma cuenta y tienen conexión.
+2. Esperar a que el dispositivo donde se editó muestre `Sincronizado`.
+3. Cerrar los formularios abiertos en el dispositivo de consulta y volver a su pestaña o ventana.
+4. Si hay cambios locales pendientes, sincronizarlos antes de esperar la recarga remota.
+
+### 19.12 La recomendación del viernes es distinta de mi salida guardada
+
+La salida guardada se mantiene y es la que se utiliza en los cálculos. `Recomendada` es una orientación calculada con la bolsa positiva disponible. Si se quiere registrar otra hora de salida, editar el fichaje y guardarla.
+
 ## 20. Glosario
 
 - ABS: saldo acumulado de bolsa de horas mostrado en la columna `Bolsa`.
 - Bolsa: diferencia acumulada entre horas trabajadas y horas esperadas.
 - Diario: diferencia diaria entre suma computada y jornada esperada.
 - Jornada intensiva: periodo configurado donde se aplica la jornada de verano.
+- Jornada partida: jornada computable con inicio y fin de comida registrados.
+- Jornada única: jornada computable sin un tramo completo de comida; su tiempo se asigna a mañana en las estadísticas.
 - Pendiente: fichaje pasado o iniciado que carece de datos obligatorios o tiene una secuencia horaria incoherente.
 - Sincronización: copia de los cambios locales en la cuenta remota.
+- Salida recomendada: propuesta de salida del viernes calculada con la bolsa positiva disponible y la hora mínima de salida.
 - Suma: tiempo diario computado tras aplicar reglas de entrada, salida, desayuno y comida.
 - Teletrabajo DÍA: marca de teletrabajo para toda la jornada.
 - Teletrabajo TARDE: marca de teletrabajo para el tramo de tarde.

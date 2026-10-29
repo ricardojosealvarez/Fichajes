@@ -965,7 +965,7 @@ test('mantiene coherentes la versión visible, las notas y la caché', () => {
   const releaseNotes = vm.runInContext('RELEASE_NOTES', context);
   const sortedNotes = context.getSortedReleaseNotes(releaseNotes);
 
-  assert.equal(releaseNotes[0].version, '2.19.0');
+  assert.equal(releaseNotes[0].version, '2.19.1');
   assert.equal(releaseNotes.at(-1).version, '2.3.17');
   assert.deepEqual(
     Array.from(releaseNotes, release => release.version),
@@ -981,10 +981,10 @@ test('mantiene coherentes la versión visible, las notas y la caché', () => {
     && Array.isArray(release.changes)
     && release.changes.length > 0
   ));
-  assert.match(html, /id="app-version">v2\.19\.0</);
+  assert.match(html, /id="app-version">v2\.19\.1</);
   assert.match(html, /const APP_VERSION = RELEASE_NOTES\[0\]\.version;/);
   assert.match(html, /const swVersion = APP_VERSION;/);
-  assert.match(serviceWorker, /const APP_VERSION = '2\.19\.0';/);
+  assert.match(serviceWorker, /const APP_VERSION = '2\.19\.1';/);
 });
 
 test('actualiza desde Supabase al volver sin operaciones locales pendientes', () => {
@@ -1045,7 +1045,7 @@ test('integra el manual accesible y su descarga DOCX', () => {
   assert.match(html, /id="manual-close"[^>]+onclick="closeManualModal\(\)"/);
   assert.match(html, /document\.addEventListener\('keydown', handleManualKeydown\)/);
   assert.match(embeddedManual, /Manual de usuario de Fichajes/);
-  assert.match(embeddedManual, /Versión de la aplicación: 2\.15\.0/);
+  assert.match(embeddedManual, /Versión de la aplicación: 2\.19\.1/);
   assert.match(embeddedManual, /Dashboard de estadísticas/);
   assert.match(serviceWorker, /'\.\/MANUAL_USUARIO\.html'/);
   assert.match(serviceWorker, /'\.\/Manual_de_usuario_Fichajes\.docx'/);

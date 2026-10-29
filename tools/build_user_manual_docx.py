@@ -1,3 +1,4 @@
+from datetime import date
 from pathlib import Path
 import re
 
@@ -12,6 +13,17 @@ from docx.shared import Inches, Pt, RGBColor
 ROOT = Path(__file__).resolve().parent.parent
 SOURCE = ROOT / "MANUAL_USUARIO.md"
 OUTPUT = ROOT / "Manual_de_usuario_Fichajes.docx"
+SOURCE_TEXT = SOURCE.read_text(encoding="utf-8")
+APP_VERSION = re.search(
+    r"^Versión de la aplicación: (\d+\.\d+\.\d+)$", SOURCE_TEXT, re.MULTILINE
+).group(1)
+MANUAL_DATE = date.fromisoformat(re.search(
+    r"^Fecha del manual: (\d{4}-\d{2}-\d{2})$", SOURCE_TEXT, re.MULTILINE
+).group(1))
+MONTH_NAMES = (
+    "enero", "febrero", "marzo", "abril", "mayo", "junio",
+    "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"
+)
 
 BLUE = RGBColor(46, 116, 181)
 DARK_BLUE = RGBColor(31, 77, 120)
@@ -79,12 +91,12 @@ def set_cell_free_numbering(document):
         indent = OxmlElement("w:ind")
         indent.set(qn("w:left"), "540")
         indent.set(qn("w:hanging"), "270")
-        ppr.append(indent)
         spacing = OxmlElement("w:spacing")
         spacing.set(qn("w:after"), "80")
         spacing.set(qn("w:line"), "300")
         spacing.set(qn("w:lineRule"), "auto")
         ppr.append(spacing)
+        ppr.append(indent)
         level.append(ppr)
 
         if font:
@@ -96,7 +108,7 @@ def set_cell_free_numbering(document):
             level.append(rpr)
 
         abstract.append(level)
-        numbering.append(abstract)
+        numbering.insert_element_before(abstract, "w:num")
 
         num = OxmlElement("w:num")
         num.set(qn("w:numId"), str(next_num))
@@ -242,7 +254,7 @@ for name, size, color, before, after in [
 set_page_furniture(section)
 
 document.core_properties.title = "Manual de usuario de Fichajes"
-document.core_properties.subject = "Guía de uso de Fichajes v2.15.0"
+document.core_properties.subject = f"Guía de uso de Fichajes v{APP_VERSION}"
 document.core_properties.author = "Fichajes"
 
 document.add_paragraph().paragraph_format.space_after = Pt(92)
@@ -264,10 +276,11 @@ set_font(subtitle.add_run("Fichajes"), size=18, color=BLUE, bold=True)
 metadata = document.add_paragraph()
 metadata.alignment = WD_ALIGN_PARAGRAPH.CENTER
 metadata.paragraph_format.space_after = Pt(4)
-set_font(metadata.add_run("Versión de la aplicación 2.15.0"), size=11, color=MUTED, bold=True)
+set_font(metadata.add_run(f"Versión de la aplicación {APP_VERSION}"), size=11, color=MUTED, bold=True)
 date_line = document.add_paragraph()
 date_line.alignment = WD_ALIGN_PARAGRAPH.CENTER
-set_font(date_line.add_run("Actualizado el 30 de julio de 2026"), size=10, color=MUTED)
+formatted_date = f"{MANUAL_DATE.day} de {MONTH_NAMES[MANUAL_DATE.month - 1]} de {MANUAL_DATE.year}"
+set_font(date_line.add_run(f"Actualizado el {formatted_date}"), size=10, color=MUTED)
 
 contents_section = document.add_section(WD_SECTION.NEW_PAGE)
 contents_section.page_width = Inches(8.5)
@@ -283,7 +296,7 @@ contents_spacer = document.add_paragraph()
 contents_spacer.paragraph_format.space_after = Pt(34)
 contents_title = document.add_paragraph("Contenido", style="Heading 1")
 contents_title.paragraph_format.space_before = Pt(18)
-for line in SOURCE.read_text(encoding="utf-8").splitlines():
+for line in SOURCE_TEXT.splitlines():
     match = re.match(r"^##\s+(.+)$", line)
     if not match:
         continue
@@ -317,7 +330,7 @@ def flush_paragraph():
     paragraph_lines.clear()
 
 
-lines = SOURCE.read_text(encoding="utf-8").splitlines()
+lines = SOURCE_TEXT.splitlines()
 for index, raw_line in enumerate(lines):
     line = raw_line.strip()
     if index < 5:
