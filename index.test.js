@@ -87,6 +87,9 @@ const createTeleworkContext = (overrides = {}) => {
     currentMonthIdx: 0,
     teleworkConfigYear: null,
     teleworkAllocations: {},
+    workdayConfigYear: null,
+    workdayConfigs: {},
+    workdayBaseline: null,
     holidayCalendars: {},
     syncQueue: [],
     lastSuccessfulSync: null,
@@ -117,6 +120,12 @@ const createTeleworkContext = (overrides = {}) => {
   ['cfg-tele-year', 'cfg-tele-t1', 'cfg-tele-t2', 'cfg-tele-t3', 'cfg-tele-t4'].forEach(id => {
     inputs[id] = {value: '', style: {}};
   });
+  vm.runInContext(extractConstArray('WORKDAY_FIELDS'), context);
+  [
+    'getDefaultWorkdayConfig', 'normalizeWorkdayValue', 'normalizeWorkdayConfig',
+    'normalizeWorkdayConfigs', 'getWorkdayConfig', 'renderWorkdayConfig',
+    'changeWorkdayYear', 'updateWorkdayConfig', 'parseTimeInput', 'parseJIDate'
+  ].forEach(name => vm.runInContext(extractFunction(name), context));
   [
     'timeToMins', 'minsToTime', 'calcSuma', 'calcTeleTardeConsumed',
     'parseTeleworkDuration', 'normalizeTeleworkAllocations', 'readTeleworkAllocations',
@@ -139,6 +148,224 @@ const createTeleDay = (year, month, fields = {}) => ({
   desayunoIni: '', desayunoFin: '', comidaIni: '', comidaFin: '',
   teleDia: true, teleTarde: false, notas: '',
   ...fields
+});
+
+const createWorkdayContext = (overrides = {}) => {
+  const fixture = createTeleworkContext(overrides);
+  const {context, inputs} = fixture;
+  for (const field of vm.runInContext('WORKDAY_FIELDS', context)) {
+    inputs[field.id] = {value: field.value, style: {}, title: ''};
+  }
+  inputs['cfg-workday-year'] = {value: '', style: {}};
+  inputs['cfg-bolsa-inicio'] = {value: '00:00', style: {}};
+  [
+    'isVerano', 'getHoraDay', 'getConfig', 'getBolsaCap', 'isJIStartDay',
+    'isFirstDayAfterJI', 'applyBolsaBoundaryForDate', 'calcFridaySalida',
+    'calculateBolsaDay', 'computeBolsaUpTo', 'getCfgSalMin', 'toLocalIsoDate',
+    'getTodayPanelMetrics'
+  ].forEach(name => vm.runInContext(extractFunction(name), context));
+  return fixture;
+};
+
+test('conserva la jornada anterior y aísla los cambios de minutaje de 2027', () => {
+  const {context, inputs} = createWorkdayContext({months: [{year: 2026, month: 11, days: []}]});
+  context.applyConfigToDOM({horaDayInv: '07:43', horaDayVer: '07:00', hourIn: '07:00'});
+  assert.equal(inputs['cfg-workday-year'].value, '2026');
+  context.renderWorkdayConfig(2027);
+  inputs['cfg-hora-day-inv'].value = '7:30';
+  assert.equal(context.updateWorkdayConfig(inputs['cfg-hora-day-inv'], 'horaDayInv'), true);
+  assert.equal(inputs['cfg-hora-day-inv'].value, '07:30');
+  assert.equal(context.getHoraDay(new Date(2026, 11, 31)), 463);
+  assert.equal(context.getHoraDay(new Date(2027, 0, 4)), 450);
+  assert.equal(context.getHoraDay(new Date(2025, 0, 4)), 463);
+  assert.equal(context.getHoraDay(new Date(2028, 0, 4)), 463);
+  assert.equal(context.readConfigFromDOM().horaDayInv, '07:43');
+});
+
+test('configura años sin meses y rechaza años, horas y fechas inválidos', () => {
+  const {context, inputs} = createWorkdayContext();
+  context.applyConfigToDOM({});
+  inputs['cfg-workday-year'].value = '2027';
+  context.changeWorkdayYear(inputs['cfg-workday-year']);
+  inputs['cfg-hora-day-ver'].value = '06:45';
+  assert.equal(context.updateWorkdayConfig(inputs['cfg-hora-day-ver'], 'horaDayVer'), true);
+  const before = JSON.stringify(context.workdayConfigs);
+  for (const [id, key, value] of [
+    ['cfg-hora-day-ver', 'horaDayVer', '24:00'],
+    ['cfg-hora-day-ver', 'horaDayVer', '07:99'],
+    ['cfg-hora-day-ver', 'horaDayVer', ''],
+    ['cfg-ji-inicio', 'jiInicio', '31/02'],
+    ['cfg-ji-inicio', 'jiInicio', '29/02'],
+    ['cfg-ji-inicio', 'jiInicio', '01/13'],
+    ['cfg-ji-inicio', 'jiInicio', '16/09']
+  ]) {
+    inputs[id].value = value;
+    assert.equal(context.updateWorkdayConfig(inputs[id], key), false);
+    assert.equal(JSON.stringify(context.workdayConfigs), before);
+  }
+  for (const year of ['2019', '2100', '2027.5', '']) {
+    inputs['cfg-workday-year'].value = year;
+    context.changeWorkdayYear(inputs['cfg-workday-year']);
+    assert.equal(inputs['cfg-workday-year'].value, '2027');
+  }
+  context.renderWorkdayConfig(2026);
+  assert.equal(inputs['cfg-hora-day-ver'].value, '07:00');
+});
+
+test('usa las fechas de intensiva y las reglas horarias del año del fichaje', () => {
+  const {context} = createWorkdayContext({months: [{year: 2026, month: 0, days: []}]});
+  context.applyConfigToDOM({workdayByYear: {2027: {
+    jiInicio: '01/06', jiFin: '31/08', horaDayVer: '06:30',
+    hourIn: '08:00', desayuno: '00:10', comida: '00:30', salMin: '14:00'
+  }}});
+  assert.equal(context.isVerano(new Date(2026, 5, 8)), false);
+  assert.equal(context.isVerano(new Date(2027, 5, 8)), true);
+  assert.equal(context.getHoraDay(new Date(2027, 5, 8)), 390);
+  context.renderWorkdayConfig(2027);
+  assert.equal(context.getConfig(new Date(2026, 0, 5)).hourIn, 420);
+  assert.equal(context.getCfgSalMin(new Date(2026, 0, 5)), '13:45');
+  const cfg2027 = context.getConfig(new Date(2027, 0, 4));
+  assert.equal(cfg2027.hourIn, 480);
+  assert.equal(cfg2027.desayunoTime, 10);
+  assert.equal(cfg2027.horaLunch, 30);
+  assert.equal(cfg2027.horaMinsalida, 840);
+  assert.equal(context.applyBolsaBoundaryForDate(new Date(2027, 5, 1), 180), 0);
+  assert.equal(context.applyBolsaBoundaryForDate(new Date(2027, 8, 1), 180), 120);
+  assert.equal(context.applyBolsaBoundaryForDate(new Date(2026, 5, 1), 180), 180);
+});
+
+test('arrastra la bolsa positiva y negativa a enero usando la jornada de cada año', () => {
+  const december = createTeleDay(2026, 11, {date: new Date(2026, 11, 31), entrada: '07:00', salida: '16:43'});
+  const january = createTeleDay(2027, 0, {date: new Date(2027, 0, 4)});
+  const {context, inputs} = createWorkdayContext({months: [
+    {year: 2026, month: 11, days: [december]}, {year: 2027, month: 0, days: [january]}
+  ]});
+  context.applyConfigToDOM({bolsaInicio: '05:00', workdayByYear: {2027: {horaDayInv: '07:30'}}});
+  assert.equal(context.computeBolsaUpTo(1), 420);
+  assert.equal(context.computeBolsaUpTo(2), 390);
+  assert.equal(context.applyBolsaBoundaryForDate(new Date(2027, 0, 1), 420), 420);
+  assert.equal(context.applyBolsaBoundaryForDate(new Date(2027, 0, 1), -43), -43);
+  inputs['cfg-bolsa-inicio'].value = '00:00';
+  december.entrada = '08:00';
+  december.salida = '15:00';
+  assert.equal(context.computeBolsaUpTo(1), -43);
+  assert.equal(context.computeBolsaUpTo(2), -73);
+});
+
+test('la salida de los viernes y el panel Hoy usan su año aunque el panel configure otro', () => {
+  const friday = createTeleDay(2027, 0, {date: new Date(2027, 0, 8), salida: ''});
+  const {context} = createWorkdayContext({months: [{year: 2027, month: 0, days: [friday]}]});
+  context.applyConfigToDOM({workdayByYear: {2027: {horaDayInv: '07:30'}}});
+  context.renderWorkdayConfig(2026);
+  const result = context.calculateBolsaDay(friday, 0, context.getConfig(friday.date));
+  assert.equal(result.salidaRecomendada, '15:30');
+  const today = context.getTodayPanelMetrics({day: friday, monthIdx: 0, iso: '2027-01-08'});
+  assert.equal(today.exit, '15:30');
+  assert.equal(today.difference, 0);
+});
+
+test('el consumo de teletrabajo respeta las reglas de jornada de cada año', () => {
+  const {context} = createWorkdayContext({months: [
+    {year: 2026, month: 0, days: [createTeleDay(2026, 0, {entrada: '07:00'})]},
+    {year: 2027, month: 0, days: [createTeleDay(2027, 0, {entrada: '07:00'})]}
+  ]});
+  context.applyConfigToDOM({workdayByYear: {2027: {hourIn: '08:00'}}});
+  context.renderWorkdayConfig(2027);
+  assert.equal(context.getTeleConsumedByQuarter(2026)[0], 480);
+  assert.equal(context.getTeleConsumedByQuarter(2027)[0], 420);
+  context.renderWorkdayConfig(2026);
+  assert.equal(context.getTeleConsumedUntil(context.months[1], new Date(2027, 0, 31)), 420);
+});
+
+test('el trimestre que cruza de año calcula los objetivos con cada configuración anual', () => {
+  class AuditDate extends Date {
+    constructor(...args) { super(...(args.length ? args : [2028, 0, 1])); }
+  }
+  const {context} = createWorkdayContext({Date: AuditDate, months: [
+    {year: 2026, month: 11, days: [createTeleDay(2026, 11, {date: new AuditDate(2026, 11, 31)})]},
+    {year: 2027, month: 0, days: [createTeleDay(2027, 0, {date: new AuditDate(2027, 0, 4)})]}
+  ], dashboardPeriod: 'quarter', currentMonthIdx: 1, DAY_TYPES: [{key: 'habil'}],
+  getDashboardPeriodLabel: () => 'Diciembre 2026 - Enero 2027', getWeekNum: () => 1,
+  MONTH_NAMES: ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']});
+  ['getDashboardMonthIndexes', 'getDashboardBucketLabel', 'buildDashboardData'].forEach(name => vm.runInContext(extractFunction(name), context));
+  context.applyConfigToDOM({workdayByYear: {2027: {horaDayInv: '07:30', hourIn: '09:00'}}});
+  const result = context.buildDashboardData();
+  assert.equal(result.expected, 463 + 450);
+  assert.equal(result.worked, 420 + 360);
+  assert.equal(result.completedDays, 2);
+  assert.equal(result.buckets[0].expected, 463);
+  assert.equal(result.buckets[1].expected, 450);
+});
+
+test('guarda y recupera la jornada anual en caché y backups sin perder fichajes', () => {
+  let exported;
+  const {context, storage} = createWorkdayContext({months: [
+    {year: 2026, month: 0, days: [createTeleDay(2026, 0, {notas: 'Conservar texto original'})]}
+  ], downloadBlob: data => { exported = data; }, confirm: () => true,
+  applyAutomaticHolidaysToExistingMonths: () => [], saveState: () => {},
+  renderTabs: () => {}, renderTable: () => {}, renderStats: () => {}, setImportFeedback: () => {}});
+  context.applyConfigToDOM({horaDayInv: '07:43', bolsaInicio: '03:00', workdayByYear: {2027: {horaDayInv: '07:30'}}});
+  context.saveStateLocal();
+  assert.equal(JSON.parse(storage.get('test-cache')).config.workdayByYear[2027].horaDayInv, '07:30');
+  context.workdayConfigs = {};
+  assert.equal(context.loadStateLocal(), true);
+  assert.equal(context.getWorkdayConfig(2027).horaDayInv, '07:30');
+  ['exportJSON', 'importJSON'].forEach(name => vm.runInContext(extractFunction(name), context));
+  context.exportJSON();
+  context.workdayConfigs = {};
+  context.importJSON(exported);
+  assert.equal(context.getWorkdayConfig(2026).horaDayInv, '07:43');
+  assert.equal(context.getWorkdayConfig(2027).horaDayInv, '07:30');
+  assert.equal(context.months[0].days[0].notas, 'Conservar texto original');
+  const legacy = JSON.parse(exported);
+  delete legacy.config.workdayByYear;
+  context.importJSON(JSON.stringify(legacy));
+  assert.equal(context.getWorkdayConfig(2027).horaDayInv, '07:43');
+});
+
+test('sincroniza la jornada anual manteniendo los campos de configuración anteriores', async () => {
+  let payload;
+  const {context} = createWorkdayContext({currentUser: {id: 'user-test'}, currentSession: {access_token: 'test-token'},
+    SUPABASE_URL: 'https://example.invalid', SUPABASE_ANON_KEY: 'test-key',
+    fetch: async (_url, options) => { payload = JSON.parse(options.body); return {ok: true}; }
+  });
+  context.applyConfigToDOM({horaDayInv: '07:43', workdayByYear: {2027: {horaDayInv: '07:30'}}});
+  context.renderWorkdayConfig(2027);
+  assert.equal(await context.saveConfig(), true);
+  assert.equal(payload.horadayinv, '07:43');
+  assert.equal(payload.jornada_anual[2026].horaDayInv, '07:43');
+  assert.equal(payload.jornada_anual[2027].horaDayInv, '07:30');
+});
+
+test('conserva la jornada anual y la cola local cuando falta la columna remota', async () => {
+  const {context, storage} = createWorkdayContext({currentUser: {id: 'user-test'}, currentSession: {access_token: 'test-token'},
+    SUPABASE_URL: 'https://example.invalid', SUPABASE_ANON_KEY: 'test-key',
+    fetch: async () => ({ok: false, status: 400, text: async () => 'Missing column jornada_anual'})
+  });
+  context.applyConfigToDOM({workdayByYear: {2027: {horaDayInv: '07:30'}}});
+  assert.equal(await context.saveConfig(), false);
+  assert.equal(JSON.parse(storage.get('test-cache')).config.workdayByYear[2027].horaDayInv, '07:30');
+  assert.deepEqual(Array.from(context.syncQueue), ['config']);
+  assert.match(context.syncErrorMessage, /Falta activar la jornada anual/);
+});
+
+test('recupera de Supabase las jornadas anuales y admite configuraciones remotas antiguas', async () => {
+  let config = {horadayinv: '07:43', jornada_anual: {2027: {horaDayInv: '07:30'}}};
+  const {context, inputs} = createWorkdayContext({currentUser: {id: 'user-test'}, currentSession: {access_token: 'test-token'},
+    SUPABASE_URL: 'https://example.invalid', SUPABASE_ANON_KEY: 'test-key',
+    fetch: async url => ({ok: true, status: 200, json: async () => {
+      if (url.includes('/months?')) return [{id: 'month-test', year: 2027, month: 1}];
+      if (url.includes('/days?')) return [];
+      return [config];
+    }})
+  });
+  assert.equal(await context.loadDataFromSupabase(), true);
+  assert.equal(inputs['cfg-workday-year'].value, '2027');
+  assert.equal(inputs['cfg-hora-day-inv'].value, '07:30');
+  config = {horadayinv: '07:43'};
+  assert.equal(await context.loadDataFromSupabase(), true);
+  assert.equal(context.getWorkdayConfig(2026).horaDayInv, '07:43');
+  assert.equal(context.getWorkdayConfig(2027).horaDayInv, '07:43');
 });
 
 test('conserva las bolsas antiguas en 2026 incluso al abrir meses de 2027', () => {
@@ -299,8 +526,8 @@ test('el dashboard cuenta solo el trimestre y año seleccionados', () => {
     {year: 2027, month: 1, days: [createTeleDay(2027, 1)]},
     {year: 2027, month: 3, days: [createTeleDay(2027, 3)]}
   ]});
-  assert.equal(context.getTeleConsumedUntil(context.months[2], new Date(2027, 1, 1), context.getConfig()), 420);
-  assert.equal(context.getTeleConsumedUntil(context.months[2], new Date(2027, 2, 31), context.getConfig()), 840);
+  assert.equal(context.getTeleConsumedUntil(context.months[2], new Date(2027, 1, 1)), 420);
+  assert.equal(context.getTeleConsumedUntil(context.months[2], new Date(2027, 2, 31)), 840);
 });
 
 test('la caché local y los snapshots conservan todos los años y los fichajes', () => {
@@ -965,7 +1192,7 @@ test('mantiene coherentes la versión visible, las notas y la caché', () => {
   const releaseNotes = vm.runInContext('RELEASE_NOTES', context);
   const sortedNotes = context.getSortedReleaseNotes(releaseNotes);
 
-  assert.equal(releaseNotes[0].version, '2.19.1');
+  assert.equal(releaseNotes[0].version, '2.20.0');
   assert.equal(releaseNotes.at(-1).version, '2.3.17');
   assert.deepEqual(
     Array.from(releaseNotes, release => release.version),
@@ -981,10 +1208,10 @@ test('mantiene coherentes la versión visible, las notas y la caché', () => {
     && Array.isArray(release.changes)
     && release.changes.length > 0
   ));
-  assert.match(html, /id="app-version">v2\.19\.1</);
+  assert.match(html, /id="app-version">v2\.20\.0</);
   assert.match(html, /const APP_VERSION = RELEASE_NOTES\[0\]\.version;/);
   assert.match(html, /const swVersion = APP_VERSION;/);
-  assert.match(serviceWorker, /const APP_VERSION = '2\.19\.1';/);
+  assert.match(serviceWorker, /const APP_VERSION = '2\.20\.0';/);
 });
 
 test('actualiza desde Supabase al volver sin operaciones locales pendientes', () => {
@@ -1045,7 +1272,7 @@ test('integra el manual accesible y su descarga DOCX', () => {
   assert.match(html, /id="manual-close"[^>]+onclick="closeManualModal\(\)"/);
   assert.match(html, /document\.addEventListener\('keydown', handleManualKeydown\)/);
   assert.match(embeddedManual, /Manual de usuario de Fichajes/);
-  assert.match(embeddedManual, /Versión de la aplicación: 2\.19\.1/);
+  assert.match(embeddedManual, /Versión de la aplicación: 2\.20\.0/);
   assert.match(embeddedManual, /Dashboard de estadísticas/);
   assert.match(serviceWorker, /'\.\/MANUAL_USUARIO\.html'/);
   assert.match(serviceWorker, /'\.\/Manual_de_usuario_Fichajes\.docx'/);

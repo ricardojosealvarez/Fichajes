@@ -93,6 +93,25 @@ Para forzar actualización inmediata: incrementa `CACHE_VERSION` en `sw.js`
 
 ## Persistencia de datos
 
+### Configuración de jornada por año (v2.20.0)
+
+`Año de la jornada` permite configurar las horas de invierno y verano, las fechas
+de intensiva y las reglas horarias de cada año, incluso antes de crear sus meses.
+Los cálculos usan el año de cada fichaje, también en periodos de estadísticas
+que cruzan diciembre y enero. La bolsa de horas se arrastra entre años naturales.
+
+La configuración anterior se conserva como base para los años sin configurar.
+Al editar un año, sus ajustes se guardan de forma independiente; no se actualiza
+la base ni se alteran los demás años. La bolsa inicial sigue siendo un valor
+global aplicado al comienzo del histórico, no al inicio de cada enero.
+
+Antes de publicar, ejecutar `tools/enable_annual_workday.sql` en el proyecto de
+Supabase de Fichajes. Añade únicamente `config.jornada_anual` como JSONB y no
+modifica fichajes, campos anteriores ni políticas RLS. El almacenamiento local
+y los backups incluyen `config.workdayByYear`; los backups antiguos siguen
+siendo compatibles. Si falta la columna remota, la configuración se conserva
+localmente y queda pendiente de sincronización, sin descartar el cambio anual.
+
 ### Bolsas trimestrales de teletrabajo por año (v2.19.0)
 
 El campo `Año de las bolsas trimestrales` permite configurar T1–T4 de cada año,

@@ -1840,11 +1840,11 @@
       class="version-trigger"
       id="release-notes-trigger"
       type="button"
-      aria-label="Ver notas de la versión 2.19.1"
+      aria-label="Ver notas de la versión 2.20.0"
       aria-haspopup="dialog"
       aria-controls="release-notes-modal"
       onclick="openReleaseNotesModal()"
-    ><span id="app-version">v2.19.1</span></button>
+    ><span id="app-version">v2.20.0</span></button>
     <button id="signout-btn" style="
       padding: 6px 12px;
       background: transparent;
@@ -1877,42 +1877,47 @@
       <div class="section-title">Configuración</div>
       <div class="config-grid">
         <div class="config-row">
+          <label class="config-label" for="cfg-workday-year">Año de la jornada</label>
+          <input class="config-input" id="cfg-workday-year" type="number" min="2020" max="2099" data-manual-save="true" aria-describedby="workday-year-help" onchange="changeWorkdayYear(this)">
+        </div>
+        <div class="config-row">
           <div class="config-label">Horas/día — Invierno</div>
-          <input class="config-input" id="cfg-hora-day-inv" type="text" maxlength="5" value="07:43" placeholder="HH:MM" onchange="validateConfigTime(this)" oninput="recalcAll()">
+          <input class="config-input" id="cfg-hora-day-inv" type="text" maxlength="5" value="07:43" placeholder="HH:MM" data-manual-save="true" onchange="updateWorkdayConfig(this, 'horaDayInv')">
         </div>
         <div class="config-row">
           <div class="config-label">Horas/día — Verano</div>
-          <input class="config-input" id="cfg-hora-day-ver" type="text" maxlength="5" value="07:00" placeholder="HH:MM" onchange="validateConfigTime(this)" oninput="recalcAll()">
+          <input class="config-input" id="cfg-hora-day-ver" type="text" maxlength="5" value="07:00" placeholder="HH:MM" data-manual-save="true" onchange="updateWorkdayConfig(this, 'horaDayVer')">
         </div>
         <div class="config-row">
           <div class="config-label">Inicio jornada intensiva</div>
-          <input class="config-input" id="cfg-ji-inicio" type="text" maxlength="5" value="15/06" placeholder="DD/MM" onchange="recalcAll()" oninput="recalcAll()">
+          <input class="config-input" id="cfg-ji-inicio" type="text" maxlength="5" value="15/06" placeholder="DD/MM" data-manual-save="true" onchange="updateWorkdayConfig(this, 'jiInicio')">
         </div>
         <div class="config-row">
           <div class="config-label">Fin jornada intensiva</div>
-          <input class="config-input" id="cfg-ji-fin" type="text" maxlength="5" value="15/09" placeholder="DD/MM" onchange="recalcAll()" oninput="recalcAll()">
+          <input class="config-input" id="cfg-ji-fin" type="text" maxlength="5" value="15/09" placeholder="DD/MM" data-manual-save="true" onchange="updateWorkdayConfig(this, 'jiFin')">
         </div>
         <div class="config-row">
           <div class="config-label">Hora mín. entrada</div>
-          <input class="config-input" id="cfg-hour-in" type="text" maxlength="5" value="07:00" placeholder="HH:MM" onchange="validateConfigTime(this)" oninput="recalcAll()">
+          <input class="config-input" id="cfg-hour-in" type="text" maxlength="5" value="07:00" placeholder="HH:MM" data-manual-save="true" onchange="updateWorkdayConfig(this, 'hourIn')">
         </div>
         <div class="config-row">
           <div class="config-label">Tiempo máx. desayuno</div>
-          <input class="config-input" id="cfg-desayuno" type="text" maxlength="5" value="00:15" placeholder="HH:MM" onchange="validateConfigTime(this)" oninput="recalcAll()">
+          <input class="config-input" id="cfg-desayuno" type="text" maxlength="5" value="00:15" placeholder="HH:MM" data-manual-save="true" onchange="updateWorkdayConfig(this, 'desayuno')">
         </div>
         <div class="config-row">
           <div class="config-label">Tiempo mín. comida</div>
-          <input class="config-input" id="cfg-comida" type="text" maxlength="5" value="01:00" placeholder="HH:MM" onchange="validateConfigTime(this)" oninput="recalcAll()">
+          <input class="config-input" id="cfg-comida" type="text" maxlength="5" value="01:00" placeholder="HH:MM" data-manual-save="true" onchange="updateWorkdayConfig(this, 'comida')">
         </div>
         <div class="config-row">
           <div class="config-label">Hora mín. salida</div>
-          <input class="config-input" id="cfg-sal-min" type="text" maxlength="5" value="13:45" placeholder="HH:MM" onchange="validateConfigTime(this)" oninput="recalcAll()">
+          <input class="config-input" id="cfg-sal-min" type="text" maxlength="5" value="13:45" placeholder="HH:MM" data-manual-save="true" onchange="updateWorkdayConfig(this, 'salMin')">
         </div>
         <div class="config-row">
-          <div class="config-label">Bolsa inicio de año (máx. 5:00)</div>
+          <div class="config-label">Bolsa inicial del histórico (máx. 5:00)</div>
           <input class="config-input" id="cfg-bolsa-inicio" type="text" maxlength="5" value="00:00" placeholder="HH:MM" onchange="validateBolsaInicio(this)" oninput="recalcAll()">
         </div>
       </div>
+      <p class="config-label" id="workday-year-help">Los ajustes se aplican solo al año elegido. Los años sin configurar conservan los ajustes anteriores. La bolsa no se reinicia al cambiar de año.</p>
     </div>
 
     <div>
@@ -2143,6 +2148,16 @@ const DAY_TYPES = [
   { key: 'navidad',    label: 'Turno de navidad', color: '#ffb347' },
 ];
 const RELEASE_NOTES = [
+  {
+    version: '2.20.0',
+    date: '2026-10-29',
+    title: 'Configuración de jornada por año',
+    changes: [
+      'Las horas de jornada, las fechas de intensiva y las reglas horarias se configuran por año sin alterar los cálculos de otros años.',
+      'La bolsa de horas continúa de diciembre a enero y conserva sus reglas de cambio de horario.',
+      'Las copias JSON y la sincronización conservan las jornadas anuales y la configuración anterior.'
+    ]
+  },
   {
     version: '2.19.1',
     date: '2026-10-29',
@@ -2482,6 +2497,16 @@ const RELEASE_NOTES = [
   }
 ];
 const APP_VERSION = RELEASE_NOTES[0].version;
+const WORKDAY_FIELDS = [
+  {key: 'horaDayInv', remote: 'horadayinv', id: 'cfg-hora-day-inv', value: '07:43'},
+  {key: 'horaDayVer', remote: 'horadayver', id: 'cfg-hora-day-ver', value: '07:00'},
+  {key: 'jiInicio', remote: 'jiinicio', id: 'cfg-ji-inicio', value: '15/06'},
+  {key: 'jiFin', remote: 'jifin', id: 'cfg-ji-fin', value: '15/09'},
+  {key: 'hourIn', remote: 'hourin', id: 'cfg-hour-in', value: '07:00'},
+  {key: 'desayuno', remote: 'desayuno', id: 'cfg-desayuno', value: '00:15'},
+  {key: 'comida', remote: 'comida', id: 'cfg-comida', value: '01:00'},
+  {key: 'salMin', remote: 'salmin', id: 'cfg-sal-min', value: '13:45'}
+];
 let months = [];
 let currentMonthIdx = 0;
 let openMenuIdx = null;
@@ -2490,6 +2515,9 @@ let dashboardPeriod = 'month';
 let holidayCalendars = {};
 let teleworkAllocations = {};
 let teleworkConfigYear = null;
+let workdayConfigs = {};
+let workdayConfigYear = null;
+let workdayBaseline = null;
 let holidaySaveInProgress = false;
 let releaseNotesReturnFocus = null;
 let manualReturnFocus = null;
@@ -2518,27 +2546,116 @@ function parseJIDate(str, year) {
   return new Date(year, m - 1, d);
 }
 
+function getDefaultWorkdayConfig() {
+  return Object.fromEntries(WORKDAY_FIELDS.map(field => [field.key, field.value]));
+}
+
+function normalizeWorkdayValue(key, raw, year = 2000) {
+  const value = String(raw ?? '').trim();
+  if (key !== 'jiInicio' && key !== 'jiFin') return value ? parseTimeInput(value) : null;
+  const match = /^(\d{1,2})\/(\d{1,2})$/.exec(value);
+  if (!match) return null;
+  const day = Number(match[1]);
+  const month = Number(match[2]);
+  const date = new Date(year, month - 1, day);
+  if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) return null;
+  return `${String(day).padStart(2, '0')}/${String(month).padStart(2, '0')}`;
+}
+
+function normalizeWorkdayConfig(source, fallback = getDefaultWorkdayConfig(), year = 2000) {
+  return Object.fromEntries(WORKDAY_FIELDS.map(field => [
+    field.key, normalizeWorkdayValue(field.key, source?.[field.key] ?? source?.[field.remote], year) ?? fallback[field.key]
+  ]));
+}
+
+function normalizeWorkdayConfigs(source, baseline = getDefaultWorkdayConfig()) {
+  let parsed = source;
+  if (typeof parsed === 'string') {
+    try { parsed = JSON.parse(parsed); } catch { return {}; }
+  }
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {};
+  const result = {};
+  for (const [key, config] of Object.entries(parsed)) {
+    const year = Number(key);
+    if (!Number.isInteger(year) || year < 2020 || year > 2099) continue;
+    if (!config || typeof config !== 'object' || Array.isArray(config)) continue;
+    result[year] = normalizeWorkdayConfig(config, baseline, year);
+  }
+  return result;
+}
+
+function getWorkdayConfig(year) {
+  return workdayConfigs[year] ?? workdayBaseline ?? getDefaultWorkdayConfig();
+}
+
+function renderWorkdayConfig(year = months[currentMonthIdx]?.year ?? new Date().getFullYear()) {
+  workdayConfigYear = Number(year);
+  const yearInput = document.querySelector('#cfg-workday-year');
+  if (yearInput) yearInput.value = String(workdayConfigYear);
+  const config = getWorkdayConfig(workdayConfigYear);
+  for (const field of WORKDAY_FIELDS) {
+    const input = document.querySelector(`#${field.id}`);
+    if (!input) continue;
+    input.value = config[field.key];
+    input.style.borderColor = '';
+    input.title = '';
+  }
+}
+
+function changeWorkdayYear(input) {
+  const year = Number(input.value);
+  if (!Number.isInteger(year) || year < 2020 || year > 2099) {
+    input.value = String(workdayConfigYear);
+    return;
+  }
+  renderWorkdayConfig(year);
+}
+
+function updateWorkdayConfig(input, key) {
+  if (!WORKDAY_FIELDS.some(field => field.key === key)) return false;
+  const year = workdayConfigYear ?? months[currentMonthIdx]?.year ?? new Date().getFullYear();
+  const value = normalizeWorkdayValue(key, input.value, year);
+  const config = {...getWorkdayConfig(year), [key]: value};
+  const start = parseJIDate(config.jiInicio, year);
+  const end = parseJIDate(config.jiFin, year);
+  if (value === null || !start || !end || start > end) {
+    input.style.borderColor = 'var(--danger)';
+    input.title = 'Introduce una hora válida o fechas de intensiva válidas y ordenadas.';
+    return false;
+  }
+  workdayConfigs[year] = config;
+  input.value = value;
+  input.style.borderColor = '';
+  input.title = '';
+  recalcAll();
+  saveStateLocal();
+  saveConfig();
+  return true;
+}
+
 function isVerano(date) {
   const y = date.getFullYear();
-  const jiIni = parseJIDate(document.getElementById('cfg-ji-inicio')?.value, y);
-  const jiFin = parseJIDate(document.getElementById('cfg-ji-fin')?.value, y);
+  const config = getWorkdayConfig(y);
+  const jiIni = parseJIDate(config.jiInicio, y);
+  const jiFin = parseJIDate(config.jiFin, y);
   if (!jiIni || !jiFin) return false;
   return date >= jiIni && date <= jiFin;
 }
 
 function getHoraDay(date) {
-  const verano = isVerano(date);
-  const id = verano ? 'cfg-hora-day-ver' : 'cfg-hora-day-inv';
-  return timeToMins(document.getElementById(id)?.value);
+  const config = getWorkdayConfig(date.getFullYear());
+  return timeToMins(isVerano(date) ? config.horaDayVer : config.horaDayInv);
 }
 
-function getConfig() {
+function getConfig(dateOrYear = months[currentMonthIdx]?.year ?? new Date().getFullYear()) {
+  const year = dateOrYear instanceof Date ? dateOrYear.getFullYear() : dateOrYear;
+  const config = getWorkdayConfig(year);
   return {
-    horaDay: timeToMins(document.getElementById('cfg-hora-day-inv').value), // fallback; use getHoraDay(date) per-row
-    hourIn: timeToMins(document.getElementById('cfg-hour-in').value),
-    desayunoTime: timeToMins(document.getElementById('cfg-desayuno').value),
-    horaLunch: timeToMins(document.getElementById('cfg-comida').value),
-    horaMinsalida: timeToMins(document.getElementById('cfg-sal-min').value),
+    horaDay: dateOrYear instanceof Date ? getHoraDay(dateOrYear) : timeToMins(config.horaDayInv),
+    hourIn: timeToMins(config.hourIn),
+    desayunoTime: timeToMins(config.desayuno),
+    horaLunch: timeToMins(config.comida),
+    horaMinsalida: timeToMins(config.salMin),
   };
 }
 
@@ -3162,6 +3279,7 @@ function renderTabs() {
   }).join('');
   tabs.onscroll = () => syncTabsViewport();
   renderHolidaySummary();
+  renderWorkdayConfig();
   renderTeleworkConfig();
   updateTeleWarningBanner();
   requestAnimationFrame(() => requestAnimationFrame(() => syncTabsViewport(true)));
@@ -3228,7 +3346,7 @@ function getBolsaCap(date) {
 
 function isJIStartDay(date) {
   const y = date.getFullYear();
-  const jiIni = parseJIDate(document.getElementById('cfg-ji-inicio')?.value, y);
+  const jiIni = parseJIDate(getWorkdayConfig(y).jiInicio, y);
   if (!jiIni) return false;
   return date.getFullYear() === jiIni.getFullYear() &&
          date.getMonth()    === jiIni.getMonth() &&
@@ -3238,7 +3356,7 @@ function isJIStartDay(date) {
 function isFirstDayAfterJI(date) {
   // Returns true if this date is the first workday strictly after JI end
   const y = date.getFullYear();
-  const jiFin = parseJIDate(document.getElementById('cfg-ji-fin')?.value, y);
+  const jiFin = parseJIDate(getWorkdayConfig(y).jiFin, y);
   if (!jiFin) return false;
   // The day is after JI end and not a weekend
   if (date <= jiFin) return false;
@@ -3315,14 +3433,13 @@ function computeBolsaUpTo(targetMonthIdx) {
   );
   if (targetMonthIdx === 0) return bolsaInicio;
 
-  const cfg = getConfig();
   let abs = bolsaInicio;
 
   for (let mi = 0; mi < targetMonthIdx; mi++) {
     const m = months[mi];
     for (let i = 0; i < m.days.length; i++) {
       const d = m.days[i];
-      abs = calculateBolsaDay(d, abs, cfg).abs;
+      abs = calculateBolsaDay(d, abs, getConfig(d.date)).abs;
     }
   }
   return abs;
@@ -3448,7 +3565,7 @@ function getTeleDayConsumed(day, cfg) {
 }
 
 function getTeleConsumedByQuarter(year, beforeMonth = 12) {
-  const cfg = getConfig();
+  const cfg = getConfig(year);
   const consumed = {0: 0, 1: 0, 2: 0, 3: 0};
   for (const m of months) {
     if (m.year !== year || m.month >= beforeMonth) continue;
@@ -3479,7 +3596,7 @@ function computeTeleBolsa(targetMonthIdx) {
 function computeTeleBolsaPerDay() {
   const m = months[currentMonthIdx];
   if (!m) return [];
-  const cfg = getConfig();
+  const cfg = getConfig(m.year);
   let bolsaRunning = computeTeleBolsa(currentMonthIdx).bolsa;
   const result = [];
 
@@ -3551,7 +3668,7 @@ function getTodayPanelData(sourceMonths = months, now = new Date()) {
 
 function getTodayPanelMetrics(data) {
   if (!data?.day || data.day.tipo !== 'habil') return null;
-  const cfg = getConfig();
+  const cfg = getConfig(data.day.date);
   const monthData = months[data.monthIdx];
   const todayIso = data.iso || toLocalIsoDate(data.day.date);
   let abs = computeBolsaUpTo(data.monthIdx);
@@ -3712,7 +3829,7 @@ function renderTable() {
 
   // Ordenar días por fecha por si acaso
   m.days.sort((a, b) => a.date - b.date);
-  const cfg = getConfig();
+  const cfg = getConfig(m.year);
   let absRunning = getPrevMonthEndABS();
   const now = new Date();
   const teleBolsaByDay = computeTeleBolsaPerDay();
@@ -3833,7 +3950,7 @@ function renderStats() {
   const m = months[currentMonthIdx];
   if (!m) { document.getElementById('stats').innerHTML = ''; return; }
 
-  const cfg = getConfig();
+  const cfg = getConfig(m.year);
   let absRunning = getPrevMonthEndABS();
   let totalSuma = 0, expected = 0, days = 0, festivos = 0;
   let morningMinutes = 0, afternoonMinutes = 0, splitDays = 0, singleDays = 0;
@@ -4036,7 +4153,8 @@ function getDashboardDayTeleMinutes(day, cfg) {
   return getTeleDayConsumed(day, cfg);
 }
 
-function getTeleConsumedUntil(focusMonth, endDate, cfg) {
+function getTeleConsumedUntil(focusMonth, endDate) {
+  const cfg = getConfig(focusMonth.year);
   const quarter = getQuarterForMonth(focusMonth.month);
   let consumed = 0;
 
@@ -4059,7 +4177,6 @@ function buildDashboardData() {
   const indexes = getDashboardMonthIndexes(months, currentMonthIdx, dashboardPeriod);
   if (indexes.length === 0) return null;
 
-  const cfg = getConfig();
   const now = new Date();
   now.setHours(23, 59, 59, 999);
 
@@ -4082,6 +4199,7 @@ function buildDashboardData() {
 
   for (const monthIdx of indexes) {
     const monthData = months[monthIdx];
+    const cfg = getConfig(monthData.year);
     for (const day of monthData.days) {
       if (day.date > now) continue;
 
@@ -4149,7 +4267,7 @@ function buildDashboardData() {
     999
   );
   const teleEnd = selectedEnd < now ? selectedEnd : now;
-  const currentQuarterConsumed = getTeleConsumedUntil(focusMonth, teleEnd, cfg);
+  const currentQuarterConsumed = getTeleConsumedUntil(focusMonth, teleEnd);
   const currentQuarterAllocation = getTeleBolsaForQuarter(focusMonth.year, focusMonth.month);
   const distributionTotal = morningMinutes + afternoonMinutes;
   const morningPercentage = distributionTotal > 0
@@ -4700,7 +4818,7 @@ function confirmDeleteMonth() {
 function exportCSV() {
   const m = months[currentMonthIdx];
   if (!m) return;
-  const cfg = getConfig();
+  const cfg = getConfig(m.year);
   let csv = 'Fecha,ISO,Día,Tipo,Entrada,Des.Ini,Des.Fin,Com.Ini,Com.Fin,Salida,Suma,Diario,TeleDia,TeleTarde,Notas\n';
   let abs = getPrevMonthEndABS();
   for (const day of m.days) {
@@ -4744,14 +4862,8 @@ function exportJSON() {
 function readConfigFromDOM() {
   const g = id => document.getElementById(id)?.value ?? '';
   return {
-    horaDayInv:  g('cfg-hora-day-inv'),
-    horaDayVer:  g('cfg-hora-day-ver'),
-    jiInicio:    g('cfg-ji-inicio'),
-    jiFin:       g('cfg-ji-fin'),
-    hourIn:      g('cfg-hour-in'),
-    desayuno:    g('cfg-desayuno'),
-    comida:      g('cfg-comida'),
-    salMin:      g('cfg-sal-min'),
+    ...(workdayBaseline ?? getDefaultWorkdayConfig()),
+    workdayByYear: normalizeWorkdayConfigs(workdayConfigs, workdayBaseline ?? getDefaultWorkdayConfig()),
     bolsaInicio: g('cfg-bolsa-inicio'),
     teleT1:      teleworkAllocations[2026]?.t1 ?? '00:00',
     teleT2:      teleworkAllocations[2026]?.t2 ?? '00:00',
@@ -4765,15 +4877,11 @@ function readConfigFromDOM() {
 function applyConfigToDOM(cfg) {
   if (!cfg) return;
   const s = (id, val) => { const el = document.getElementById(id); if (el && val != null) el.value = val; };
-  s('cfg-hora-day-inv', cfg.horaDayInv);
-  s('cfg-hora-day-ver', cfg.horaDayVer);
-  s('cfg-ji-inicio',    cfg.jiInicio);
-  s('cfg-ji-fin',       cfg.jiFin);
-  s('cfg-hour-in',      cfg.hourIn);
-  s('cfg-desayuno',     cfg.desayuno);
-  s('cfg-comida',       cfg.comida);
-  s('cfg-sal-min',      cfg.salMin);
-  s('cfg-bolsa-inicio', cfg.bolsaInicio);
+  workdayBaseline = normalizeWorkdayConfig(cfg);
+  workdayConfigs = normalizeWorkdayConfigs(cfg.workdayByYear ?? cfg.jornada_anual, workdayBaseline);
+  if (!workdayConfigs[2026]) workdayConfigs[2026] = {...workdayBaseline};
+  renderWorkdayConfig();
+  s('cfg-bolsa-inicio', cfg.bolsaInicio ?? cfg.bolsainicio);
   teleworkAllocations = readTeleworkAllocations(cfg);
   renderTeleworkConfig();
   holidayCalendars = normalizeHolidayCalendars(cfg.festivos ?? cfg.holidays ?? {});
@@ -5101,7 +5209,7 @@ function saveRowChanges(idx) {
     const fieldName = inputEl.dataset.field;
     let minTime = null;
     if (fieldName === 'comidaIni' || fieldName === 'salida') {
-      minTime = getCfgSalMin();
+      minTime = getCfgSalMin(months[currentMonthIdx].days[idx].date);
     }
     handleTimeInput(inputEl, idx, fieldName, minTime);
   });
@@ -5144,8 +5252,9 @@ function updateTeleWarningBanner() {
   }
 }
 
-function getCfgSalMin() {
-  return document.getElementById('cfg-sal-min')?.value || '13:45';
+function getCfgSalMin(dateOrYear = months[currentMonthIdx]?.year ?? new Date().getFullYear()) {
+  const year = dateOrYear instanceof Date ? dateOrYear.getFullYear() : dateOrYear;
+  return getWorkdayConfig(year).salMin;
 }
 
 function validateBolsaInicio(el) {
@@ -6102,14 +6211,15 @@ async function performSaveConfig() {
     const config = readConfigFromDOM();
     const payload = {
       user_id: currentUser.id,
-      horadayinv: document.getElementById('cfg-hora-day-inv')?.value || null,
-      horadayver: document.getElementById('cfg-hora-day-ver')?.value || null,
-      jiinicio: document.getElementById('cfg-ji-inicio')?.value || null,
-      jifin: document.getElementById('cfg-ji-fin')?.value || null,
-      hourin: document.getElementById('cfg-hour-in')?.value || null,
-      desayuno: document.getElementById('cfg-desayuno')?.value || null,
-      comida: document.getElementById('cfg-comida')?.value || null,
-      salmin: document.getElementById('cfg-sal-min')?.value || null,
+      horadayinv: config.horaDayInv,
+      horadayver: config.horaDayVer,
+      jiinicio: config.jiInicio,
+      jifin: config.jiFin,
+      hourin: config.hourIn,
+      desayuno: config.desayuno,
+      comida: config.comida,
+      salmin: config.salMin,
+      jornada_anual: config.workdayByYear,
       bolsainicio: document.getElementById('cfg-bolsa-inicio')?.value || null,
       telet1: config.teleT1,
       telet2: config.teleT2,
@@ -6145,6 +6255,12 @@ async function performSaveConfig() {
           showLoginModal();
           return false;
         }
+      }
+      if (errText.includes('jornada_anual') && (res.status === 400 || res.status === 404)) {
+        const message = 'Falta activar la jornada anual en Supabase. Cambios guardados localmente.';
+        _showConfigToast(message, true);
+        finishSyncOperation(syncKey, false, message);
+        return false;
       }
       if (errText.includes('teletrabajo_anual') && (res.status === 400 || res.status === 404)) {
         const message = 'Falta activar las bolsas anuales en Supabase. Cambios guardados localmente.';
@@ -6277,22 +6393,7 @@ async function loadDataFromSupabase() {
     if (cfgRes.ok && cfgData.length > 0) {
       const cfg = cfgData[0];
       console.log('Config keys:', Object.keys(cfg));
-      // Solo sobreescribir si el valor de Supabase es no-nulo y no-vacío
-      const set = (id, val) => {
-        const el = document.getElementById(id);
-        if (el && val != null && val !== '') el.value = val;
-      };
-      set('cfg-hora-day-inv', cfg.horadayinv);
-      set('cfg-hora-day-ver', cfg.horadayver);
-      set('cfg-ji-inicio', cfg.jiinicio);
-      set('cfg-ji-fin', cfg.jifin);
-      set('cfg-hour-in', cfg.hourin);
-      set('cfg-desayuno', cfg.desayuno);
-      set('cfg-comida', cfg.comida);
-      set('cfg-sal-min', cfg.salmin);
-      set('cfg-bolsa-inicio', cfg.bolsainicio);
-      teleworkAllocations = readTeleworkAllocations(cfg);
-      holidayCalendars = normalizeHolidayCalendars(cfg.festivos ?? {});
+      applyConfigToDOM(cfg);
     } else if (cfgRes.ok && cfgData.length === 0) {
       // Sin fila de config: no sobreescribir con defaults; se creará cuando el usuario cambie un valor
       console.log('Sin config en Supabase para este usuario (se creará al guardar manualmente).');
@@ -6316,6 +6417,7 @@ async function loadDataFromSupabase() {
       days: data.days.sort((a, b) => a.date - b.date)
     }));
 
+    renderWorkdayConfig();
     renderTeleworkConfig();
     console.log('✓ Datos cargados correctamente, meses:', months.length);
     saveStateLocal();

@@ -1,6 +1,6 @@
 # Manual de usuario de Fichajes
 
-Versión de la aplicación: 2.19.1
+Versión de la aplicación: 2.20.0
 
 Fecha del manual: 2026-10-29
 
@@ -232,7 +232,15 @@ Los cambios se aplican también a meses ya creados. Si convertir una fecha en fe
 
 ## 8. Configuración de jornada
 
-La sección `Configuración` controla las reglas de cálculo.
+La sección `Configuración` controla las reglas de cálculo de cada año. Para ajustar una jornada:
+
+1. Elegir el `Año de la jornada`, entre 2020 y 2099.
+2. Modificar las horas por día, las fechas de intensiva o las reglas horarias que correspondan a ese año.
+3. Salir del campo para guardar y comprobar el estado de sincronización.
+
+Se puede configurar un año antes de crear sus meses. Al cambiar de mes, el panel muestra el año de ese mes. Cambiar solo `Año de la jornada` permite preparar otro año sin cambiar el mes seleccionado.
+
+La configuración que existía antes de esta función se conserva como base para los años sin configurar. Al editar un año, sus ajustes quedan guardados por separado. Por ejemplo, cambiar la jornada de 2027 de `07:43` a `07:30` no modifica los cálculos de 2026 ni los ajustes de otros años.
 
 ### 8.1 Horas por día
 
@@ -244,7 +252,7 @@ La sección `Configuración` controla las reglas de cálculo.
 - `Inicio jornada intensiva`: fecha en formato `DD/MM`.
 - `Fin jornada intensiva`: fecha en formato `DD/MM`.
 
-Los días comprendidos entre ambas fechas usan la jornada de verano.
+Los días comprendidos entre ambas fechas usan la jornada de verano del año del fichaje. Las fechas deben ser válidas para el año elegido y el inicio no puede ser posterior al fin. Un valor inválido se marca en rojo y no sustituye el último ajuste válido.
 
 ### 8.3 Reglas horarias
 
@@ -255,7 +263,9 @@ Los días comprendidos entre ambas fechas usan la jornada de verano.
 
 ### 8.4 Bolsa inicial
 
-`Bolsa inicio de año` define el saldo inicial de la bolsa de horas. El valor máximo admitido es `05:00`.
+`Bolsa inicial del histórico` define el saldo inicial de la bolsa de horas al comienzo de los meses registrados. El valor máximo admitido es `05:00`.
+
+Este valor es global y no pertenece al año elegido en el panel. La bolsa se conserva al pasar de diciembre a enero; no se reinicia ni se aplica de nuevo el saldo inicial por cambiar de año natural. Modificar este campo recalcula el saldo de todo el histórico.
 
 ## 9. Cálculos de jornada
 
@@ -279,6 +289,8 @@ Los días comprendidos entre ambas fechas usan la jornada de verano.
 ### 9.3 Bolsa
 
 `Bolsa` es el saldo acumulado tras aplicar cada día del mes y los meses anteriores.
+
+El saldo continúa entre años naturales, tanto si es positivo como negativo. Cada día se calcula con la configuración de jornada de su propio año, aunque el saldo provenga del anterior.
 
 La aplicación aplica estas reglas de bolsa:
 
@@ -406,7 +418,7 @@ El reparto describe los tramos horarios. La columna `Suma` sigue aplicando sus d
 
 El archivo generado contiene:
 
-- Configuración, incluidos los calendarios personalizados de festivos y las bolsas de teletrabajo de todos los años.
+- Configuración, incluidos los ajustes de jornada, los calendarios personalizados de festivos y las bolsas de teletrabajo de todos los años.
 - Todos los meses.
 - Todos los fichajes.
 - Tipos de día.
@@ -425,6 +437,8 @@ Uso recomendado: copia completa de seguridad o migración entre navegadores/disp
 La importación JSON reemplaza todos los datos actuales por los del archivo.
 
 Los backups anteriores a las bolsas anuales siguen siendo compatibles. Al importarlos, sus cuatro bolsas de teletrabajo se asignan a 2026; las de otros años deberán configurarse si no figuran en la copia.
+
+Los backups anteriores a la jornada anual también siguen siendo compatibles. Sus ajustes de jornada se utilizan como base para los años sin una configuración específica. La importación conserva los fichajes de la copia y no crea un reinicio de bolsa en enero.
 
 ## 13. Exportación e importación mensual
 
@@ -637,6 +651,12 @@ Si las bolsas se guardan localmente pero persiste un error al sincronizar, expor
 ### 19.12 La recomendación del viernes es distinta de mi salida guardada
 
 La salida guardada se mantiene y es la que se utiliza en los cálculos. `Recomendada` es una orientación calculada con la bolsa positiva disponible. Si se quiere registrar otra hora de salida, editar el fichaje y guardarla.
+
+### 19.13 Quiero cambiar la jornada de un año sin modificar el anterior
+
+Elegir `Año de la jornada` en `Configuración` y editar los campos de ese año. Las horas por día, las fechas de intensiva y las reglas horarias quedan separadas por año. La `Bolsa inicial del histórico` sigue siendo global y no debe utilizarse para abrir un año nuevo.
+
+Si los ajustes quedan guardados localmente pero la sincronización indica que falta activar la jornada anual, exportar un JSON y solicitar al responsable de la aplicación que habilite el almacenamiento anual. Reintentar la sincronización después de corregirlo.
 
 ## 20. Glosario
 

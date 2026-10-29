@@ -58,7 +58,7 @@
 </head>
 <body>
 <h1>Manual de usuario de Fichajes</h1>
-<p>Versión de la aplicación: 2.19.1</p>
+<p>Versión de la aplicación: 2.20.0</p>
 <p>Fecha del manual: 2026-10-29</p>
 <h2>1. Propósito</h2>
 <p>Fichajes es una aplicación web instalable para registrar jornadas laborales, controlar la bolsa de horas, marcar días no hábiles, gestionar teletrabajo y conservar copias de seguridad de los datos.</p>
@@ -135,16 +135,20 @@
 <ol><li>Abrir <code>Festivos</code> en el panel lateral.</li><li>Pulsar <code>Gestionar festivos</code>.</li><li>Seleccionar el año.</li><li>Para añadir o modificar un festivo, indicar fecha y nombre y pulsar <code>Añadir</code>.</li><li>Para eliminarlo, pulsar el botón de eliminación de su fila.</li><li>Para descartar personalizaciones, pulsar <code>Restaurar calendario automático</code>.</li></ol>
 <p>Los cambios se aplican también a meses ya creados. Si convertir una fecha en festivo implica borrar horas, notas o teletrabajo, la aplicación pide confirmación. Los festivos creados manualmente desde la tabla no se eliminan al restaurar el calendario automático.</p>
 <h2>8. Configuración de jornada</h2>
-<p>La sección <code>Configuración</code> controla las reglas de cálculo.</p>
+<p>La sección <code>Configuración</code> controla las reglas de cálculo de cada año. Para ajustar una jornada:</p>
+<ol><li>Elegir el <code>Año de la jornada</code>, entre 2020 y 2099.</li><li>Modificar las horas por día, las fechas de intensiva o las reglas horarias que correspondan a ese año.</li><li>Salir del campo para guardar y comprobar el estado de sincronización.</li></ol>
+<p>Se puede configurar un año antes de crear sus meses. Al cambiar de mes, el panel muestra el año de ese mes. Cambiar solo <code>Año de la jornada</code> permite preparar otro año sin cambiar el mes seleccionado.</p>
+<p>La configuración que existía antes de esta función se conserva como base para los años sin configurar. Al editar un año, sus ajustes quedan guardados por separado. Por ejemplo, cambiar la jornada de 2027 de <code>07:43</code> a <code>07:30</code> no modifica los cálculos de 2026 ni los ajustes de otros años.</p>
 <h3>8.1 Horas por día</h3>
 <ul><li><code>Horas/día - Invierno</code>: jornada esperada fuera del periodo intensivo.</li><li><code>Horas/día - Verano</code>: jornada esperada durante el periodo intensivo.</li></ul>
 <h3>8.2 Jornada intensiva</h3>
 <ul><li><code>Inicio jornada intensiva</code>: fecha en formato <code>DD/MM</code>.</li><li><code>Fin jornada intensiva</code>: fecha en formato <code>DD/MM</code>.</li></ul>
-<p>Los días comprendidos entre ambas fechas usan la jornada de verano.</p>
+<p>Los días comprendidos entre ambas fechas usan la jornada de verano del año del fichaje. Las fechas deben ser válidas para el año elegido y el inicio no puede ser posterior al fin. Un valor inválido se marca en rojo y no sustituye el último ajuste válido.</p>
 <h3>8.3 Reglas horarias</h3>
 <ul><li><code>Hora mín. entrada</code>: si se ficha antes de esta hora, el cálculo computa desde esta hora mínima.</li><li><code>Tiempo máx. desayuno</code>: el desayuno solo descuenta el exceso sobre este tiempo.</li><li><code>Tiempo mín. comida</code>: si hay tramo de comida, se descuenta como mínimo este tiempo.</li><li><code>Hora mín. salida</code>: si no hay comida, la salida computada no puede ser anterior a esta hora.</li></ul>
 <h3>8.4 Bolsa inicial</h3>
-<p><code>Bolsa inicio de año</code> define el saldo inicial de la bolsa de horas. El valor máximo admitido es <code>05:00</code>.</p>
+<p><code>Bolsa inicial del histórico</code> define el saldo inicial de la bolsa de horas al comienzo de los meses registrados. El valor máximo admitido es <code>05:00</code>.</p>
+<p>Este valor es global y no pertenece al año elegido en el panel. La bolsa se conserva al pasar de diciembre a enero; no se reinicia ni se aplica de nuevo el saldo inicial por cambiar de año natural. Modificar este campo recalcula el saldo de todo el histórico.</p>
 <h2>9. Cálculos de jornada</h2>
 <h3>9.1 Suma</h3>
 <p><code>Suma</code> representa el tiempo computado del día. Se calcula aplicando:</p>
@@ -154,6 +158,7 @@
 <ul><li>Valor positivo: se generan minutos a favor.</li><li>Valor negativo: faltan minutos respecto a la jornada esperada.</li></ul>
 <h3>9.3 Bolsa</h3>
 <p><code>Bolsa</code> es el saldo acumulado tras aplicar cada día del mes y los meses anteriores.</p>
+<p>El saldo continúa entre años naturales, tanto si es positivo como negativo. Cada día se calcula con la configuración de jornada de su propio año, aunque el saldo provenga del anterior.</p>
 <p>La aplicación aplica estas reglas de bolsa:</p>
 <ul><li>Primer día de jornada intensiva: el saldo se reinicia a <code>00:00</code>.</li><li>Primer día laborable posterior a la jornada intensiva: se conserva el saldo positivo con un máximo de <code>02:00</code>; un saldo negativo se ajusta a <code>00:00</code>.</li><li>Viernes durante la jornada intensiva: el saldo positivo queda limitado a <code>02:00</code>.</li><li>Viernes fuera de la jornada intensiva: el saldo positivo queda limitado a <code>05:00</code>.</li><li>De lunes a jueves no se aplica un tope adicional.</li></ul>
 <h3>9.4 Salida recomendada y automática de los viernes</h3>
@@ -199,12 +204,13 @@
 <h3>12.1 Exportar backup JSON</h3>
 <ol><li>Ir a <code>Backup completo</code>.</li><li>Pulsar <code>Exportar JSON</code>.</li></ol>
 <p>El archivo generado contiene:</p>
-<ul><li>Configuración, incluidos los calendarios personalizados de festivos y las bolsas de teletrabajo de todos los años.</li><li>Todos los meses.</li><li>Todos los fichajes.</li><li>Tipos de día.</li><li>Notas.</li><li>Marcas de teletrabajo.</li></ul>
+<ul><li>Configuración, incluidos los ajustes de jornada, los calendarios personalizados de festivos y las bolsas de teletrabajo de todos los años.</li><li>Todos los meses.</li><li>Todos los fichajes.</li><li>Tipos de día.</li><li>Notas.</li><li>Marcas de teletrabajo.</li></ul>
 <p>Uso recomendado: copia completa de seguridad o migración entre navegadores/dispositivos.</p>
 <h3>12.2 Importar backup JSON</h3>
 <ol><li>Ir a <code>Backup completo</code>.</li><li>Pulsar <code>Importar JSON</code>.</li><li>Seleccionar o arrastrar el archivo.</li><li>Confirmar la sustitución de datos.</li></ol>
 <p>La importación JSON reemplaza todos los datos actuales por los del archivo.</p>
 <p>Los backups anteriores a las bolsas anuales siguen siendo compatibles. Al importarlos, sus cuatro bolsas de teletrabajo se asignan a 2026; las de otros años deberán configurarse si no figuran en la copia.</p>
+<p>Los backups anteriores a la jornada anual también siguen siendo compatibles. Sus ajustes de jornada se utilizan como base para los años sin una configuración específica. La importación conserva los fichajes de la copia y no crea un reinicio de bolsa en enero.</p>
 <h2>13. Exportación e importación mensual</h2>
 <h3>13.1 Exportar CSV del mes</h3>
 <ol><li>Seleccionar el mes.</li><li>Ir a <code>Exportar / Importar mes</code>.</li><li>Pulsar <code>Exportar CSV del mes</code>.</li></ol>
@@ -285,6 +291,9 @@
 <ol><li>Comprobar que ambos dispositivos utilizan la misma cuenta y tienen conexión.</li><li>Esperar a que el dispositivo donde se editó muestre <code>Sincronizado</code>.</li><li>Cerrar los formularios abiertos en el dispositivo de consulta y volver a su pestaña o ventana.</li><li>Si hay cambios locales pendientes, sincronizarlos antes de esperar la recarga remota.</li></ol>
 <h3>19.12 La recomendación del viernes es distinta de mi salida guardada</h3>
 <p>La salida guardada se mantiene y es la que se utiliza en los cálculos. <code>Recomendada</code> es una orientación calculada con la bolsa positiva disponible. Si se quiere registrar otra hora de salida, editar el fichaje y guardarla.</p>
+<h3>19.13 Quiero cambiar la jornada de un año sin modificar el anterior</h3>
+<p>Elegir <code>Año de la jornada</code> en <code>Configuración</code> y editar los campos de ese año. Las horas por día, las fechas de intensiva y las reglas horarias quedan separadas por año. La <code>Bolsa inicial del histórico</code> sigue siendo global y no debe utilizarse para abrir un año nuevo.</p>
+<p>Si los ajustes quedan guardados localmente pero la sincronización indica que falta activar la jornada anual, exportar un JSON y solicitar al responsable de la aplicación que habilite el almacenamiento anual. Reintentar la sincronización después de corregirlo.</p>
 <h2>20. Glosario</h2>
 <ul><li>ABS: saldo acumulado de bolsa de horas mostrado en la columna <code>Bolsa</code>.</li><li>Bolsa: diferencia acumulada entre horas trabajadas y horas esperadas.</li><li>Diario: diferencia diaria entre suma computada y jornada esperada.</li><li>Jornada intensiva: periodo configurado donde se aplica la jornada de verano.</li><li>Jornada partida: jornada computable con inicio y fin de comida registrados.</li><li>Jornada única: jornada computable sin un tramo completo de comida; su tiempo se asigna a mañana en las estadísticas.</li><li>Pendiente: fichaje pasado o iniciado que carece de datos obligatorios o tiene una secuencia horaria incoherente.</li><li>Sincronización: copia de los cambios locales en la cuenta remota.</li><li>Salida recomendada: propuesta de salida del viernes calculada con la bolsa positiva disponible y la hora mínima de salida.</li><li>Suma: tiempo diario computado tras aplicar reglas de entrada, salida, desayuno y comida.</li><li>Teletrabajo DÍA: marca de teletrabajo para toda la jornada.</li><li>Teletrabajo TARDE: marca de teletrabajo para el tramo de tarde.</li></ul>
 <script>
