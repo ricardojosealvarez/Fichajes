@@ -93,6 +93,29 @@ Para forzar actualización inmediata: incrementa `CACHE_VERSION` en `sw.js`
 
 ## Persistencia de datos
 
+### Bolsas trimestrales de teletrabajo por año (v2.19.0)
+
+El campo `Año de las bolsas trimestrales` permite configurar T1–T4 de cada año,
+incluso antes de crear sus meses. Al cambiar de mes, el panel muestra su año.
+Las bolsas existentes se conservan en 2026. Los años sin configurar empiezan
+en `00:00`; sus consumos y avisos se calculan de forma independiente.
+Las duraciones admiten más de 23 horas, por ejemplo `120:00`.
+
+Antes de publicar esta versión, ejecutar `tools/enable_annual_telework.sql`
+en el editor SQL del proyecto de Supabase de Fichajes. Añade únicamente la
+columna JSONB `config.teletrabajo_anual`, sin cambiar las columnas anteriores
+ni los fichajes. La consulta final debe mostrar la columna como `jsonb`.
+La aplicación conserva los valores anteriores en `telet1`–`telet4` para 2026
+y usa la nueva columna para guardar todos los años.
+
+El almacenamiento local y los backups JSON incluyen `config.teleworkByYear`.
+Los backups anteriores siguen siendo importables y sus cuatro bolsas se
+asignan a 2026. Si falta la columna de Supabase, los cambios permanecen
+guardados localmente y la sincronización indica el error; tras añadirla,
+se puede reintentar la sincronización.
+
+### Almacenamiento local
+
 Los datos se guardan en `localStorage` del navegador bajo la clave `fichajes_v1`.
 
 - Se conservan entre sesiones y reinicios del navegador

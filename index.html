@@ -1840,11 +1840,11 @@
       class="version-trigger"
       id="release-notes-trigger"
       type="button"
-      aria-label="Ver notas de la versión 2.18.1"
+      aria-label="Ver notas de la versión 2.19.0"
       aria-haspopup="dialog"
       aria-controls="release-notes-modal"
       onclick="openReleaseNotesModal()"
-    ><span id="app-version">v2.18.1</span></button>
+    ><span id="app-version">v2.19.0</span></button>
     <button id="signout-btn" style="
       padding: 6px 12px;
       background: transparent;
@@ -1919,22 +1919,27 @@
       <div class="section-title">Bolsa teletrabajo</div>
       <div class="config-grid">
         <div class="config-row">
-          <div class="config-label">T1 — Ene/Feb/Mar (HH:MM)</div>
-          <input class="config-input" id="cfg-tele-t1" type="text" maxlength="8" value="00:00" placeholder="HH:MM" onchange="validateConfigTime(this)" oninput="recalcAll()">
+          <label class="config-label" for="cfg-tele-year">Año de las bolsas trimestrales</label>
+          <input class="config-input" id="cfg-tele-year" type="number" min="2020" max="2099" data-manual-save="true" aria-describedby="tele-year-help" onchange="changeTeleworkYear(this)">
         </div>
         <div class="config-row">
-          <div class="config-label">T2 — Abr/May/Jun (HH:MM)</div>
-          <input class="config-input" id="cfg-tele-t2" type="text" maxlength="8" value="00:00" placeholder="HH:MM" onchange="validateConfigTime(this)" oninput="recalcAll()">
+          <label class="config-label" for="cfg-tele-t1">T1 — Ene/Feb/Mar (HH:MM)</label>
+          <input class="config-input" id="cfg-tele-t1" type="text" maxlength="8" value="00:00" placeholder="HH:MM" data-manual-save="true" onchange="validateTeleworkTime(this, 1)" oninput="updateTeleworkAllocation(this, 1)">
         </div>
         <div class="config-row">
-          <div class="config-label">T3 — Jul/Ago/Sep (HH:MM)</div>
-          <input class="config-input" id="cfg-tele-t3" type="text" maxlength="8" value="00:00" placeholder="HH:MM" onchange="validateConfigTime(this)" oninput="recalcAll()">
+          <label class="config-label" for="cfg-tele-t2">T2 — Abr/May/Jun (HH:MM)</label>
+          <input class="config-input" id="cfg-tele-t2" type="text" maxlength="8" value="00:00" placeholder="HH:MM" data-manual-save="true" onchange="validateTeleworkTime(this, 2)" oninput="updateTeleworkAllocation(this, 2)">
         </div>
         <div class="config-row">
-          <div class="config-label">T4 — Oct/Nov/Dic (HH:MM)</div>
-          <input class="config-input" id="cfg-tele-t4" type="text" maxlength="8" value="00:00" placeholder="HH:MM" onchange="validateConfigTime(this)" oninput="recalcAll()">
+          <label class="config-label" for="cfg-tele-t3">T3 — Jul/Ago/Sep (HH:MM)</label>
+          <input class="config-input" id="cfg-tele-t3" type="text" maxlength="8" value="00:00" placeholder="HH:MM" data-manual-save="true" onchange="validateTeleworkTime(this, 3)" oninput="updateTeleworkAllocation(this, 3)">
+        </div>
+        <div class="config-row">
+          <label class="config-label" for="cfg-tele-t4">T4 — Oct/Nov/Dic (HH:MM)</label>
+          <input class="config-input" id="cfg-tele-t4" type="text" maxlength="8" value="00:00" placeholder="HH:MM" data-manual-save="true" onchange="validateTeleworkTime(this, 4)" oninput="updateTeleworkAllocation(this, 4)">
         </div>
       </div>
+      <p class="config-label" id="tele-year-help">Cada año tiene sus propias bolsas y consumo. Los años nuevos empiezan en 00:00.</p>
       <div class="tele-warning-banner" id="tele-warning-banner"></div>
     </div>
 
@@ -2106,7 +2111,7 @@
     <div class="modal-title">Añadir mes</div>
     <div class="config-row">
       <div class="config-label">Año</div>
-      <input class="config-input" id="new-year" type="number" value="2026" min="2020" max="2099">
+      <input class="config-input" id="new-year" type="number" min="2020" max="2099">
     </div>
     <div class="config-row">
       <div class="config-label">Mes</div>
@@ -2138,6 +2143,16 @@ const DAY_TYPES = [
   { key: 'navidad',    label: 'Turno de navidad', color: '#ffb347' },
 ];
 const RELEASE_NOTES = [
+  {
+    version: '2.19.0',
+    date: '2026-10-29',
+    title: 'Bolsas de teletrabajo por año',
+    changes: [
+      'Cada año dispone de cuatro bolsas trimestrales independientes, configurables antes de crear sus meses.',
+      'Los saldos, avisos y estadísticas separan el consumo de cada año y conservan la configuración anterior en 2026.',
+      'Las copias JSON y la sincronización incluyen la configuración de todos los años.'
+    ]
+  },
   {
     version: '2.18.1',
     date: '2026-09-16',
@@ -2464,6 +2479,8 @@ let openMenuIdx = null;
 let currentAppView = 'records';
 let dashboardPeriod = 'month';
 let holidayCalendars = {};
+let teleworkAllocations = {};
+let teleworkConfigYear = null;
 let holidaySaveInProgress = false;
 let releaseNotesReturnFocus = null;
 let manualReturnFocus = null;
@@ -3136,6 +3153,8 @@ function renderTabs() {
   }).join('');
   tabs.onscroll = () => syncTabsViewport();
   renderHolidaySummary();
+  renderTeleworkConfig();
+  updateTeleWarningBanner();
   requestAnimationFrame(() => requestAnimationFrame(() => syncTabsViewport(true)));
 }
 
@@ -3304,11 +3323,98 @@ function getPrevMonthEndABS() {
   return computeBolsaUpTo(currentMonthIdx);
 }
 
-function getTeleBolsaForQuarter(month) {
-  // month: 0-based. Returns assigned hours for the quarter containing that month.
-  const q = Math.floor(month / 3) + 1; // 1..4
-  const id = 'cfg-tele-t' + q;
-  return timeToMins(document.getElementById(id)?.value) || 0;
+function parseTeleworkDuration(raw) {
+  const value = String(raw ?? '').trim();
+  if (value === '') return '00:00';
+  if (!/^\d{1,5}(:\d{1,2})?$/.test(value)) return null;
+  let [hours, minutes] = value.split(':');
+  if (minutes === undefined && hours.length > 2) {
+    minutes = hours.slice(-2);
+    hours = hours.slice(0, -2);
+  }
+  const h = Number(hours);
+  const m = Number(minutes ?? 0);
+  if (h > 99999 || m > 59) return null;
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+}
+
+function normalizeTeleworkAllocations(source) {
+  let parsed = source;
+  if (typeof parsed === 'string') {
+    try { parsed = JSON.parse(parsed); } catch { return {}; }
+  }
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {};
+  const normalized = {};
+  for (const [key, quarters] of Object.entries(parsed)) {
+    const year = Number(key);
+    if (!Number.isInteger(year) || year < 2020 || year > 2099) continue;
+    if (!quarters || typeof quarters !== 'object' || Array.isArray(quarters)) continue;
+    normalized[year] = {};
+    for (let q = 1; q <= 4; q++) {
+      normalized[year][`t${q}`] = parseTeleworkDuration(quarters[`t${q}`]) ?? '00:00';
+    }
+  }
+  return normalized;
+}
+
+/** Conserva las bolsas anteriores, que no tenían año, exclusivamente en 2026. */
+function readTeleworkAllocations(config) {
+  const annual = normalizeTeleworkAllocations(config.teleworkByYear ?? config.teletrabajo_anual);
+  const legacy = [1, 2, 3, 4].map(q => config[`teleT${q}`] ?? config[`telet${q}`]);
+  if (!annual[2026] && legacy.some(value => value != null && value !== '')) {
+    annual[2026] = Object.fromEntries(legacy.map((value, index) => [
+      `t${index + 1}`, parseTeleworkDuration(value) ?? '00:00'
+    ]));
+  }
+  return annual;
+}
+
+function renderTeleworkConfig(year = months[currentMonthIdx]?.year ?? new Date().getFullYear()) {
+  teleworkConfigYear = Number(year);
+  const yearInput = document.querySelector('#cfg-tele-year');
+  if (yearInput) yearInput.value = String(teleworkConfigYear);
+  for (let q = 1; q <= 4; q++) {
+    const input = document.querySelector(`#cfg-tele-t${q}`);
+    if (!input) continue;
+    input.value = teleworkAllocations[teleworkConfigYear]?.[`t${q}`] ?? '00:00';
+    input.style.borderColor = '';
+  }
+}
+
+function changeTeleworkYear(input) {
+  const year = Number(input.value);
+  if (!Number.isInteger(year) || year < 2020 || year > 2099) {
+    input.value = String(teleworkConfigYear);
+    return;
+  }
+  renderTeleworkConfig(year);
+  updateTeleWarningBanner();
+}
+
+function updateTeleworkAllocation(input, quarter) {
+  const value = parseTeleworkDuration(input.value);
+  input.style.borderColor = value === null ? 'var(--danger)' : '';
+  if (value === null) return false;
+  const year = teleworkConfigYear ?? months[currentMonthIdx]?.year ?? new Date().getFullYear();
+  teleworkAllocations[year] = {
+    t1: '00:00', t2: '00:00', t3: '00:00', t4: '00:00',
+    ...teleworkAllocations[year],
+    [`t${quarter}`]: value
+  };
+  recalcAll();
+  return true;
+}
+
+function validateTeleworkTime(input, quarter) {
+  if (!updateTeleworkAllocation(input, quarter)) return;
+  input.value = parseTeleworkDuration(input.value);
+  saveStateLocal();
+  saveConfig();
+}
+
+function getTeleBolsaForQuarter(year, month) {
+  const q = Math.floor(month / 3) + 1;
+  return timeToMins(teleworkAllocations[year]?.[`t${q}`]) || 0;
 }
 
 function getQuarterForMonth(month) { return Math.floor(month / 3); } // 0..3
@@ -3323,46 +3429,40 @@ function calcTeleTardeConsumed(day, cfg) {
   return Math.max(salida - effectiveComFin, 0);
 }
 
-// Compute tele bolsa state: returns {bolsa, warnings}
-// bolsa = remaining tele minutes for the quarter of targetMonth at start of targetMonth
-// warnings = array of {quarter, deficit} for any quarter with negative bolsa
-function computeTeleBolsa(targetMonthIdx) {
-  // We need to process all months up to (not including) targetMonthIdx,
-  // tracking per-quarter consumption against quarterly allocation.
+function getTeleDayConsumed(day, cfg) {
+  if (day.tipo !== 'habil' || !day.entrada) return 0;
+  const suma = calcSuma(day, cfg);
+  if (suma === null) return 0;
+  if (day.teleDia) return suma;
+  if (day.teleTarde) return calcTeleTardeConsumed(day, cfg);
+  return 0;
+}
+
+function getTeleConsumedByQuarter(year, beforeMonth = 12) {
   const cfg = getConfig();
-  const consumed = {0:0, 1:0, 2:0, 3:0}; // per quarter total consumed minutes
-
-  for (let mi = 0; mi < targetMonthIdx; mi++) {
-    const m = months[mi];
+  const consumed = {0: 0, 1: 0, 2: 0, 3: 0};
+  for (const m of months) {
+    if (m.year !== year || m.month >= beforeMonth) continue;
     const q = getQuarterForMonth(m.month);
-    for (const d of m.days) {
-      if (d.tipo !== 'habil' || !d.entrada) continue;
-      const suma = calcSuma(d, cfg);
-      if (suma === null) continue;
-      if (d.teleDia) {
-        consumed[q] += suma;
-      } else if (d.teleTarde) {
-        consumed[q] += calcTeleTardeConsumed(d, cfg);
-      }
-    }
+    for (const day of m.days) consumed[q] += getTeleDayConsumed(day, cfg);
   }
+  return consumed;
+}
 
-  // Compute warnings for fully-processed quarters (before target month)
+function computeTeleBolsa(targetMonthIdx) {
+  const target = months[targetMonthIdx] ?? months[months.length - 1];
+  const year = target?.year ?? new Date().getFullYear();
+  const consumed = getTeleConsumedByQuarter(year, months[targetMonthIdx]?.month ?? 12);
   const warnings = [];
   for (let q = 0; q < 4; q++) {
-    const alloc = getTeleBolsaForQuarter(q * 3);
+    const alloc = getTeleBolsaForQuarter(year, q * 3);
     const rem = alloc - consumed[q];
-    if (rem < 0) warnings.push({quarter: q + 1, deficit: -rem});
+    if (rem < 0) warnings.push({year, quarter: q + 1, deficit: -rem});
   }
-
-  // Remaining bolsa for current quarter
-  const curQ = targetMonthIdx < months.length
-    ? getQuarterForMonth(months[targetMonthIdx].month)
-    : getQuarterForMonth(months[Math.max(0, months.length - 1)].month);
-  const alloc = getTeleBolsaForQuarter(curQ * 3);
+  const curQ = getQuarterForMonth(target?.month ?? 0);
+  const alloc = getTeleBolsaForQuarter(year, curQ * 3);
   const bolsa = alloc - consumed[curQ];
-
-  return {bolsa, warnings, consumed, curQ};
+  return {bolsa, warnings, consumed, curQ, year};
 }
 
 // Compute tele bolsa WITHIN the current month, day by day (for the table column)
@@ -3371,42 +3471,11 @@ function computeTeleBolsaPerDay() {
   const m = months[currentMonthIdx];
   if (!m) return [];
   const cfg = getConfig();
-  const curQ = getQuarterForMonth(m.month);
-
-  // Get consumed in earlier months of same quarter
-  const consumed = {0:0, 1:0, 2:0, 3:0};
-  for (let mi = 0; mi < currentMonthIdx; mi++) {
-    const pm = months[mi];
-    const pq = getQuarterForMonth(pm.month);
-    for (const d of pm.days) {
-      if (d.tipo !== 'habil' || !d.entrada) continue;
-      const suma = calcSuma(d, cfg);
-      if (suma === null) continue;
-      if (d.teleDia) {
-        consumed[pq] += suma;
-      } else if (d.teleTarde) {
-        consumed[pq] += calcTeleTardeConsumed(d, cfg);
-      }
-    }
-  }
-
-  const alloc = getTeleBolsaForQuarter(curQ * 3);
-  let bolsaRunning = alloc - consumed[curQ];
+  let bolsaRunning = computeTeleBolsa(currentMonthIdx).bolsa;
   const result = [];
 
   for (const day of m.days) {
-    let dayConsumed = 0;
-    if (day.tipo === 'habil' && day.entrada) {
-      const suma = calcSuma(day, cfg);
-      if (suma !== null) {
-        if (day.teleDia) {
-          dayConsumed = suma;
-        } else if (day.teleTarde) {
-          dayConsumed = calcTeleTardeConsumed(day, cfg);
-        }
-      }
-    }
-    bolsaRunning -= dayConsumed;
+    bolsaRunning -= getTeleDayConsumed(day, cfg);
     result.push({bolsa: bolsaRunning, warn: bolsaRunning < 0});
   }
   return result;
@@ -3955,12 +4024,7 @@ function getDashboardPeriodLabel(indexes) {
 }
 
 function getDashboardDayTeleMinutes(day, cfg) {
-  if (day.tipo !== 'habil' || !day.entrada) return 0;
-  const suma = calcSuma(day, cfg);
-  if (suma === null) return 0;
-  if (day.teleDia) return suma;
-  if (day.teleTarde) return calcTeleTardeConsumed(day, cfg);
-  return 0;
+  return getTeleDayConsumed(day, cfg);
 }
 
 function getTeleConsumedUntil(focusMonth, endDate, cfg) {
@@ -4077,7 +4141,7 @@ function buildDashboardData() {
   );
   const teleEnd = selectedEnd < now ? selectedEnd : now;
   const currentQuarterConsumed = getTeleConsumedUntil(focusMonth, teleEnd, cfg);
-  const currentQuarterAllocation = getTeleBolsaForQuarter(focusMonth.month);
+  const currentQuarterAllocation = getTeleBolsaForQuarter(focusMonth.year, focusMonth.month);
   const distributionTotal = morningMinutes + afternoonMinutes;
   const morningPercentage = distributionTotal > 0
     ? Math.round(morningMinutes / distributionTotal * 100)
@@ -4216,6 +4280,7 @@ function renderDashboardAlerts(data) {
 }
 
 function renderDashboard() {
+  updateTeleWarningBanner();
   const content = document.getElementById('content');
   const data = buildDashboardData();
   if (!data) {
@@ -4585,13 +4650,10 @@ function getWeekNum(date) {
 
 function showAddMonthModal() {
   document.getElementById('add-month-modal').classList.add('show');
-  // Auto-suggest next month
-  if (months.length > 0) {
-    const last = months[months.length - 1];
-    const next = new Date(last.year, last.month + 1, 1);
-    document.getElementById('new-year').value = next.getFullYear();
-    document.getElementById('new-month').value = next.getMonth();
-  }
+  const last = months[months.length - 1];
+  const next = last ? new Date(last.year, last.month + 1, 1) : new Date();
+  document.getElementById('new-year').value = next.getFullYear();
+  document.getElementById('new-month').value = next.getMonth();
 }
 
 function closeModal(id) {
@@ -4682,10 +4744,11 @@ function readConfigFromDOM() {
     comida:      g('cfg-comida'),
     salMin:      g('cfg-sal-min'),
     bolsaInicio: g('cfg-bolsa-inicio'),
-    teleT1:      g('cfg-tele-t1'),
-    teleT2:      g('cfg-tele-t2'),
-    teleT3:      g('cfg-tele-t3'),
-    teleT4:      g('cfg-tele-t4'),
+    teleT1:      teleworkAllocations[2026]?.t1 ?? '00:00',
+    teleT2:      teleworkAllocations[2026]?.t2 ?? '00:00',
+    teleT3:      teleworkAllocations[2026]?.t3 ?? '00:00',
+    teleT4:      teleworkAllocations[2026]?.t4 ?? '00:00',
+    teleworkByYear: normalizeTeleworkAllocations(teleworkAllocations),
     festivos:    normalizeHolidayCalendars(holidayCalendars),
   };
 }
@@ -4702,10 +4765,8 @@ function applyConfigToDOM(cfg) {
   s('cfg-comida',       cfg.comida);
   s('cfg-sal-min',      cfg.salMin);
   s('cfg-bolsa-inicio', cfg.bolsaInicio);
-  s('cfg-tele-t1',      cfg.teleT1);
-  s('cfg-tele-t2',      cfg.teleT2);
-  s('cfg-tele-t3',      cfg.teleT3);
-  s('cfg-tele-t4',      cfg.teleT4);
+  teleworkAllocations = readTeleworkAllocations(cfg);
+  renderTeleworkConfig();
   holidayCalendars = normalizeHolidayCalendars(cfg.festivos ?? cfg.holidays ?? {});
   renderHolidaySummary();
 }
@@ -5056,33 +5117,20 @@ function saveRowChanges(idx) {
 function updateTeleWarningBanner() {
   const banner = document.getElementById('tele-warning-banner');
   if (!banner) return;
-  // Compute consumption across all months for all quarters
-  const cfg = getConfig();
-  const consumed = {0:0, 1:0, 2:0, 3:0};
-  for (const m of months) {
-    const q = getQuarterForMonth(m.month);
-    for (const d of m.days) {
-      if (d.tipo !== 'habil' || !d.entrada) continue;
-      const suma = calcSuma(d, cfg);
-      if (suma === null) continue;
-      if (d.teleDia) {
-        consumed[q] += suma;
-      } else if (d.teleTarde) {
-        consumed[q] += calcTeleTardeConsumed(d, cfg);
-      }
-    }
-  }
+  const year = teleworkConfigYear ?? months[currentMonthIdx]?.year ?? new Date().getFullYear();
+  const consumed = getTeleConsumedByQuarter(year);
   const qNames = ['T1 (Ene–Mar)', 'T2 (Abr–Jun)', 'T3 (Jul–Sep)', 'T4 (Oct–Dic)'];
   const msgs = [];
   for (let q = 0; q < 4; q++) {
-    const alloc = getTeleBolsaForQuarter(q * 3);
+    const alloc = getTeleBolsaForQuarter(year, q * 3);
     const rem = alloc - consumed[q];
-    if (rem < 0) msgs.push(`⚠ ${qNames[q]}: excedido en ${minsToTime(-rem)}`);
+    if (rem < 0) msgs.push(`⚠ ${year} · ${qNames[q]}: excedido en ${minsToTime(-rem)}`);
   }
   if (msgs.length > 0) {
     banner.innerHTML = msgs.join('<br>');
     banner.classList.add('show');
   } else {
+    banner.textContent = '';
     banner.classList.remove('show');
   }
 }
@@ -6042,6 +6090,7 @@ async function performSaveConfig() {
 
   beginSyncOperation(syncKey);
   try {
+    const config = readConfigFromDOM();
     const payload = {
       user_id: currentUser.id,
       horadayinv: document.getElementById('cfg-hora-day-inv')?.value || null,
@@ -6053,10 +6102,11 @@ async function performSaveConfig() {
       comida: document.getElementById('cfg-comida')?.value || null,
       salmin: document.getElementById('cfg-sal-min')?.value || null,
       bolsainicio: document.getElementById('cfg-bolsa-inicio')?.value || null,
-      telet1: document.getElementById('cfg-tele-t1')?.value || null,
-      telet2: document.getElementById('cfg-tele-t2')?.value || null,
-      telet3: document.getElementById('cfg-tele-t3')?.value || null,
-      telet4: document.getElementById('cfg-tele-t4')?.value || null,
+      telet1: config.teleT1,
+      telet2: config.teleT2,
+      telet3: config.teleT3,
+      telet4: config.teleT4,
+      teletrabajo_anual: config.teleworkByYear,
       festivos: normalizeHolidayCalendars(holidayCalendars)
     };
     console.log('saveConfig payload:', JSON.stringify(payload));
@@ -6086,6 +6136,12 @@ async function performSaveConfig() {
           showLoginModal();
           return false;
         }
+      }
+      if (errText.includes('teletrabajo_anual') && (res.status === 400 || res.status === 404)) {
+        const message = 'Falta activar las bolsas anuales en Supabase. Cambios guardados localmente.';
+        _showConfigToast(message, true);
+        finishSyncOperation(syncKey, false, message);
+        return false;
       }
       console.error('Error guardando config, status:', res.status, 'body:', errText);
       _showConfigToast('Error config: ' + res.status + ' — ' + errText.slice(0, 80), true);
@@ -6226,10 +6282,7 @@ async function loadDataFromSupabase() {
       set('cfg-comida', cfg.comida);
       set('cfg-sal-min', cfg.salmin);
       set('cfg-bolsa-inicio', cfg.bolsainicio);
-      set('cfg-tele-t1', cfg.telet1);
-      set('cfg-tele-t2', cfg.telet2);
-      set('cfg-tele-t3', cfg.telet3);
-      set('cfg-tele-t4', cfg.telet4);
+      teleworkAllocations = readTeleworkAllocations(cfg);
       holidayCalendars = normalizeHolidayCalendars(cfg.festivos ?? {});
     } else if (cfgRes.ok && cfgData.length === 0) {
       // Sin fila de config: no sobreescribir con defaults; se creará cuando el usuario cambie un valor
@@ -6254,6 +6307,7 @@ async function loadDataFromSupabase() {
       days: data.days.sort((a, b) => a.date - b.date)
     }));
 
+    renderTeleworkConfig();
     console.log('✓ Datos cargados correctamente, meses:', months.length);
     saveStateLocal();
     return true;

@@ -77,6 +77,334 @@ const createContext = overrides => {
   return context;
 };
 
+const createTeleworkContext = (overrides = {}) => {
+  const inputs = {};
+  const storage = new Map();
+  const context = vm.createContext({
+    Date,
+    Math,
+    months: [],
+    currentMonthIdx: 0,
+    teleworkConfigYear: null,
+    teleworkAllocations: {},
+    holidayCalendars: {},
+    syncQueue: [],
+    lastSuccessfulSync: null,
+    activeSyncOperations: 0,
+    syncErrorMessage: '',
+    configSaveRequested: false,
+    configSavePromise: null,
+    currentUser: null,
+    isOnline: true,
+    STORAGE_KEY: 'test-cache',
+    console: {log: () => {}, warn: () => {}, error: () => {}},
+    localStorage: {
+      setItem: (key, value) => storage.set(key, value),
+      getItem: key => storage.get(key) ?? null
+    },
+    document: {
+      getElementById: id => inputs[id] ?? null,
+      querySelector: selector => inputs[selector.slice(1)] ?? null
+    },
+    getConfig: () => ({hourIn: 420, desayunoTime: 15, horaLunch: 60, horaMinsalida: 825}),
+    normalizeHolidayCalendars: value => value,
+    renderHolidaySummary: () => {},
+    recalcAll: () => {},
+    updateSyncIndicator: () => {},
+    _showConfigToast: () => {},
+    ...overrides
+  });
+  ['cfg-tele-year', 'cfg-tele-t1', 'cfg-tele-t2', 'cfg-tele-t3', 'cfg-tele-t4'].forEach(id => {
+    inputs[id] = {value: '', style: {}};
+  });
+  [
+    'timeToMins', 'minsToTime', 'calcSuma', 'calcTeleTardeConsumed',
+    'parseTeleworkDuration', 'normalizeTeleworkAllocations', 'readTeleworkAllocations',
+    'renderTeleworkConfig', 'changeTeleworkYear', 'updateTeleworkAllocation',
+    'validateTeleworkTime', 'getTeleBolsaForQuarter', 'getQuarterForMonth',
+    'getTeleDayConsumed', 'getTeleConsumedByQuarter', 'computeTeleBolsa',
+    'computeTeleBolsaPerDay', 'getDashboardDayTeleMinutes', 'getTeleConsumedUntil',
+    'updateTeleWarningBanner', 'readConfigFromDOM', 'applyConfigToDOM',
+    'serializeMonthsForStorage', 'reviveMonthsFromStorage', 'saveStateLocal',
+    'loadStateLocal', 'createStateSnapshot', 'restoreStateSnapshot',
+    'queueSyncChange', 'removeSyncChange', 'beginSyncOperation', 'finishSyncOperation',
+    'performSaveConfig', 'saveConfig', 'loadDataFromSupabase'
+  ].forEach(name => vm.runInContext(extractFunction(name), context));
+  return {context, inputs, storage};
+};
+
+const createTeleDay = (year, month, fields = {}) => ({
+  date: new Date(year, month, 4), tipo: 'habil',
+  entrada: '08:00', salida: '15:00',
+  desayunoIni: '', desayunoFin: '', comidaIni: '', comidaFin: '',
+  teleDia: true, teleTarde: false, notas: '',
+  ...fields
+});
+
+test('conserva las bolsas antiguas en 2026 incluso al abrir meses de 2027', () => {
+  const {context, inputs} = createTeleworkContext({months: [{year: 2027, month: 0, days: []}]});
+  context.applyConfigToDOM({teleT1: '120:00', teleT2: '90:30', teleT3: '00:00', teleT4: '80:00'});
+  assert.equal(context.getTeleBolsaForQuarter(2026, 0), 120 * 60);
+  assert.equal(context.getTeleBolsaForQuarter(2026, 5), 90 * 60 + 30);
+  assert.equal(context.getTeleBolsaForQuarter(2027, 0), 0);
+  assert.equal(inputs['cfg-tele-year'].value, '2027');
+  assert.equal(inputs['cfg-tele-t1'].value, '00:00');
+
+  const remote = context.readTeleworkAllocations({telet1: '120:00', telet4: '80:00'});
+  assert.equal(remote[2026].t1, '120:00');
+  assert.equal(remote[2026].t4, '80:00');
+  assert.equal(remote[2027], undefined);
+});
+
+test('respeta las bolsas anuales y un cero explícito frente a valores antiguos', () => {
+  const {context} = createTeleworkContext();
+  const annual = context.readTeleworkAllocations({
+    teleT1: '120:00',
+    teleworkByYear: {
+      2026: {t1: '00:00'}, 2027: {t1: '90:00', t2: '100:00', t3: '80:00', t4: '110:30'}
+    }
+  });
+  context.teleworkAllocations = annual;
+  assert.equal(context.getTeleBolsaForQuarter(2026, 0), 0);
+  [90 * 60, 100 * 60, 80 * 60, 110 * 60 + 30].forEach((minutes, q) => {
+    assert.equal(context.getTeleBolsaForQuarter(2027, q * 3 + 2), minutes);
+  });
+  assert.equal(context.getTeleBolsaForQuarter(2028, 0), 0);
+  const malformed = context.normalizeTeleworkAllocations('null');
+  assert.equal(Object.keys(malformed).length, 0);
+});
+
+test('configura años sin meses y cambia de año sin alterar otras bolsas', () => {
+  const {context, inputs} = createTeleworkContext({
+    months: [{year: 2026, month: 11, days: []}],
+    teleworkAllocations: {2026: {t1: '70:00', t4: '80:00'}}
+  });
+  context.renderTeleworkConfig();
+  assert.equal(inputs['cfg-tele-year'].value, '2026');
+  inputs['cfg-tele-year'].value = '2027';
+  context.changeTeleworkYear(inputs['cfg-tele-year']);
+  inputs['cfg-tele-t1'].value = '120:00';
+  context.validateTeleworkTime(inputs['cfg-tele-t1'], 1);
+  assert.equal(context.teleworkAllocations[2027].t1, '120:00');
+  assert.equal(context.teleworkAllocations[2026].t1, '70:00');
+  context.renderTeleworkConfig();
+  assert.equal(inputs['cfg-tele-year'].value, '2026');
+  assert.equal(inputs['cfg-tele-t4'].value, '80:00');
+  context.months.push({year: 2027, month: 0, days: []});
+  context.currentMonthIdx = 1;
+  context.renderTeleworkConfig();
+  assert.equal(inputs['cfg-tele-year'].value, '2027');
+  assert.equal(inputs['cfg-tele-t1'].value, '120:00');
+});
+
+test('al añadir meses sugiere enero del año siguiente y usa el año actual sin meses', () => {
+  const inputs = {
+    'add-month-modal': {classList: {add: () => {}}},
+    'new-year': {value: ''}, 'new-month': {value: ''}
+  };
+  const context = vm.createContext({
+    Date: class extends Date {
+      constructor(...args) { super(...(args.length ? args : [2028, 2, 1])); }
+    },
+    months: [{year: 2026, month: 11}],
+    document: {getElementById: id => inputs[id]}
+  });
+  vm.runInContext(extractFunction('showAddMonthModal'), context);
+  context.showAddMonthModal();
+  assert.equal(inputs['new-year'].value, 2027);
+  assert.equal(inputs['new-month'].value, 0);
+  context.months = [];
+  context.showAddMonthModal();
+  assert.equal(inputs['new-year'].value, 2028);
+  assert.equal(inputs['new-month'].value, 2);
+});
+
+test('admite duraciones trimestrales superiores a 23 horas y rechaza valores inválidos', () => {
+  const {context, inputs} = createTeleworkContext({teleworkConfigYear: 2027});
+  assert.equal(context.parseTeleworkDuration('120:30'), '120:30');
+  assert.equal(context.parseTeleworkDuration('800'), '08:00');
+  assert.equal(context.parseTeleworkDuration('99999:59'), '99999:59');
+  ['-01:00', '120:60', '12:00:00', 'abc', '100000:00'].forEach(value => {
+    inputs['cfg-tele-t1'].value = value;
+    context.validateTeleworkTime(inputs['cfg-tele-t1'], 1);
+    assert.equal(context.teleworkAllocations[2027], undefined);
+    assert.equal(context.syncQueue.length, 0);
+  });
+  context.renderTeleworkConfig(2027);
+  inputs['cfg-tele-year'].value = '2027.5';
+  context.changeTeleworkYear(inputs['cfg-tele-year']);
+  assert.equal(inputs['cfg-tele-year'].value, '2027');
+});
+
+test('separa el consumo diario, las tardes y los trimestres al cambiar de año', () => {
+  const {context} = createTeleworkContext({
+    months: [
+      {year: 2026, month: 0, days: [createTeleDay(2026, 0)]},
+      {year: 2026, month: 11, days: [createTeleDay(2026, 11)]},
+      {year: 2027, month: 0, days: [
+        createTeleDay(2027, 0),
+        createTeleDay(2027, 0, {teleDia: false, teleTarde: true, comidaIni: '14:00', comidaFin: '14:30', salida: '17:00'}),
+        createTeleDay(2027, 0, {tipo: 'vacaciones'}),
+        createTeleDay(2027, 0, {salida: ''})
+      ]},
+      {year: 2027, month: 1, days: [createTeleDay(2027, 1)]},
+      {year: 2027, month: 3, days: [createTeleDay(2027, 3)]}
+    ],
+    teleworkAllocations: {2026: {t1: '08:00', t4: '08:00'}, 2027: {t1: '20:00', t2: '10:00'}}
+  });
+  context.currentMonthIdx = 2;
+  assert.equal(context.computeTeleBolsa(2).bolsa, 20 * 60);
+  assert.deepEqual(Array.from(context.computeTeleBolsaPerDay(), day => day.bolsa), [780, 660, 660, 660]);
+  context.currentMonthIdx = 3;
+  assert.equal(context.computeTeleBolsa(3).bolsa, 11 * 60);
+  assert.equal(context.computeTeleBolsaPerDay()[0].bolsa, 4 * 60);
+  context.currentMonthIdx = 4;
+  assert.equal(context.computeTeleBolsaPerDay()[0].bolsa, 3 * 60);
+  context.currentMonthIdx = 0;
+  assert.equal(context.computeTeleBolsaPerDay()[0].bolsa, 60);
+});
+
+test('los avisos identifican el año y no arrastran excesos de años anteriores', () => {
+  const {context, inputs} = createTeleworkContext({
+    months: [
+      {year: 2026, month: 0, days: [createTeleDay(2026, 0)]},
+      {year: 2027, month: 0, days: [createTeleDay(2027, 0)]},
+      {year: 2027, month: 1, days: []}
+    ],
+    teleworkConfigYear: 2026,
+    teleworkAllocations: {2026: {t1: '05:00'}, 2027: {t1: '08:00'}}
+  });
+  const classes = new Set();
+  inputs['tele-warning-banner'] = {
+    innerHTML: '', textContent: '',
+    classList: {add: name => classes.add(name), remove: name => classes.delete(name)}
+  };
+  context.updateTeleWarningBanner();
+  assert.match(inputs['tele-warning-banner'].innerHTML, /2026 · T1.*02:00/);
+  context.teleworkConfigYear = 2027;
+  context.updateTeleWarningBanner();
+  assert.equal(classes.has('show'), false);
+  assert.equal(context.computeTeleBolsa(2).warnings.length, 0);
+  context.teleworkAllocations[2027].t1 = '05:00';
+  const warning = context.computeTeleBolsa(2).warnings[0];
+  assert.equal(warning.year, 2027);
+  assert.equal(warning.quarter, 1);
+  assert.equal(warning.deficit, 120);
+});
+
+test('el dashboard cuenta solo el trimestre y año seleccionados', () => {
+  const {context} = createTeleworkContext({months: [
+    {year: 2026, month: 0, days: [createTeleDay(2026, 0)]},
+    {year: 2027, month: 0, days: [createTeleDay(2027, 0)]},
+    {year: 2027, month: 1, days: [createTeleDay(2027, 1)]},
+    {year: 2027, month: 3, days: [createTeleDay(2027, 3)]}
+  ]});
+  assert.equal(context.getTeleConsumedUntil(context.months[2], new Date(2027, 1, 1), context.getConfig()), 420);
+  assert.equal(context.getTeleConsumedUntil(context.months[2], new Date(2027, 2, 31), context.getConfig()), 840);
+});
+
+test('la caché local y los snapshots conservan todos los años y los fichajes', () => {
+  const {context, storage} = createTeleworkContext({
+    months: [{id: 'month-test', year: 2027, month: 0, days: [createTeleDay(2027, 0, {notas: 'Conservar literalmente'})]}],
+    holidayCalendars: {2027: [{iso: '2027-01-01', nota: 'Año Nuevo'}]},
+    teleworkAllocations: {2026: {t1: '80:00'}, 2027: {t1: '120:00', t4: '90:30'}}
+  });
+  context.renderTeleworkConfig(2027);
+  context.saveStateLocal();
+  const saved = JSON.parse(storage.get('test-cache'));
+  assert.equal(saved.config.teleT1, '80:00');
+  assert.equal(saved.config.teleworkByYear[2027].t1, '120:00');
+  context.teleworkAllocations = {};
+  context.months = [];
+  assert.equal(context.loadStateLocal(), true);
+  assert.equal(context.teleworkAllocations[2026].t1, '80:00');
+  assert.equal(context.teleworkAllocations[2027].t4, '90:30');
+  assert.equal(context.months[0].days[0].notas, 'Conservar literalmente');
+  assert.equal(context.months[0].days[0].date.getFullYear(), 2027);
+  assert.equal(context.holidayCalendars[2027][0].nota, 'Año Nuevo');
+  const snapshot = context.createStateSnapshot();
+  context.teleworkAllocations[2027].t1 = '00:00';
+  context.restoreStateSnapshot(snapshot);
+  assert.equal(context.teleworkAllocations[2027].t1, '120:00');
+});
+
+test('exporta e importa JSON anual y sigue admitiendo backups anteriores', () => {
+  let exported;
+  const {context} = createTeleworkContext({
+    months: [{year: 2027, month: 0, days: [createTeleDay(2027, 0)]}],
+    teleworkAllocations: {2026: {t1: '80:00'}, 2027: {t1: '120:00'}},
+    downloadBlob: data => { exported = data; },
+    confirm: () => true,
+    applyAutomaticHolidaysToExistingMonths: () => [],
+    saveState: () => {}, renderTabs: () => {}, renderTable: () => {}, renderStats: () => {},
+    setImportFeedback: () => {}
+  });
+  ['exportJSON', 'importJSON'].forEach(name => vm.runInContext(extractFunction(name), context));
+  context.exportJSON();
+  context.teleworkAllocations = {};
+  context.importJSON(exported);
+  assert.equal(context.teleworkAllocations[2027].t1, '120:00');
+  assert.equal(context.teleworkAllocations[2026].t1, '80:00');
+  const legacy = JSON.parse(exported);
+  delete legacy.config.teleworkByYear;
+  context.importJSON(JSON.stringify(legacy));
+  assert.equal(context.teleworkAllocations[2026].t1, '80:00');
+  assert.equal(context.getTeleBolsaForQuarter(2027, 0), 0);
+});
+
+test('sincroniza todos los años y conserva los campos anteriores para 2026', async () => {
+  let payload;
+  const {context} = createTeleworkContext({
+    currentUser: {id: 'user-test'}, currentSession: {access_token: 'test-token'},
+    SUPABASE_URL: 'https://example.invalid', SUPABASE_ANON_KEY: 'test-key',
+    teleworkAllocations: {2026: {t1: '80:00'}, 2027: {t1: '120:00'}},
+    fetch: async (_url, options) => {
+      payload = JSON.parse(options.body);
+      return {ok: true};
+    }
+  });
+  context.renderTeleworkConfig(2027);
+  assert.equal(await context.saveConfig(), true);
+  assert.equal(payload.telet1, '80:00');
+  assert.equal(payload.teletrabajo_anual[2027].t1, '120:00');
+  assert.equal(context.syncQueue.length, 0);
+});
+
+test('mantiene las bolsas anuales guardadas localmente si falta la columna remota', async () => {
+  const {context, storage} = createTeleworkContext({
+    currentUser: {id: 'user-test'}, currentSession: {access_token: 'test-token'},
+    SUPABASE_URL: 'https://example.invalid', SUPABASE_ANON_KEY: 'test-key',
+    teleworkAllocations: {2026: {t1: '80:00'}, 2027: {t1: '120:00'}},
+    fetch: async () => ({ok: false, status: 400, text: async () => 'Missing column teletrabajo_anual'})
+  });
+  assert.equal(await context.saveConfig(), false);
+  assert.deepEqual(Array.from(context.syncQueue), ['config']);
+  const saved = JSON.parse(storage.get('test-cache'));
+  assert.equal(saved.config.teleworkByYear[2027].t1, '120:00');
+  assert.match(context.syncErrorMessage, /Falta activar las bolsas anuales/);
+});
+
+test('recupera las bolsas anuales de Supabase y migra configuraciones remotas antiguas', async () => {
+  let remoteConfig = {telet1: '80:00', festivos: {}, teletrabajo_anual: {2027: {t1: '120:00'}}};
+  const {context, inputs} = createTeleworkContext({
+    currentUser: {id: 'user-test'}, currentSession: {access_token: 'test-token'},
+    SUPABASE_URL: 'https://example.invalid', SUPABASE_ANON_KEY: 'test-key',
+    fetch: async url => ({ok: true, status: 200, json: async () => {
+      if (url.includes('/months?')) return [{id: 'month-test', year: 2027, month: 1}];
+      if (url.includes('/days?')) return [];
+      return [remoteConfig];
+    }})
+  });
+  assert.equal(await context.loadDataFromSupabase(), true);
+  assert.equal(context.teleworkAllocations[2026].t1, '80:00');
+  assert.equal(inputs['cfg-tele-t1'].value, '120:00');
+  assert.equal(inputs['cfg-tele-year'].value, '2027');
+  remoteConfig = {telet1: '70:00', festivos: {}};
+  assert.equal(await context.loadDataFromSupabase(), true);
+  assert.equal(context.teleworkAllocations[2026].t1, '70:00');
+  assert.equal(context.getTeleBolsaForQuarter(2027, 0), 0);
+});
+
 test('la salida automática del viernes actualiza el saldo propagado', () => {
   const context = createContext({
     applyBolsaBoundaryForDate: (_date, abs) => abs,
@@ -275,7 +603,11 @@ test('el dashboard calcula cobertura y diferencia hasta hoy', () => {
     getDashboardBucketLabel: () => 'Sem 1',
     getDashboardPeriodLabel: () => 'Enero 2020',
     getTeleConsumedUntil: () => 0,
-    getTeleBolsaForQuarter: () => 0,
+    getTeleBolsaForQuarter: (year, month) => {
+      assert.equal(year, 2020);
+      assert.equal(month, 0);
+      return 0;
+    },
     getQuarterForMonth: () => 0
   });
   vm.runInContext(extractFunction('buildDashboardData'), context);
@@ -633,7 +965,7 @@ test('mantiene coherentes la versión visible, las notas y la caché', () => {
   const releaseNotes = vm.runInContext('RELEASE_NOTES', context);
   const sortedNotes = context.getSortedReleaseNotes(releaseNotes);
 
-  assert.equal(releaseNotes[0].version, '2.17.2');
+  assert.equal(releaseNotes[0].version, '2.19.0');
   assert.equal(releaseNotes.at(-1).version, '2.3.17');
   assert.deepEqual(
     Array.from(releaseNotes, release => release.version),
@@ -649,10 +981,10 @@ test('mantiene coherentes la versión visible, las notas y la caché', () => {
     && Array.isArray(release.changes)
     && release.changes.length > 0
   ));
-  assert.match(html, /id="app-version">v2\.17\.2</);
+  assert.match(html, /id="app-version">v2\.19\.0</);
   assert.match(html, /const APP_VERSION = RELEASE_NOTES\[0\]\.version;/);
   assert.match(html, /const swVersion = APP_VERSION;/);
-  assert.match(serviceWorker, /const APP_VERSION = '2\.17\.2';/);
+  assert.match(serviceWorker, /const APP_VERSION = '2\.19\.0';/);
 });
 
 test('actualiza desde Supabase al volver sin operaciones locales pendientes', () => {
