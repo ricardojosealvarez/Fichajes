@@ -87,6 +87,7 @@ const createTeleworkContext = (overrides = {}) => {
     currentMonthIdx: 0,
     teleworkConfigYear: null,
     teleworkAllocations: {},
+    teleworkPercentByYear: {},
     workdayConfigYear: null,
     workdayConfigs: {},
     workdayBaseline: null,
@@ -117,7 +118,7 @@ const createTeleworkContext = (overrides = {}) => {
     _showConfigToast: () => {},
     ...overrides
   });
-  ['cfg-tele-year', 'cfg-tele-t1', 'cfg-tele-t2', 'cfg-tele-t3', 'cfg-tele-t4'].forEach(id => {
+  ['cfg-tele-year', 'cfg-tele-percent', 'cfg-tele-effective-1', 'cfg-tele-effective-2', 'cfg-tele-effective-3', 'cfg-tele-effective-4', 'cfg-tele-t1', 'cfg-tele-t2', 'cfg-tele-t3', 'cfg-tele-t4'].forEach(id => {
     inputs[id] = {value: '', style: {}};
   });
   vm.runInContext(extractConstArray('WORKDAY_FIELDS'), context);
@@ -128,7 +129,7 @@ const createTeleworkContext = (overrides = {}) => {
   ].forEach(name => vm.runInContext(extractFunction(name), context));
   [
     'timeToMins', 'minsToTime', 'calcSuma', 'calcTeleTardeConsumed',
-    'parseTeleworkDuration', 'normalizeTeleworkAllocations', 'readTeleworkAllocations',
+    'parseTeleworkDuration', 'normalizeTeleworkAllocations', 'normalizeTeleworkPercentages', 'getTeleworkPercent', 'getTeleworkDayDeductions', 'getEffectiveTeleworkAllocation', 'updateTeleworkEffectiveLabels', 'updateTeleworkPercent', 'readTeleworkAllocations',
     'renderTeleworkConfig', 'changeTeleworkYear', 'updateTeleworkAllocation',
     'validateTeleworkTime', 'getTeleBolsaForQuarter', 'getQuarterForMonth',
     'getTeleDayConsumed', 'getTeleConsumedByQuarter', 'computeTeleBolsa',
@@ -401,6 +402,19 @@ test('respeta las bolsas anuales y un cero explícito frente a valores antiguos'
   assert.equal(Object.keys(malformed).length, 0);
 });
 
+test('descuenta el porcentaje anual de vacaciones, asuntos propios y navidad por trimestre', () => {
+  const day = (year, month, tipo) => createTeleDay(year, month, {tipo, teleDia: false});
+  const {context} = createTeleworkContext({
+    months: [{year: 2027, month: 11, days: [day(2027, 11, 'vacaciones'), day(2027, 11, 'propios'), day(2027, 11, 'navidad')]}],
+    teleworkAllocations: {2027: {t4: '40:00'}},
+    teleworkPercentByYear: {2027: 80}
+  });
+  context.getHoraDay = () => 463;
+  context.teleworkConfigYear = 2027;
+  assert.equal(context.getTeleworkDayDeductions(2027)[3], 3 * 370);
+  assert.equal(context.getEffectiveTeleworkAllocation(2027, 3), 2400 - 1110);
+});
+
 test('configura años sin meses y cambia de año sin alterar otras bolsas', () => {
   const {context, inputs} = createTeleworkContext({
     months: [{year: 2026, month: 11, days: []}],
@@ -477,7 +491,8 @@ test('separa el consumo diario, las tardes y los trimestres al cambiar de año',
       {year: 2027, month: 1, days: [createTeleDay(2027, 1)]},
       {year: 2027, month: 3, days: [createTeleDay(2027, 3)]}
     ],
-    teleworkAllocations: {2026: {t1: '08:00', t4: '08:00'}, 2027: {t1: '20:00', t2: '10:00'}}
+    teleworkAllocations: {2026: {t1: '08:00', t4: '08:00'}, 2027: {t1: '20:00', t2: '10:00'}},
+    getHoraDay: () => 0
   });
   context.currentMonthIdx = 2;
   assert.equal(context.computeTeleBolsa(2).bolsa, 20 * 60);
@@ -1192,7 +1207,7 @@ test('mantiene coherentes la versión visible, las notas y la caché', () => {
   const releaseNotes = vm.runInContext('RELEASE_NOTES', context);
   const sortedNotes = context.getSortedReleaseNotes(releaseNotes);
 
-  assert.equal(releaseNotes[0].version, '2.20.0');
+  assert.equal(releaseNotes[0].version, '2.21.0');
   assert.equal(releaseNotes.at(-1).version, '2.3.17');
   assert.deepEqual(
     Array.from(releaseNotes, release => release.version),
@@ -1208,10 +1223,10 @@ test('mantiene coherentes la versión visible, las notas y la caché', () => {
     && Array.isArray(release.changes)
     && release.changes.length > 0
   ));
-  assert.match(html, /id="app-version">v2\.20\.0</);
+  assert.match(html, /id="app-version">v2\.21\.0</);
   assert.match(html, /const APP_VERSION = RELEASE_NOTES\[0\]\.version;/);
   assert.match(html, /const swVersion = APP_VERSION;/);
-  assert.match(serviceWorker, /const APP_VERSION = '2\.20\.0';/);
+  assert.match(serviceWorker, /const APP_VERSION = '2\.21\.0';/);
 });
 
 test('actualiza desde Supabase al volver sin operaciones locales pendientes', () => {
@@ -1272,7 +1287,7 @@ test('integra el manual accesible y su descarga DOCX', () => {
   assert.match(html, /id="manual-close"[^>]+onclick="closeManualModal\(\)"/);
   assert.match(html, /document\.addEventListener\('keydown', handleManualKeydown\)/);
   assert.match(embeddedManual, /Manual de usuario de Fichajes/);
-  assert.match(embeddedManual, /Versión de la aplicación: 2\.20\.0/);
+  assert.match(embeddedManual, /Versión de la aplicación: 2\.21\.0/);
   assert.match(embeddedManual, /Dashboard de estadísticas/);
   assert.match(serviceWorker, /'\.\/MANUAL_USUARIO\.html'/);
   assert.match(serviceWorker, /'\.\/Manual_de_usuario_Fichajes\.docx'/);

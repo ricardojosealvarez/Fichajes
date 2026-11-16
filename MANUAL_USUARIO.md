@@ -319,7 +319,8 @@ Cada año dispone de cuatro bolsas trimestrales independientes. Se pueden config
 1. Abrir `Bolsa teletrabajo` en el panel lateral.
 2. Introducir el año en `Año de las bolsas trimestrales`, entre 2020 y 2099.
 3. Rellenar las bolsas de los trimestres que corresponda.
-4. Salir del campo para guardar el valor y comprobar el indicador de sincronización.
+4. Configurar `% Teletrabajo` para aplicar el porcentaje correspondiente a cada día de vacaciones, asuntos propios o turno de navidad.
+5. Salir del campo para guardar el valor y comprobar el indicador de sincronización.
 
 Los trimestres son:
 
@@ -333,6 +334,8 @@ El formato es `HH:MM` y admite duraciones superiores a 23 horas, por ejemplo `12
 Al cambiar de mes, el panel muestra automáticamente las bolsas del año de ese mes. Cambiar solo el año del panel permite configurar otro año sin cambiar el mes seleccionado.
 
 Los años sin configurar empiezan con las cuatro bolsas en `00:00`. Las bolsas que existían antes de la configuración anual se conservan en 2026; no se copian automáticamente a otros años.
+
+El porcentaje se guarda por año. Por cada día marcado como vacaciones, asuntos propios o turno de navidad se descuenta del trimestre el porcentaje configurado de las horas diarias de ese día, según las horas de invierno o verano. Bajo cada bolsa se muestra el saldo trimestral aplicable después de los descuentos. Por ejemplo, un 80 % y un día de invierno con jornada de `07:43` descuentan `06:10` (redondeado al minuto más cercano).
 
 ### 10.2 Marcar teletrabajo
 

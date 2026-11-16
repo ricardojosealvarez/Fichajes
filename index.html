@@ -806,6 +806,7 @@
   }
   .tele-bolsa.warn { color: var(--danger); font-weight: 700; }
   .tele-bolsa.zero { color: var(--muted); }
+  .tele-effective { color: var(--muted); font-size: 11px; margin-top: 3px; }
   /* Toast warning */
   .tele-warning-banner {
     display: none;
@@ -1840,11 +1841,11 @@
       class="version-trigger"
       id="release-notes-trigger"
       type="button"
-      aria-label="Ver notas de la versión 2.20.0"
+      aria-label="Ver notas de la versión 2.21.0"
       aria-haspopup="dialog"
       aria-controls="release-notes-modal"
       onclick="openReleaseNotesModal()"
-    ><span id="app-version">v2.20.0</span></button>
+    ><span id="app-version">v2.21.0</span></button>
     <button id="signout-btn" style="
       padding: 6px 12px;
       background: transparent;
@@ -1928,20 +1929,24 @@
           <input class="config-input" id="cfg-tele-year" type="number" min="2020" max="2099" data-manual-save="true" aria-describedby="tele-year-help" onchange="changeTeleworkYear(this)">
         </div>
         <div class="config-row">
+          <label class="config-label" for="cfg-tele-percent">% Teletrabajo</label>
+          <input class="config-input" id="cfg-tele-percent" type="number" min="0" max="100" step="1" value="0" data-manual-save="true" aria-describedby="tele-year-help" onchange="updateTeleworkPercent(this)">
+        </div>
+        <div class="config-row">
           <label class="config-label" for="cfg-tele-t1">T1 — Ene/Feb/Mar (HH:MM)</label>
-          <input class="config-input" id="cfg-tele-t1" type="text" maxlength="8" value="00:00" placeholder="HH:MM" data-manual-save="true" onchange="validateTeleworkTime(this, 1)" oninput="updateTeleworkAllocation(this, 1)">
+          <input class="config-input" id="cfg-tele-t1" type="text" maxlength="8" value="00:00" placeholder="HH:MM" data-manual-save="true" onchange="validateTeleworkTime(this, 1)" oninput="updateTeleworkAllocation(this, 1)"><div class="tele-effective" id="cfg-tele-effective-1"></div>
         </div>
         <div class="config-row">
           <label class="config-label" for="cfg-tele-t2">T2 — Abr/May/Jun (HH:MM)</label>
-          <input class="config-input" id="cfg-tele-t2" type="text" maxlength="8" value="00:00" placeholder="HH:MM" data-manual-save="true" onchange="validateTeleworkTime(this, 2)" oninput="updateTeleworkAllocation(this, 2)">
+          <input class="config-input" id="cfg-tele-t2" type="text" maxlength="8" value="00:00" placeholder="HH:MM" data-manual-save="true" onchange="validateTeleworkTime(this, 2)" oninput="updateTeleworkAllocation(this, 2)"><div class="tele-effective" id="cfg-tele-effective-2"></div>
         </div>
         <div class="config-row">
           <label class="config-label" for="cfg-tele-t3">T3 — Jul/Ago/Sep (HH:MM)</label>
-          <input class="config-input" id="cfg-tele-t3" type="text" maxlength="8" value="00:00" placeholder="HH:MM" data-manual-save="true" onchange="validateTeleworkTime(this, 3)" oninput="updateTeleworkAllocation(this, 3)">
+          <input class="config-input" id="cfg-tele-t3" type="text" maxlength="8" value="00:00" placeholder="HH:MM" data-manual-save="true" onchange="validateTeleworkTime(this, 3)" oninput="updateTeleworkAllocation(this, 3)"><div class="tele-effective" id="cfg-tele-effective-3"></div>
         </div>
         <div class="config-row">
           <label class="config-label" for="cfg-tele-t4">T4 — Oct/Nov/Dic (HH:MM)</label>
-          <input class="config-input" id="cfg-tele-t4" type="text" maxlength="8" value="00:00" placeholder="HH:MM" data-manual-save="true" onchange="validateTeleworkTime(this, 4)" oninput="updateTeleworkAllocation(this, 4)">
+          <input class="config-input" id="cfg-tele-t4" type="text" maxlength="8" value="00:00" placeholder="HH:MM" data-manual-save="true" onchange="validateTeleworkTime(this, 4)" oninput="updateTeleworkAllocation(this, 4)"><div class="tele-effective" id="cfg-tele-effective-4"></div>
         </div>
       </div>
       <p class="config-label" id="tele-year-help">Cada año tiene sus propias bolsas y consumo. Los años nuevos empiezan en 00:00.</p>
@@ -2148,6 +2153,15 @@ const DAY_TYPES = [
   { key: 'navidad',    label: 'Turno de navidad', color: '#ffb347' },
 ];
 const RELEASE_NOTES = [
+  {
+    version: '2.21.0',
+    date: '2026-11-16',
+    title: 'Descuento de días no laborables en la bolsa de teletrabajo',
+    changes: [
+      'El porcentaje de teletrabajo se configura por año y descuenta su parte de las horas diarias de vacaciones, asuntos propios y turno de navidad.',
+      'La configuración muestra el saldo trimestral aplicable después de los descuentos.'
+    ]
+  },
   {
     version: '2.20.0',
     date: '2026-10-29',
@@ -2514,6 +2528,7 @@ let currentAppView = 'records';
 let dashboardPeriod = 'month';
 let holidayCalendars = {};
 let teleworkAllocations = {};
+let teleworkPercentByYear = {};
 let teleworkConfigYear = null;
 let workdayConfigs = {};
 let workdayConfigYear = null;
@@ -3483,6 +3498,21 @@ function normalizeTeleworkAllocations(source) {
   return normalized;
 }
 
+function normalizeTeleworkPercentages(source) {
+  let parsed = source;
+  if (typeof parsed === 'string') { try { parsed = JSON.parse(parsed); } catch { return {}; } }
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {};
+  const result = {};
+  for (const [key, raw] of Object.entries(parsed)) {
+    const year = Number(key);
+    const value = Number(raw);
+    if (Number.isInteger(year) && year >= 2020 && year <= 2099 && Number.isFinite(value) && value >= 0 && value <= 100) result[year] = value;
+  }
+  return result;
+}
+
+function getTeleworkPercent(year) { return teleworkPercentByYear[year] ?? 0; }
+
 /** Conserva las bolsas anteriores, que no tenían año, exclusivamente en 2026. */
 function readTeleworkAllocations(config) {
   const annual = normalizeTeleworkAllocations(config.teleworkByYear ?? config.teletrabajo_anual);
@@ -3499,12 +3529,31 @@ function renderTeleworkConfig(year = months[currentMonthIdx]?.year ?? new Date()
   teleworkConfigYear = Number(year);
   const yearInput = document.querySelector('#cfg-tele-year');
   if (yearInput) yearInput.value = String(teleworkConfigYear);
+  const percentInput = document.querySelector('#cfg-tele-percent');
+  if (percentInput) percentInput.value = String(getTeleworkPercent(teleworkConfigYear));
   for (let q = 1; q <= 4; q++) {
     const input = document.querySelector(`#cfg-tele-t${q}`);
     if (!input) continue;
     input.value = teleworkAllocations[teleworkConfigYear]?.[`t${q}`] ?? '00:00';
     input.style.borderColor = '';
   }
+  updateTeleworkEffectiveLabels();
+}
+
+function updateTeleworkPercent(input) {
+  const value = Number(input.value);
+  if (!Number.isFinite(value) || value < 0 || value > 100) {
+    input.style.borderColor = 'var(--danger)';
+    return false;
+  }
+  const year = teleworkConfigYear ?? new Date().getFullYear();
+  teleworkPercentByYear[year] = value;
+  input.value = String(value);
+  input.style.borderColor = '';
+  recalcAll();
+  saveStateLocal();
+  saveConfig();
+  return true;
 }
 
 function changeTeleworkYear(input) {
@@ -3527,6 +3576,7 @@ function updateTeleworkAllocation(input, quarter) {
     ...teleworkAllocations[year],
     [`t${quarter}`]: value
   };
+  updateTeleworkEffectiveLabels();
   recalcAll();
   return true;
 }
@@ -3541,6 +3591,38 @@ function validateTeleworkTime(input, quarter) {
 function getTeleBolsaForQuarter(year, month) {
   const q = Math.floor(month / 3) + 1;
   return timeToMins(teleworkAllocations[year]?.[`t${q}`]) || 0;
+}
+
+function getTeleworkDayDeductions(year) {
+  const deductions = [0, 0, 0, 0];
+  const percent = getTeleworkPercent(year) / 100;
+  if (!percent) return deductions;
+  const affectedTypes = new Set(['propios', 'vacaciones', 'navidad']);
+  for (const month of months) {
+    if (month.year !== year) continue;
+    for (const day of month.days) {
+      if (!affectedTypes.has(day.tipo)) continue;
+      const quarter = getQuarterForMonth(month.month);
+      deductions[quarter] += Math.round(getHoraDay(day.date) * percent);
+    }
+  }
+  return deductions;
+}
+
+function getEffectiveTeleworkAllocation(year, quarter) {
+  return getTeleBolsaForQuarter(year, quarter * 3) - getTeleworkDayDeductions(year)[quarter];
+}
+
+function updateTeleworkEffectiveLabels() {
+  const year = teleworkConfigYear ?? months[currentMonthIdx]?.year ?? new Date().getFullYear();
+  const deductions = getTeleworkDayDeductions(year);
+  for (let quarter = 0; quarter < 4; quarter++) {
+    const label = document.querySelector(`#cfg-tele-effective-${quarter + 1}`);
+    if (!label) continue;
+    const allocation = getTeleBolsaForQuarter(year, quarter * 3);
+    const effective = allocation - deductions[quarter];
+    label.textContent = `Aplicable: ${minsToTime(effective)} · descuento ${minsToTime(deductions[quarter])}`;
+  }
 }
 
 function getQuarterForMonth(month) { return Math.floor(month / 3); } // 0..3
@@ -3581,12 +3663,12 @@ function computeTeleBolsa(targetMonthIdx) {
   const consumed = getTeleConsumedByQuarter(year, months[targetMonthIdx]?.month ?? 12);
   const warnings = [];
   for (let q = 0; q < 4; q++) {
-    const alloc = getTeleBolsaForQuarter(year, q * 3);
+    const alloc = getEffectiveTeleworkAllocation(year, q);
     const rem = alloc - consumed[q];
     if (rem < 0) warnings.push({year, quarter: q + 1, deficit: -rem});
   }
   const curQ = getQuarterForMonth(target?.month ?? 0);
-  const alloc = getTeleBolsaForQuarter(year, curQ * 3);
+  const alloc = getEffectiveTeleworkAllocation(year, curQ);
   const bolsa = alloc - consumed[curQ];
   return {bolsa, warnings, consumed, curQ, year};
 }
@@ -3601,6 +3683,9 @@ function computeTeleBolsaPerDay() {
   const result = [];
 
   for (const day of m.days) {
+    if (['propios', 'vacaciones', 'navidad'].includes(day.tipo)) {
+      bolsaRunning += Math.round(getHoraDay(day.date) * getTeleworkPercent(m.year) / 100);
+    }
     bolsaRunning -= getTeleDayConsumed(day, cfg);
     result.push({bolsa: bolsaRunning, warn: bolsaRunning < 0});
   }
@@ -4757,6 +4842,8 @@ function setDayType(idx, tipo) {
   openMenuIdx = null;
   renderTable();
   renderStats();
+  updateTeleworkEffectiveLabels();
+  updateTeleWarningBanner();
 }
 
 // Close menus on outside click
@@ -4870,6 +4957,7 @@ function readConfigFromDOM() {
     teleT3:      teleworkAllocations[2026]?.t3 ?? '00:00',
     teleT4:      teleworkAllocations[2026]?.t4 ?? '00:00',
     teleworkByYear: normalizeTeleworkAllocations(teleworkAllocations),
+    teleworkPercentByYear: normalizeTeleworkPercentages(teleworkPercentByYear),
     festivos:    normalizeHolidayCalendars(holidayCalendars),
   };
 }
@@ -4883,6 +4971,7 @@ function applyConfigToDOM(cfg) {
   renderWorkdayConfig();
   s('cfg-bolsa-inicio', cfg.bolsaInicio ?? cfg.bolsainicio);
   teleworkAllocations = readTeleworkAllocations(cfg);
+  teleworkPercentByYear = normalizeTeleworkPercentages(cfg.teleworkPercentByYear ?? cfg.teletrabajo_porcentaje_anual);
   renderTeleworkConfig();
   holidayCalendars = normalizeHolidayCalendars(cfg.festivos ?? cfg.holidays ?? {});
   renderHolidaySummary();
@@ -5236,10 +5325,11 @@ function updateTeleWarningBanner() {
   if (!banner) return;
   const year = teleworkConfigYear ?? months[currentMonthIdx]?.year ?? new Date().getFullYear();
   const consumed = getTeleConsumedByQuarter(year);
+  const deductions = getTeleworkDayDeductions(year);
   const qNames = ['T1 (Ene–Mar)', 'T2 (Abr–Jun)', 'T3 (Jul–Sep)', 'T4 (Oct–Dic)'];
   const msgs = [];
   for (let q = 0; q < 4; q++) {
-    const alloc = getTeleBolsaForQuarter(year, q * 3);
+    const alloc = getTeleBolsaForQuarter(year, q * 3) - deductions[q];
     const rem = alloc - consumed[q];
     if (rem < 0) msgs.push(`⚠ ${year} · ${qNames[q]}: excedido en ${minsToTime(-rem)}`);
   }
@@ -6226,6 +6316,7 @@ async function performSaveConfig() {
       telet3: config.teleT3,
       telet4: config.teleT4,
       teletrabajo_anual: config.teleworkByYear,
+      teletrabajo_porcentaje_anual: config.teleworkPercentByYear,
       festivos: normalizeHolidayCalendars(holidayCalendars)
     };
     console.log('saveConfig payload:', JSON.stringify(payload));

@@ -118,7 +118,10 @@ El campo `Año de las bolsas trimestrales` permite configurar T1–T4 de cada a�
 incluso antes de crear sus meses. Al cambiar de mes, el panel muestra su año.
 Las bolsas existentes se conservan en 2026. Los años sin configurar empiezan
 en `00:00`; sus consumos y avisos se calculan de forma independiente.
-Las duraciones admiten más de 23 horas, por ejemplo `120:00`.
+Las duraciones admiten más de 23 horas, por ejemplo `120:00`. El porcentaje anual
+de teletrabajo descuenta de cada trimestre ese porcentaje de las horas/día
+configuradas para cada día de vacaciones, asuntos propios o turno de navidad. El
+panel muestra la bolsa trimestral efectiva tras estos descuentos.
 
 Antes de publicar esta versión, ejecutar `tools/enable_annual_telework.sql`
 en el editor SQL del proyecto de Supabase de Fichajes. Añade únicamente la
