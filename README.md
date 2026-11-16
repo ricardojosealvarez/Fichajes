@@ -136,6 +136,12 @@ asignan a 2026. Si falta la columna de Supabase, los cambios permanecen
 guardados localmente y la sincronización indica el error; tras añadirla,
 se puede reintentar la sincronización.
 
+La preferencia `% Teletrabajo` se sincroniza en la columna JSONB
+`config.teletrabajo_porcentaje_anual`. Antes de publicar una versión con este
+campo, ejecutar `tools/enable_annual_telework_percent.sql` en Supabase. Si la
+columna falta, la aplicación conserva el valor local y muestra esta migración
+como paso pendiente.
+
 ### Almacenamiento local
 
 Los datos se guardan en `localStorage` del navegador bajo la clave `fichajes_v1`.

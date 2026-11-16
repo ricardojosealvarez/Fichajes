@@ -6359,6 +6359,12 @@ async function performSaveConfig() {
         finishSyncOperation(syncKey, false, message);
         return false;
       }
+      if (errText.includes('teletrabajo_porcentaje_anual') && (res.status === 400 || res.status === 404)) {
+        const message = 'Falta activar el porcentaje anual de teletrabajo en Supabase. Cambios guardados localmente; ejecuta tools/enable_annual_telework_percent.sql y reintenta la sincronización.';
+        _showConfigToast(message, true);
+        finishSyncOperation(syncKey, false, message);
+        return false;
+      }
       console.error('Error guardando config, status:', res.status, 'body:', errText);
       _showConfigToast('Error config: ' + res.status + ' — ' + errText.slice(0, 80), true);
       finishSyncOperation(syncKey, false, `Configuración: ${res.status}`);
